@@ -177,7 +177,7 @@ pub fn tmux_read_stdout(
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
-                let (tab_id, hierarchy) = parse_tmux_layout(&buffer);
+                let (tab_id, hierarchy) = parse_tmux_layout(&buffer[15..]);
                 event_channel
                     .send_blocking(TmuxEvent::LayoutChanged(tab_id, hierarchy))
                     .unwrap();
