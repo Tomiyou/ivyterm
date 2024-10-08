@@ -1,9 +1,9 @@
 use std::str::from_utf8;
 
-use gtk4::Orientation;
+use gtk4::{Orientation, Widget};
 use libadwaita::prelude::*;
 
-use crate::{container::Container, terminal::Terminal, toplevel::TopLevel, window::IvyWindow};
+use crate::{container::{Container, TmuxLayout}, terminal::Terminal, toplevel::TopLevel, window::IvyWindow};
 
 #[allow(dead_code)]
 struct Rectangle {
@@ -23,31 +23,68 @@ fn calculate_position(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
     }
 }
 
+fn unparent_pane(pane: &impl IsA<Widget>) {
+    if let Some(separator) = pane.next_sibling() {
+        separator.unparent();
+    }
+    pane.unparent();
+}
+
+#[inline]
+fn move_child_pointer(next_sibling: &mut Option<Widget>, new_child: Widget) {
+    // If the new_child has a Separator following it, we need to point to it instead
+    if let Some(separator) = new_child.next_sibling() {
+        *next_sibling = Some(separator.next_sibling().unwrap());
+    } else {
+        *next_sibling = None;
+    }
+}
+
+/// fn container_callback()
+///
+///     Handles Terminal layout
+///
+/// ** if ID does not match or existing child is a Container, we need to insert
+///    this given Terminal before existing child - make sure we check if the
+///    Terminal already exists
+///
+/// ** otherwise we simply update the Terminal size
 #[inline]
 fn container_callback(
     orientation: Orientation,
     window: &IvyWindow,
     top_level: &TopLevel,
-    parent: Option<&TmuxContainer>,
+    parent: &TmuxContainer,
     bounds: Rectangle,
-    initial: bool,
+    next_sibling: &mut Option<Widget>,
 ) -> TmuxContainer {
-    // TODO: What if already exists
-    if initial {
-        let container = Container::new(orientation, window);
-        if let Some(parent) = parent {
-            let position = calculate_position(&bounds, parent);
-            parent.c.append(&container, Some(position));
-        } else {
-            top_level.set_child(Some(&container));
+    let position = calculate_position(&bounds, parent);
+
+    // If the next_sibling is already a Container, we don't have to create it
+    if let Some(next_sibling) = next_sibling {
+        if let Ok(container) = next_sibling.clone().downcast::<Container>() {
+            // Ensure bounds (position) are correct?
+            if let Some(separator) = container.next_sibling() {
+                parent.layout.set_separator_position(&separator, position);
+            }
+            let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
+            return TmuxContainer {
+                c: container,
+                layout,
+                bounds,
+            };
         }
-        TmuxContainer {
-            c: container,
-            bounds: bounds,
-        }
-    } else {
-        todo!()
     }
+
+    let container = Container::new(orientation, window);
+    let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
+    parent.c.prepend(&container, next_sibling, Some(position));
+
+    return TmuxContainer {
+        c: container,
+        layout,
+        bounds,
+    };
 }
 
 // Use one for Pane and one for Container
@@ -56,31 +93,47 @@ fn terminal_callback(
     pane_id: u32,
     window: &IvyWindow,
     top_level: &TopLevel,
-    parent: Option<&TmuxContainer>,
+    parent: &TmuxContainer,
     bounds: Rectangle,
-    initial: bool,
+    next_sibling: &mut Option<Widget>,
 ) -> Terminal {
-    if let Some(pane) = window.get_pane(pane_id) {
-        if initial {
-            panic!("Initial layout but pane already exists!");
-        }
-        pane
-    } else {
-        let new_terminal = Terminal::new(top_level, window, Some(pane_id));
+    // We know Terminal with given pane_id should be exactly *here* (as in before/exactly next_sibling)
+    // next_sibling is always either Terminal or Container
+    let position = calculate_position(&bounds, parent);
 
-        if let Some(parent) = parent {
-            let percentage = calculate_position(&bounds, parent);
-            parent.c.append(&new_terminal, Some(percentage));
-        } else {
-            println!("Pane without Container parent");
-            top_level.set_child(Some(&new_terminal));
+    // Check if a terminal with the given pane_id already exists
+    if let Some(existing) = window.get_pane(pane_id) {
+        // Check if there is a next_sibling
+        if let Some(next_pane) = next_sibling {
+            // Check if this next_pane is already this terminal
+            if existing.eq(next_pane) {
+                // Pane is in correct place, just make sure the Separator position is correct
+                if let Some(separator) = next_pane.next_sibling() {
+                    parent.layout.set_separator_position(&separator, position);
+                }
+                // Since we skipped prepending a Terminal, we have to move the next_sibling pointer
+                move_child_pointer(next_sibling, existing.clone().upcast());
+                return existing;
+            }
         }
 
-        new_terminal
+        // The pane exists, but is not in the correct place, remove it from its
+        // current position first
+        unparent_pane(&existing);
+        // Now insert it in the correct place
+        parent.c.prepend(&existing, next_sibling, Some(position));
+
+        return existing;
     }
+
+    // Terminal does not exist yet, simply append it after previous_sibling
+    let new_terminal = Terminal::new(top_level, window, Some(pane_id));
+    parent.c.prepend(&new_terminal, next_sibling, Some(position));
+
+    new_terminal
 }
 
-pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow, initial: bool) {
+pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
     // Read tab ID
     let (tab_id, bytes_read) = read_first_u32(buffer);
     let buffer = &buffer[bytes_read + 1..];
@@ -96,18 +149,125 @@ pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow, initial: bool) {
         window.new_tab(Some(tab_id))
     };
 
-    // Parse the recursive layout
     println!(
         "Tab id is {}, remaining buffer: {}",
         tab_id,
         from_utf8(buffer).unwrap()
     );
-    parse_layout_recursive(buffer, window, &top_level, None, 0, initial);
+
+    // We parse the first level of layout separately (much more simple to implement this way)
+    // More verbose, but simpler code (and more robust)
+    parse_layout_root(buffer, window, &top_level);
 }
 
 struct TmuxContainer {
     c: Container,
+    layout: TmuxLayout,
     bounds: Rectangle,
+}
+
+fn parse_layout_root(
+    buffer: &[u8],
+    window: &IvyWindow,
+    top_level: &TopLevel,
+) {
+    let mut buffer = buffer;
+
+    // Read width
+    let (width, bytes_read) = read_first_u32(buffer);
+    buffer = &buffer[bytes_read + 1..];
+
+    // Read height
+    let (height, bytes_read) = read_first_u32(buffer);
+    buffer = &buffer[bytes_read + 1..];
+
+    // Read x coordinate
+    let (x, bytes_read) = read_first_u32(buffer);
+    buffer = &buffer[bytes_read + 1..];
+
+    // Read y coordinate
+    let (y, bytes_read) = read_first_u32(buffer);
+    buffer = &buffer[bytes_read..];
+
+    let allocation = Rectangle {
+        x: x as i32,
+        y: y as i32,
+        width: width as i32,
+        height: height as i32,
+    };
+
+    // Now we have to determine if this is a Pane or a Container
+    if buffer[0] == ',' as u8 {
+        // This is a Pane
+        buffer = &buffer[1..];
+
+        let (pane_id, bytes_read) = read_first_u32(buffer);
+
+        // terminal_callback(pane_id, window, top_level, parent, allocation, &mut current_sibling);
+        if let Some(existing) = window.get_pane(pane_id) {
+            // Pane already exists
+            if let Some(child) = top_level.child() {
+                if existing.eq(&child) {
+                    // Pane is already in the correct place, nothing to do
+                } else {
+                    // Replace the current child with ourselves
+                    top_level.set_child(Some(&existing));
+                }
+            } else {
+                // This is a very strange case, Terminal already exists, but top_level has
+                // not children???
+                eprintln!("Terminal {} already exists, but top_level has not children??", pane_id);
+                top_level.set_child(Some(&existing));
+            }
+        } else {
+            // Terminal doesn't exist yet, we need to create it
+            // Terminal does not exist yet, simply append it after previous_sibling
+            let new_terminal = Terminal::new(top_level, window, Some(pane_id));
+            top_level.set_child(Some(&new_terminal));
+        }
+    } else {
+        // This is a Container
+        let (orientation, open, close) = if buffer[0] == '[' as u8 {
+            (Orientation::Vertical, b'[', b']')
+        } else {
+            (Orientation::Horizontal, b'{', b'}')
+        };
+
+        let container = if let Some(child) = top_level.child() {
+            if let Ok(container) = child.downcast::<Container>() {
+                // The first child is already a Container
+                container
+            } else {
+                // The first child is a Terminal, replace with a new Container
+                top_level.set_child(None::<&Widget>);
+                let container = Container::new(orientation, window);
+                top_level.set_child(Some(&container));
+                container
+            }
+        } else {
+            // top_level doesn't have any children yet
+            let container = Container::new(orientation, window);
+            top_level.set_child(Some(&container));
+            container
+        };
+
+        let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
+        let container = TmuxContainer {
+            c: container,
+            layout,
+            bounds: allocation,
+        };
+
+        // recursively call parse_tmux_layout
+        let bytes_read = find_closing_bracket(buffer, open, close);
+        parse_layout_recursive(
+            &buffer[1..bytes_read],
+            window,
+            top_level,
+            &container,
+            1,
+        );
+    }
 }
 
 // @0,6306,80x5,0,0[80x2,0,0,0,80x2,0,3{40x2,0,3,1,39x2,41,3,2}]
@@ -115,12 +275,12 @@ fn parse_layout_recursive(
     buffer: &[u8],
     window: &IvyWindow,
     top_level: &TopLevel,
-    parent: Option<&TmuxContainer>,
+    parent: &TmuxContainer,
     nested: u32,
-    initial: bool,
 ) {
     // We can assume that layout is purse ASCII text
     let mut buffer = buffer;
+    let mut current_sibling = None::<Widget>;
 
     fn print_tab(nested: u32) {
         for i in 0..nested {
@@ -130,6 +290,19 @@ fn parse_layout_recursive(
 
     // print_tab(nested);
     // println!("parse_layout_recursive: {}", from_utf8(buffer).unwrap());
+
+    // Walk list of children, keeping track of the current one
+    // After all the input has be processed, destroy any unparented Terminals
+    // Callback function should act on that existing child, depending on what
+    // input is given:
+    // -- Terminal is given:
+    //    ** if ID does not match or existing child is a Container, we need to insert
+    //       this given Terminal before existing child - make sure we check if the
+    //       Terminal already exists
+    //    ** otherwise we simply update the Terminal size
+    // -- Container is given:
+    //    ** if the current child is not already a Container, insert a new Container
+    //    ALWAYS: and descend recursively
 
     loop {
         // print_tab(nested);
@@ -166,7 +339,7 @@ fn parse_layout_recursive(
             let (pane_id, bytes_read) = read_first_u32(buffer);
             buffer = &buffer[bytes_read..];
 
-            terminal_callback(pane_id, window, top_level, parent, allocation, initial);
+            terminal_callback(pane_id, window, top_level, parent, allocation, &mut current_sibling);
         } else {
             // This is a Container
             let (orientation, open, close) = if buffer[0] == '[' as u8 {
@@ -175,8 +348,14 @@ fn parse_layout_recursive(
                 (Orientation::Horizontal, b'{', b'}')
             };
 
-            let new_container =
-                container_callback(orientation, window, top_level, parent, allocation, initial);
+            let new_container = container_callback(
+                orientation,
+                window,
+                top_level,
+                parent,
+                allocation,
+                &mut current_sibling,
+            );
 
             // recursively call parse_tmux_layout
             let bytes_read = find_closing_bracket(buffer, open, close);
@@ -184,9 +363,8 @@ fn parse_layout_recursive(
                 &buffer[1..bytes_read],
                 window,
                 top_level,
-                Some(&new_container),
+                &new_container,
                 nested + 1,
-                initial,
             );
 
             buffer = &buffer[bytes_read + 1..];

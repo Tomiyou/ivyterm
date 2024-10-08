@@ -66,6 +66,16 @@ impl TmuxLayout {
     pub fn remove_separator(&self) -> usize {
         todo!()
     }
+
+    pub fn set_separator_position(&self, target: &impl IsA<Widget>, position: i32) {
+        let mut separators = self.imp().separators.borrow_mut();
+        for separator in separators.iter_mut() {
+            if separator.s.eq(target) {
+                separator.position = position;
+                break;
+            }
+        }
+    }
 }
 
 fn drag_update(separator: &Separator, container: &Container, x: f64, y: f64) {}

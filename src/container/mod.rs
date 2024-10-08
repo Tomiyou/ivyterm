@@ -45,7 +45,6 @@ impl Container {
     pub fn append(&self, child: &impl IsA<Widget>, tmux_position: Option<i32>) {
         let imp = self.imp();
         if let Some(last_child) = self.last_child() {
-            // let last_child: Terminal = last_child.downcast().unwrap();
             let layout = imp.layout.borrow();
             let new_separator = match layout.as_ref().unwrap() {
                 Layout::Default(layout) => layout.add_separator(self),
@@ -61,6 +60,28 @@ impl Container {
             child.insert_after(self, Some(&new_separator));
         } else {
             child.insert_after(self, None::<&Widget>);
+        }
+    }
+
+    pub fn prepend(&self, child: &impl IsA<Widget>, sibling: &Option<impl IsA<Widget>>, tmux_position: Option<i32>) {
+        // TODO: Prepend on sibling None means append() last...
+        if let Some(sibling) = sibling {
+            let imp = self.imp();
+            let layout = imp.layout.borrow();
+            let new_separator = match layout.as_ref().unwrap() {
+                Layout::Default(layout) => layout.add_separator(self),
+                Layout::Tmux(layout) => {
+                    let binding = imp.window.borrow();
+                    let window = binding.as_ref().unwrap();
+                    let char_size = window.get_char_size();
+                    layout.add_separator(self, tmux_position.unwrap(), char_size)
+                },
+            };
+
+            child.insert_before(self, Some(sibling));
+            new_separator.insert_after(self, Some(child));
+        } else {
+            self.append(child, tmux_position);
         }
     }
 

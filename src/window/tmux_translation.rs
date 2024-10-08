@@ -143,7 +143,7 @@ impl IvyWindow {
             }
             TmuxEvent::InitialLayout(layout) => {
                 println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self, true);
+                parse_tmux_layout(&layout[1..], &self);
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
