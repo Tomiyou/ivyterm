@@ -42,7 +42,6 @@ fn parse_layout_recursive(
 ) {
     // We can assume that layout is purse ASCII text
     let mut buffer = buffer;
-    let mut is_first_child = true;
 
     fn print_tab(nested: u32) {
         for i in 0..nested {
@@ -56,16 +55,6 @@ fn parse_layout_recursive(
     loop {
         // print_tab(nested);
         // println!("Remaining buffer: |{}|", from_utf8(buffer).unwrap());
-
-        // TODO: What if already exists
-        if !is_first_child {
-            if let Some(parent) = parent {
-                todo!();
-                // let orientation = parent.orientation();
-                // let new_separator = new_separator(orientation);
-                // parent.append(&new_separator);
-            }
-        }
 
         // Read width
         let (width, bytes_read) = read_first_u32(buffer);
@@ -102,8 +91,6 @@ fn parse_layout_recursive(
                     println!("Pane without Container parent");
                     top_level.set_child(Some(&new_terminal));
                 }
-
-                top_level.register_terminal(&new_terminal);
             }
         } else {
             // This is a Container
@@ -138,7 +125,6 @@ fn parse_layout_recursive(
             break;
         }
 
-        is_first_child = false;
         buffer = &buffer[1..];
     }
 }

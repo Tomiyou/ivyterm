@@ -65,8 +65,8 @@ fn main() -> glib::ExitCode {
 
     application.connect_startup(|_| load_css());
     application.connect_activate(|app| {
-        create_window(app, None);
-        // create_window(app, Some("blabla"));
+        // create_window(app, None);
+        create_window(app, Some("blabla"));
     });
     application.run()
 }
