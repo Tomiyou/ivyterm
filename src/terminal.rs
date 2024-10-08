@@ -29,11 +29,11 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     // Close terminal + pane/tab when the child (shell) exits
     let _top_level = top_level.clone();
     terminal.connect_child_exited(move |terminal, _exit_code| {
-        // Remove terminal from top level terminal list
-        _top_level.unregister_terminal(terminal);
-
         // Now close the pane/tab
         _top_level.close_pane(terminal);
+
+        // Remove terminal from top level terminal list
+        _top_level.unregister_terminal(terminal);
     });
 
     // Set terminal colors
