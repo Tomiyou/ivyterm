@@ -5,11 +5,13 @@ use log::debug;
 
 use super::{Rectangle, TmuxPane};
 
-pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
-    println!("Given layout {}", from_utf8(buffer).unwrap());
+pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>, Vec<TmuxPane>) {
+    // Example layout:
+    // @0 a705,80x31,0,0[80x15,0,0,0,80x15,0,16{40x15,0,16,1,39x15,41,16,2}] a85f,80x31,0,0,2
+    debug!("Given layout {}", from_utf8(buffer).unwrap());
 
+    // Skip initial @, if it exists
     let buffer = if buffer[0] == b'@' {
-        // Skip @
         debug!("Skipping @");
         &buffer[1..]
     } else {
@@ -20,25 +22,34 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
     let (tab_id, bytes_read) = read_first_u32(buffer);
     let buffer = &buffer[bytes_read + 1..];
 
+    // Parse real layout
+    let space_position = read_until_char(buffer, b' ');
+    let real_hierarchy = parse_layout_root(&buffer[..space_position]);
+    let buffer = &buffer[space_position + 1..];
+
+    // Parse visible layout
+    let space_position = read_until_char(buffer, b' ');
+    let visible_hierarchy = parse_layout_root(&buffer[..space_position]);
+    let buffer = &buffer[space_position + 1..];
+
+    // Parse window flags
+    debug!("Flags {}", from_utf8(buffer).unwrap());
+
+    (tab_id, real_hierarchy, visible_hierarchy)
+}
+
+#[inline]
+fn parse_layout_root(buffer: &[u8]) -> Vec<TmuxPane> {
+    debug!("parse_layout_root layout {}", from_utf8(buffer).unwrap());
+
     // Skip the initial whatever
     let bytes_read = read_until_char(buffer, b',');
     let buffer = &buffer[bytes_read + 1..];
 
-    // TODO: Handle actual and visible layout
-    // This is a temporary fix for layout change event, which sends 2 layouts at once
-    let bytes_read = read_until_char(buffer, b' ');
-    let buffer = &buffer[..bytes_read];
-
-    debug!(
-        "Tab id is {}, remaining buffer: {}",
-        tab_id,
-        from_utf8(buffer).unwrap()
-    );
-
     let mut hierarchy = Vec::new();
     parse_layout_recursive(buffer, &mut hierarchy, 0);
 
-    (tab_id, hierarchy)
+    hierarchy
 }
 
 fn parse_layout_recursive(buffer: &[u8], hierarchy: &mut Vec<TmuxPane>, nested: u32) {

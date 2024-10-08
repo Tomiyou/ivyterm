@@ -3,11 +3,11 @@ mod layout;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Widget};
+use gtk4::Widget;
 use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
 
-use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
+use crate::helpers::WithId;
 
 use self::imp::Zoomed;
 

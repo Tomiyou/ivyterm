@@ -19,7 +19,9 @@ impl TmuxAPI {
         debug!("Getting initial layout");
         command_queue.send_blocking(command).unwrap();
         stdin_stream
-            .write_all(b"list-windows -F \"#{window_id},#{window_layout}\"\n")
+            .write_all(
+                b"list-windows -F \"#{window_id} #{window_layout} #{window_visible_layout} #{window_flags}\"\n",
+            )
             .unwrap();
     }
 
@@ -93,7 +95,7 @@ impl TmuxAPI {
                     .send_blocking(TmuxCommand::PaneSplit(horizontal))
                     .unwrap();
                 format!(
-                    "split-window {} -t %{} -P -F \"#{{window_id}},#{{window_layout}}\"\n",
+                    "split-window {} -t %{} -P -F \"#{{window_id}} #{{window_layout}} #{{window_visible_layout}} #{{window_flags}}\"\n",
                     if horizontal { "-v" } else { "-h" },
                     pane_id,
                 )
@@ -108,7 +110,9 @@ impl TmuxAPI {
                 command_queue.send_blocking(TmuxCommand::TabNew).unwrap();
                 // TODO: We should get all required layout info without having to ask directly,
                 // since it would allow us to react to external commands
-                String::from("new-window -P -F \"#{window_id}:#{window_layout}\"\n")
+                String::from(
+                    "new-window -P -F \"#{window_id} #{window_layout} #{window_visible_layout} ${window_flags}\"\n",
+                )
             }
             KeyboardAction::TabClose => {
                 command_queue.send_blocking(TmuxCommand::TabClose).unwrap();
@@ -130,8 +134,11 @@ impl TmuxAPI {
                 cmd
             }
             KeyboardAction::ToggleZoom => {
-                todo!();
-                // top_level.toggle_zoom(terminal);
+                let cmd = format!("resize-pane -Z -t {}\n", pane_id);
+                command_queue
+                    .send_blocking(TmuxCommand::PaneZoom(pane_id))
+                    .unwrap();
+                cmd
             }
             KeyboardAction::CopySelected => {
                 todo!();

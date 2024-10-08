@@ -100,7 +100,7 @@ impl IvyTmuxWindow {
         }
     }
 
-    fn sync_tmux_layout(&self, tab_id: u32, layout: Vec<TmuxPane>) {
+    fn sync_tmux_layout(&self, tab_id: u32, layout: Vec<TmuxPane>, visible_layout: Vec<TmuxPane>) {
         let top_level = if let Some(top_level) = self.get_top_level(tab_id) {
             debug!("Reusing top Level {}", top_level.tab_id());
             top_level
@@ -130,9 +130,9 @@ impl IvyTmuxWindow {
                     pane.feed_output(output);
                 }
             }
-            TmuxEvent::PaneSplit(tab_id, hierarchy) => {
+            TmuxEvent::PaneSplit(tab_id, layout, visible_layout) => {
                 println!("\n---------- Pane split ----------");
-                self.sync_tmux_layout(tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, layout, visible_layout);
             }
             TmuxEvent::PaneFocusChanged(tab_id, term_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
@@ -146,18 +146,18 @@ impl IvyTmuxWindow {
                     top_level.grab_focus();
                 }
             }
-            TmuxEvent::TabNew(tab_id, hierarchy) => {
+            TmuxEvent::TabNew(tab_id, layout, visible_layout) => {
                 println!("\n---------- New tab ----------");
-                self.sync_tmux_layout(tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, layout, visible_layout);
             }
             TmuxEvent::TabClosed(tab_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     self.close_tab(&top_level);
                 }
             }
-            TmuxEvent::InitialLayout(tab_id, hierarchy) => {
+            TmuxEvent::InitialLayout(tab_id, layout, visible_layout) => {
                 println!("\n---------- Initial layout ----------");
-                self.sync_tmux_layout(tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, layout, visible_layout);
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
@@ -167,9 +167,9 @@ impl IvyTmuxWindow {
                 let tmux = binding.as_mut().unwrap();
                 tmux.initial_output = TmuxTristate::Done;
             }
-            TmuxEvent::LayoutChanged(tab_id, hierarchy) => {
+            TmuxEvent::LayoutChanged(tab_id, layout, visible_layout) => {
                 println!("\n---------- Layout changed ----------");
-                self.sync_tmux_layout(tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, layout, visible_layout);
             }
             TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();

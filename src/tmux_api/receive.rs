@@ -199,9 +199,9 @@ pub fn tmux_read_stdout(
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
-                let (tab_id, hierarchy) = parse_tmux_layout(&buffer[15..]);
+                let (tab_id, layout, visible_layout) = parse_tmux_layout(&buffer[15..]);
                 event_channel
-                    .send_blocking(TmuxEvent::LayoutChanged(tab_id, hierarchy))
+                    .send_blocking(TmuxEvent::LayoutChanged(tab_id, layout, visible_layout))
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%error") {
                 // Command we executed produced an error
@@ -241,21 +241,21 @@ fn tmux_command_result(
 ) {
     match command {
         TmuxCommand::TabNew => {
-            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
+            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::TabNew(tab_id, hierarchy))
+                .send_blocking(TmuxEvent::TabNew(tab_id, layout, visible_layout))
                 .unwrap();
         }
         TmuxCommand::PaneSplit(_horizontal) => {
-            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
+            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::PaneSplit(tab_id, hierarchy))
+                .send_blocking(TmuxEvent::PaneSplit(tab_id, layout, visible_layout))
                 .unwrap();
         }
         TmuxCommand::InitialLayout => {
-            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
+            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::InitialLayout(tab_id, hierarchy))
+                .send_blocking(TmuxEvent::InitialLayout(tab_id, layout, visible_layout))
                 .unwrap();
         }
         TmuxCommand::InitialOutput(pane_id) => {

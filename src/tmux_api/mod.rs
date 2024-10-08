@@ -39,21 +39,22 @@ pub enum TmuxCommand {
     PaneSplit(bool),
     PaneClose(u32),
     PaneSelect(Direction),
+    PaneZoom(u32),
     ChangeSize(i32, i32),
     InitialOutput(u32),
 }
 
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
-    InitialLayout(u32, Vec<TmuxPane>),
+    InitialLayout(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     InitialOutputFinished(),
-    LayoutChanged(u32, Vec<TmuxPane>),
+    LayoutChanged(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     Output(u32, Vec<u8>),
     SizeChanged(),
-    PaneSplit(u32, Vec<TmuxPane>),
+    PaneSplit(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     PaneFocusChanged(u32, u32),
     TabFocusChanged(u32),
-    TabNew(u32, Vec<TmuxPane>),
+    TabNew(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     TabClosed(u32),
     Exit,
 }
