@@ -27,39 +27,6 @@ impl TopLevel {
         top_level.set_focusable(true);
         top_level.set_child(Some(&terminal));
 
-        let eventctl = EventControllerKey::new();
-        eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
-            // Handle terminal splits
-            let mut split_orientation: Option<Orientation> = None;
-            println!("Handling input event !!! {}", keycode);
-
-            if matches_keybinding(
-                keyval,
-                keycode,
-                state,
-                crate::keyboard::Keybinding::PaneSplit(true),
-            ) {
-                split_orientation = Some(Orientation::Vertical);
-            }
-            if matches_keybinding(
-                keyval,
-                keycode,
-                state,
-                crate::keyboard::Keybinding::PaneSplit(false),
-            ) {
-                split_orientation = Some(Orientation::Horizontal);
-            }
-
-            if let Some(orientation) = split_orientation {
-                let top_level = eventctl.widget();
-                let top_level = top_level.downcast::<TopLevel>().unwrap();
-                top_level.split(orientation);
-            }
-
-            Propagation::Proceed
-        });
-        top_level.add_controller(eventctl);
-
         top_level
     }
 
