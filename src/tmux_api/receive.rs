@@ -171,7 +171,7 @@ pub fn tmux_read_stdout(
                 let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
                 let buffer = &buffer[22 + chars_read + 1..];
                 let (pane_id, _) = read_first_u32(buffer);
-                println!("Window {} focus changed to pane {}", tab_id, pane_id);
+                println!("Tmux event: Window {} focus changed to pane {}", tab_id, pane_id);
                 event_channel
                     .send_blocking(TmuxEvent::PaneFocusChanged(tab_id, pane_id))
                     .unwrap();
@@ -180,9 +180,16 @@ pub fn tmux_read_stdout(
                 let (session_id, chars_read) = read_first_u32(&buffer[25..]);
                 let buffer = &buffer[25 + chars_read + 1..];
                 let (tab_id, _) = read_first_u32(buffer);
-                println!("Session {} focus changed to window {}", session_id, tab_id);
+                println!("Tmux event: Session {} focus changed to window {}", session_id, tab_id);
                 event_channel
                     .send_blocking(TmuxEvent::TabFocusChanged(tab_id))
+                    .unwrap();
+            } else if buffer_starts_with(&buffer, "%unlinked-window-close") {
+                // %unlinked-window-close @6
+                let (tab_id, _) = read_first_u32(&buffer[24..]);
+                println!("Tmux event: Tab {} closed", tab_id);
+                event_channel
+                    .send_blocking(TmuxEvent::TabClosed(tab_id))
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
@@ -197,11 +204,11 @@ pub fn tmux_read_stdout(
             } else if buffer_starts_with(&buffer, "%session-changed") {
                 // Session has changed
                 let session = from_utf8(&buffer[17..]).unwrap();
-                println!("Session changed: {}", session);
+                println!("Tmux event: Session changed: {}", session);
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();
-                println!("Exit received, reason:{}", reason);
+                println!("Tmux event: Exit received, reason:{}", reason);
                 event_channel
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
@@ -209,7 +216,7 @@ pub fn tmux_read_stdout(
             } else {
                 // Unsupported notification
                 let notification = from_utf8(&buffer).unwrap();
-                println!("Unknown notification: {}", notification)
+                println!("Tmux event: Unknown notification: {}", notification)
             }
         }
 
@@ -227,6 +234,13 @@ fn tmux_command_result(
     event_channel: &Sender<TmuxEvent>,
 ) {
     match command {
+        TmuxCommand::TabNew => {
+            println!("TabNew response: {}", from_utf8(buffer).unwrap());
+            // let (tab_id, hierarchy) = parse_tmux_layout(buffer);
+            // event_channel
+            //     .send_blocking(TmuxEvent::PaneSplit(tab_id, hierarchy))
+            //     .unwrap();
+        }
         TmuxCommand::PaneSplit(_horizontal) => {
             let (tab_id, hierarchy) = parse_tmux_layout(buffer);
             event_channel

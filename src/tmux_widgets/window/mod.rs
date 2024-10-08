@@ -124,12 +124,28 @@ impl IvyTmuxWindow {
         top_level
     }
 
-    // pub fn close_tab(&self, child: &TopLevel) {
-    //     let binding = self.imp().tab_view.borrow();
-    //     let tab_view = binding.as_ref().unwrap();
-    //     let page = tab_view.page(child);
-    //     tab_view.close_page(&page);
-    // }
+    pub fn close_tab(&self, closing_tab: &TmuxTopLevel) {
+        let imp = self.imp();
+
+        let binding = imp.tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+        let page = tab_view.page(closing_tab);
+        tab_view.close_page(&page);
+
+        // Unregister all Terminals owned by this closing tab
+        let closed_terminals = closing_tab.imp().terminals.borrow().clone();
+        let mut my_terminals = imp.terminals.borrow_mut();
+        my_terminals.retain(|terminal| {
+            for closed in &closed_terminals {
+                if terminal.terminal.eq(closed) {
+                    println!("Unregistered Terminal {} since Tab was closed", terminal.id);
+                    return false;
+                }
+            }
+
+            true
+        });
+    }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &TmuxTerminal) {
         let imp = self.imp();

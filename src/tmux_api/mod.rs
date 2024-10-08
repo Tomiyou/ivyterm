@@ -53,6 +53,7 @@ pub enum TmuxEvent {
     PaneSplit(u32, Vec<TmuxPane>),
     PaneFocusChanged(u32, u32),
     TabFocusChanged(u32),
+    TabClosed(u32),
     Exit,
 }
 

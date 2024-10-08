@@ -106,7 +106,7 @@ impl TmuxAPI {
             }
             KeyboardAction::TabNew => {
                 command_queue.send_blocking(TmuxCommand::TabNew).unwrap();
-                String::from("new-window\n")
+                String::from("new-window -P -F \"#{{window_id}},#{{window_layout}}\"\n")
             }
             KeyboardAction::TabClose => {
                 command_queue.send_blocking(TmuxCommand::TabClose).unwrap();
