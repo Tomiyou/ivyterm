@@ -15,13 +15,18 @@ mod layout;
 // TODO: Implement command queue using channels
 pub struct Tmux {
     stdin_stream: ChildStdin,
+    command_queue: Sender<TmuxCommand>,
 }
 
 impl Tmux {
     pub fn send_command(&self, command: TmuxCommand) {
+        let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
+
         match command {
             TmuxCommand::InitialLayout => {
+                println!("Getting initial layout");
+                command_queue.send_blocking(TmuxCommand::InitialLayout).unwrap();
                 stdin_stream
                     .write_all(b"list-windows -F \"#{window_layout}\"\n")
                     .unwrap();
@@ -31,15 +36,17 @@ impl Tmux {
     }
 
     pub fn send_keypress(&self, pane_id: u32, c: char) {
+        let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
+
         let cmd = if c == '\n' {
             format!("send-keys -t {} -l \\n\n", pane_id)
         } else {
             format!("send-keys -t {} -l {}\n", pane_id, c)
         };
-        stdin_stream
-            .write_all(cmd.as_bytes())
-            .unwrap();
+
+        command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 }
 
@@ -51,14 +58,21 @@ enum TmuxEvent {
 
 #[derive(Debug)]
 pub enum TmuxCommand {
-    None,
+    Init,
     InitialLayout,
+    Keypress,
 }
 
 pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
     // Create async channels
     let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
         async_channel::unbounded();
+
+    // Command queue
+    let (cmd_queue_sender, cmd_queue_receiver): (Sender<TmuxCommand>, Receiver<TmuxCommand>) =
+        async_channel::unbounded();
+    // Parse attach output
+    cmd_queue_sender.send_blocking(TmuxCommand::Init).unwrap();
 
     // Spawn TMUX subprocess
     println!("Attaching to tmux session {}", session_name);
@@ -77,7 +91,7 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
     // Read from Tmux STDOUT and send events to the channel on a separate thread
     let stdout_stream = process.stdout.take().expect("Failed to open stdout");
     spawn_blocking(move || {
-        tmux_read_stdout(stdout_stream, tmux_event_sender);
+        tmux_read_stdout(stdout_stream, tmux_event_sender, cmd_queue_receiver);
     });
     // Receive events from the channel on main thread
     let window = window.clone();
@@ -89,11 +103,10 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
 
     // Handle Tmux STDIN
     let stdin_stream = process.stdin.take().expect("Failed to open stdin");
-    let tmux = Tmux { stdin_stream };
-
-    tmux.send_keypress(0, 'l');
-    tmux.send_keypress(0, 's');
-    tmux.send_keypress(0, '\n');
+    let tmux = Tmux {
+        stdin_stream: stdin_stream,
+        command_queue: cmd_queue_sender,
+    };
 
     Ok(tmux)
 }
@@ -111,12 +124,16 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
 }
 
 #[inline]
-fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>) {
+fn tmux_read_stdout(
+    stdout_stream: ChildStdout,
+    event_channel: Sender<TmuxEvent>,
+    command_queue: Receiver<TmuxCommand>,
+) {
     let mut buffer = Vec::with_capacity(65534);
     let mut command_output = String::new();
     let mut reader = BufReader::new(stdout_stream);
 
-    let mut current_command = Some(TmuxCommand::None);
+    let mut current_command = None;
 
     // TODO: Handle output larger than 65534 bytes
     while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
@@ -135,11 +152,12 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
                 let output = from_utf8(&buffer[chars_read..]).unwrap();
                 println!("Output on Pane {}: {}", pane_id, output);
             } else if line.starts_with("%begin") {
+                current_command = Some(command_queue.recv_blocking().unwrap());
             } else if line.starts_with("%layout-change") {
                 // println!("Someone else is messing with our ")
             } else if line.starts_with("%end") {
                 println!(
-                    "Given command: ({:?}) ====\n{}",
+                    "----- Given command: {:?}\n{}-----\n",
                     current_command, command_output
                 );
                 if let Some(command) = current_command {
@@ -172,8 +190,8 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
 fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sender<TmuxEvent>) {
     match command {
         TmuxCommand::InitialLayout => {
-            // let bytes = output.as_bytes();
-            // parse_tmux_layout(bytes);
+            let bytes = output.as_bytes();
+            parse_tmux_layout(bytes);
         }
         _ => {}
     }

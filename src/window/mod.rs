@@ -94,7 +94,7 @@ impl IvyWindow {
         self.imp().tmux.replace(Some(tmux));
     }
 
-    pub fn new_tab(&self, id: Option<u32>) {
+    pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
         let tab_id = if let Some(id) = id {
             id
         } else {
@@ -113,6 +113,8 @@ impl IvyWindow {
         let text = format!("Terminal {}", tab_id);
         page.set_title(&text);
         tab_view.set_selected_page(&page);
+
+        top_level
     }
 
     pub fn close_tab(&self, child: &TopLevel) {

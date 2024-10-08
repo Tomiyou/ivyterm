@@ -45,7 +45,7 @@ impl TopLevel {
         window.close_tab(self);
     }
 
-    pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) {
+    pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) -> (Pane, Option<Container>) {
         self.unzoom();
 
         let binding = self.imp().window.borrow();
@@ -64,7 +64,7 @@ impl TopLevel {
             container.append(&new_separator);
             container.append(&new_terminal);
             self.set_child(Some(&container));
-            return;
+            return (new_terminal, Some(container));
         }
 
         // Terminal's parent is a Container widget
@@ -74,7 +74,7 @@ impl TopLevel {
         if container.orientation() == orientation {
             container.insert_child_after(&new_separator, Some(terminal));
             container.insert_child_after(&new_terminal, Some(&new_separator));
-            return;
+            return (new_terminal, None);
         }
 
         // The split orientation is different from Container's, meaning we have to insert a new Container
@@ -84,6 +84,8 @@ impl TopLevel {
         new_container.append(terminal);
         new_container.append(&new_separator);
         new_container.append(&new_terminal);
+
+        return (new_terminal, Some(new_container));
     }
 
     pub fn close_pane(&self, closing_terminal: &Pane) {

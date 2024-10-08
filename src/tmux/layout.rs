@@ -1,13 +1,34 @@
-// list-windows -F "#{window_layout}"
-// @0 6a18,191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]
+use std::str::from_utf8;
 
-pub fn parse_tmux_layout(buffer: &[u8]) -> usize {
+use gtk4::Box as Container;
+
+use crate::{toplevel::TopLevel, window::IvyWindow};
+
+pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
+    // Skip the initial whatever
+    let mut total_bytes_read = read_until_char(buffer, ',' as u8);
+    loop {
+        let top_level = window.new_tab(None);
+        total_bytes_read += parse_layout_recursive(&buffer[total_bytes_read..], &top_level, None);
+
+        let remaining = from_utf8(&buffer[total_bytes_read..]).unwrap();
+        println!("Remaining buffer: {}|||", remaining);
+
+        if total_bytes_read >= buffer.len() {
+            break;
+        }
+
+        break;
+    }
+}
+
+fn parse_layout_recursive(
+    buffer: &[u8],
+    top_level: &TopLevel,
+    parent: Option<&Container>,
+) -> usize {
     // We can assume that layout is purse ASCII text
     let mut total_bytes_read = 0;
-
-    // Skip the initial whatever
-    let bytes_read = read_until_char(buffer, ',' as u8);
-    total_bytes_read += bytes_read;
 
     // Read width
     let (width, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
@@ -27,15 +48,26 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> usize {
 
     // let buffer = &buffer[bytes_read..];
 
+    // Example:
+    // list-windows -F "#{window_layout}"
+    // @0 6a18,191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]
+
     // Now we have to determine if this is a Pane or a Container
-    if buffer[0] == ',' as u8 {
+    if buffer[total_bytes_read - 1] == ',' as u8 {
         // This is a Pane
+        let (pane_id, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
+        total_bytes_read += bytes_read;
+        println!(
+            "Found pane {} | width {}, height {}",
+            pane_id, width, height
+        );
     } else {
         // This is a Container
         // recursively call parse_tmux_layout
+        println!("Found container: {}x{} | {},{}", width, height, x, y);
+        total_bytes_read += parse_layout_recursive(&buffer[total_bytes_read..], top_level);
     }
 
-    println!("Parsed layout: {}x{} | {},{}", width, height, x, y);
     total_bytes_read
 }
 
