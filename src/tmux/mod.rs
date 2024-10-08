@@ -49,11 +49,8 @@ impl Tmux {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
-        let cmd = if c == '\n' {
-            format!("send-keys -t {} -l \\n\n", pane_id)
-        } else {
-            format!("send-keys -t {} -l {}\n", pane_id, c)
-        };
+        let quote = if c == '\'' { '"' } else { '\'' };
+        let cmd = format!("send-keys -t {} -l -- {}{}{}\n", pane_id, quote, c, quote);
 
         command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
@@ -131,7 +128,7 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     match event {
         TmuxEvent::Attached => {}
         TmuxEvent::LayoutChanged(layout) => {
-            // println!("Resizing TMUX");
+            println!("Resizing TMUX");
             window.tmux_resize_window();
             window.tmux_inital_output();
         }
@@ -231,7 +228,7 @@ fn tmux_read_stdout(
                 println!("Error: ({:?}) {}", current_command, error);
             } else {
                 if let Some(command) = &current_command {
-                    handle_tmux_output(command, &buffer, output_line, &event_channel);
+                    tmux_command_response(command, &buffer, output_line, &event_channel);
                 }
             }
 
@@ -267,8 +264,8 @@ fn tmux_read_stdout(
                 println!("Session changed: {}", session);
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
-                let reason = from_utf8(&buffer[6..]).unwrap();
-                println!("Exit: {}", reason);
+                let reason = from_utf8(&buffer[5..]).unwrap();
+                println!("Exit received, reason:{}", reason);
                 event_channel
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
@@ -284,7 +281,7 @@ fn tmux_read_stdout(
     buffer.clear();
 }
 
-fn handle_tmux_output(
+fn tmux_command_response(
     command: &TmuxCommand,
     buffer: &[u8],
     line: u32,

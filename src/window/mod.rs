@@ -144,19 +144,8 @@ impl IvyWindow {
         let binding = self.imp().tmux.borrow();
         let tmux = binding.as_ref().unwrap();
 
-        match key {
-            // Ignore Ctrl, Shift, Super
-            37 | 50 | 133 => {}
-            // Handle Enter separately
-            36 => {
-                tmux.send_keypress(0, '\n');
-            }
-            // Handle the rest
-            c => {
-                if let Some(c) = keyval.to_unicode() {
-                    tmux.send_keypress(pane_id, c);
-                }
-            }
+        if let Some(c) = keyval.to_unicode() {
+            tmux.send_keypress(pane_id, c);
         }
     }
 
