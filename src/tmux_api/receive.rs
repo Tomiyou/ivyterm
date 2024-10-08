@@ -235,11 +235,10 @@ fn tmux_command_result(
 ) {
     match command {
         TmuxCommand::TabNew => {
-            println!("TabNew response: {}", from_utf8(buffer).unwrap());
-            // let (tab_id, hierarchy) = parse_tmux_layout(buffer);
-            // event_channel
-            //     .send_blocking(TmuxEvent::PaneSplit(tab_id, hierarchy))
-            //     .unwrap();
+            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
+            event_channel
+                .send_blocking(TmuxEvent::TabNew(tab_id, hierarchy))
+                .unwrap();
         }
         TmuxCommand::PaneSplit(_horizontal) => {
             let (tab_id, hierarchy) = parse_tmux_layout(buffer);

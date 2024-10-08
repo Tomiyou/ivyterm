@@ -145,6 +145,10 @@ impl IvyTmuxWindow {
                     top_level.grab_focus();
                 }
             }
+            TmuxEvent::TabNew(tab_id, hierarchy) => {
+                println!("\n---------- New tab ----------");
+                self.sync_tmux_layout(tab_id, hierarchy);
+            }
             TmuxEvent::TabClosed(tab_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     self.close_tab(&top_level);
