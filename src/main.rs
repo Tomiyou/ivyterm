@@ -4,7 +4,7 @@ use libadwaita::prelude::*;
 
 mod application;
 mod container;
-mod error;
+mod helpers;
 mod keyboard;
 mod settings;
 mod terminal;

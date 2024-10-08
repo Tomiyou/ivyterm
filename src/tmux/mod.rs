@@ -6,7 +6,7 @@ use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
 use log::debug;
 
-use crate::error::IvyError;
+use crate::helpers::IvyError;
 use crate::window::IvyWindow;
 
 #[derive(PartialEq)]

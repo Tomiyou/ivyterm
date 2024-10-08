@@ -136,13 +136,13 @@ impl IvyWindow {
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
         let mut terminals = self.imp().terminals.borrow_mut();
-        terminals.insert(pane_id, terminal.clone());
+        terminals.insert(pane_id, &terminal);
         println!("Terminal with ID {} registered", pane_id);
     }
 
     pub fn unregister_terminal(&self, pane_id: u32) {
         let mut terminals = self.imp().terminals.borrow_mut();
-        terminals.remove(&pane_id);
+        terminals.remove(pane_id);
         println!("Terminal with ID {} unregistered", pane_id);
     }
 
@@ -159,7 +159,7 @@ impl IvyWindow {
 
     pub fn get_pane(&self, id: u32) -> Option<Terminal> {
         let terminals = self.imp().terminals.borrow();
-        let pane = terminals.get(&id);
+        let pane = terminals.get(id);
         if let Some(pane) = pane {
             return Some(pane.clone());
         }
@@ -175,8 +175,8 @@ impl IvyWindow {
         scrollback_lines: u32,
     ) {
         let binding = self.imp().terminals.borrow();
-        for (_, terminal) in binding.iter() {
-            terminal.update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+        for sorted in binding.iter() {
+            sorted.terminal.update_config(font_desc, main_colors, palette_colors, scrollback_lines);
         }
     }
 }

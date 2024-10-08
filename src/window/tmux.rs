@@ -123,7 +123,7 @@ impl IvyWindow {
                 }
 
                 let terminals = imp.terminals.borrow();
-                if let Some(pane) = terminals.get(&pane_id) {
+                if let Some(pane) = terminals.get(pane_id) {
                     pane.feed_output(output);
                 }
             }
@@ -152,8 +152,8 @@ impl IvyWindow {
                     tmux.initial_output = TmuxTristate::WaitingResponse;
 
                     let terminals = imp.terminals.borrow();
-                    for (pane_id, _) in terminals.iter() {
-                        tmux.get_initial_output(*pane_id);
+                    for sorted in terminals.iter() {
+                        tmux.get_initial_output(sorted.id);
                     }
                 }
             }
@@ -163,7 +163,7 @@ impl IvyWindow {
             }
             TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
                 let binding = &self.imp().terminals;
-                if let Some(pane) = binding.borrow().get(&pane_id) {
+                if let Some(pane) = binding.borrow().get(pane_id) {
                     pane.scroll_view(empty_lines);
                 }
             }
