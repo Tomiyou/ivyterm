@@ -81,7 +81,22 @@ impl IvyApplication {
 
         // Refresh terminals to respect the new colors
         for window in self.windows() {
-            if let Ok(window) = window.downcast::<IvyNormalWindow>() {
+            // Handle non-Tmux windows
+            let window = match window.downcast::<IvyNormalWindow>() {
+                Ok(window) => {
+                    window.update_terminal_config(
+                        &font_desc,
+                        main_colors,
+                        palette_colors,
+                        scrollback_lines,
+                    );
+                    continue;
+                }
+                Err(window) => window,
+            };
+
+            // Handle Tmux windows
+            if let Ok(window) = window.downcast::<IvyTmuxWindow>() {
                 window.update_terminal_config(
                     &font_desc,
                     main_colors,
