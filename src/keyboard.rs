@@ -2,7 +2,7 @@ use gtk4::{
     gdk::{Event, KeyMatch, ModifierType},
     ShortcutTrigger,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use vte4::ShortcutTriggerExt;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -41,7 +41,7 @@ impl Keybinding {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Keybindings {
     new_tab: String,
     close_tab: String,

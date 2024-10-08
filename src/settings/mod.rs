@@ -1,10 +1,12 @@
+use std::{fs, io::Write};
+
 use default::{
-    default_background, default_bright_colors, default_foreground, default_scrollback_lines,
-    default_standard_colors,
+    default_background, default_bright_colors, default_font, default_foreground,
+    default_scrollback_lines, default_standard_colors,
 };
 use gtk4::{gdk::RGBA, pango::FontDescription};
 use libadwaita::{prelude::*, PreferencesWindow};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use general::create_general_page;
 use keybindings::create_keybinding_page;
@@ -21,9 +23,9 @@ pub const APPLICATION_TITLE: &str = "ivyTerm";
 pub const SPLIT_HANDLE_WIDTH: i32 = 10;
 pub const SPLIT_VISUAL_WIDTH: i32 = 3;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct GlobalConfig {
-    #[serde(default)]
+    #[serde(default = "default_font")]
     pub font: IvyFont,
     #[serde(default = "default_scrollback_lines")]
     pub scrollback_lines: u32,
@@ -41,9 +43,31 @@ pub struct GlobalConfig {
 
 impl Default for GlobalConfig {
     fn default() -> Self {
-        let default_config = include_str!("../default.toml");
-        let config: GlobalConfig = toml::from_str(&default_config).unwrap();
-        config
+        // Load user config
+        if let Some(home_dir) = dirs::home_dir() {
+            let parent_dir = home_dir.join(".config").join("ivyterm");
+            let config_path = parent_dir.join("config.toml");
+            let config = if config_path.exists() {
+                // Config already exists, simply load it
+                let config = fs::read_to_string(&config_path).unwrap();
+                toml::from_str(&config).unwrap()
+            } else {
+                // We know we will be writing config back to file, ensure the parent directory exists
+                fs::create_dir_all(parent_dir).unwrap();
+                // Config doesn't yet exist, load default values
+                toml::from_str("").unwrap()
+            };
+
+            // Write parsed config back to the same path
+            let toml = toml::to_string(&config).unwrap();
+            let mut file = fs::File::create(config_path).expect("Unable to create config file");
+            file.write_all(toml.as_bytes()).unwrap();
+            file.flush().unwrap();
+
+            config
+        } else {
+            toml::from_str("").unwrap()
+        }
     }
 }
 
@@ -67,13 +91,27 @@ impl GlobalConfig {
 
 #[derive(Clone)]
 pub struct IvyColor(RGBA);
-impl<'de> serde::Deserialize<'de> for IvyColor {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let hex = String::deserialize(d)?;
+
+impl<'de> Deserialize<'de> for IvyColor {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let hex = String::deserialize(deserializer)?;
         match RGBA::parse(hex) {
             Ok(rgba) => Ok(IvyColor(rgba)),
             Err(err) => panic!("Error parsing hex: {}", err),
         }
+    }
+}
+
+impl Serialize for IvyColor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = self.to_hex();
+        serializer.serialize_str(&string)
     }
 }
 
@@ -101,11 +139,32 @@ impl Into<RGBA> for IvyColor {
 
 #[derive(Clone, Default)]
 pub struct IvyFont(FontDescription);
-impl<'de> serde::Deserialize<'de> for IvyFont {
-    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let font_description = String::deserialize(d)?;
+
+impl IvyFont {
+    pub fn new(font: &str) -> Self {
+        let font = FontDescription::from_string(font);
+        Self(font)
+    }
+}
+
+impl<'de> Deserialize<'de> for IvyFont {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let font_description = String::deserialize(deserializer)?;
         let font_description = FontDescription::from_string(&font_description);
         Ok(IvyFont(font_description))
+    }
+}
+
+impl Serialize for IvyFont {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = self.0.to_str();
+        serializer.serialize_str(&string)
     }
 }
 

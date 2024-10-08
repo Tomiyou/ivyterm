@@ -1,6 +1,10 @@
 use gtk4::gdk::RGBA;
 
-use super::IvyColor;
+use super::{IvyColor, IvyFont};
+
+pub fn default_font() -> IvyFont {
+    IvyFont::new("Monospace 12")
+}
 
 pub fn default_scrollback_lines() -> u32 {
     500
