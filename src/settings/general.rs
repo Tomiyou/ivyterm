@@ -1,18 +1,18 @@
-use gtk4::{Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Label, Widget};
-use libadwaita::{prelude::*, ActionRow, PreferencesGroup, PreferencesPage, PreferencesRow};
+use gtk4::{Align, Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Label, Orientation, Widget};
+use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
 use crate::application::IvyApplication;
 
 fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
-    child.set_halign(gtk4::Align::End);
+    child.set_halign(Align::End);
 
     let label = Label::builder()
         .hexpand(true)
-        .halign(gtk4::Align::Start)
+        .halign(Align::Start)
         .label(name)
         .build();
     
-    let row_box = Box::new(gtk4::Orientation::Horizontal, 0);
+    let row_box = Box::new(Orientation::Horizontal, 0);
     row_box.append(&label);
     row_box.append(&child);
 
