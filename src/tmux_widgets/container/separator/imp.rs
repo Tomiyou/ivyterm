@@ -18,7 +18,7 @@ pub struct SeparatorPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for SeparatorPriv {
-    const NAME: &'static str = "IvyTerminalSeparator";
+    const NAME: &'static str = "IvyTmuxSeparator";
     type Type = super::TmuxSeparator;
     type ParentType = Bin;
     type Interfaces = (gtk4::Orientable,);

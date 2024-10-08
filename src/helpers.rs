@@ -98,4 +98,15 @@ impl <T: Eq + Clone> SortedVec <T> {
     pub fn iter(&self) -> std::slice::Iter<'_, WithId<T>> {
         self.terminals.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.terminals.len()
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&WithId<T>) -> bool,
+    {
+        self.terminals.retain(f);
+    }
 }

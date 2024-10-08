@@ -11,7 +11,8 @@ use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
     application::IvyApplication,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI,
+    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    tmux_api::TmuxAPI,
     // terminal::Terminal,
     // toplevel::TopLevel,
 };

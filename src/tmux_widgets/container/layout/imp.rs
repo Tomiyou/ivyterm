@@ -1,19 +1,12 @@
-use std::cell::{Cell, RefCell};
-
 use gtk4::{Allocation, LayoutManager, Orientation, Widget};
-use libadwaita::subclass::prelude::*;
+use libadwaita::{prelude::*, subclass::prelude::*};
 use libadwaita::{glib, Bin};
-use vte4::{Cast, WidgetExt};
 
-use crate::tmux_widgets::container::separator::TmuxSeparator;
-use crate::tmux_widgets::container::TmuxContainer;
+use crate::tmux_widgets::container::{TmuxContainer, TmuxSeparator};
 
 // Object holding the state
 #[derive(Default)]
-pub struct TmuxLayoutPriv {
-    pub separators: RefCell<Vec<TmuxSeparator>>,
-    pub char_size: Cell<(i32, i32)>,
-}
+pub struct TmuxLayoutPriv {}
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
@@ -57,6 +50,7 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
     }
 
     fn allocate(&self, widget: &Widget, width: i32, height: i32, _baseline: i32) {
+        // TODO: No need to cast Container I think?
         let container: TmuxContainer = widget.clone().downcast().unwrap();
         let orientation = container.orientation();
 
@@ -160,40 +154,75 @@ impl TmuxLayoutPriv {
         (minimum, natural)
     }
 
-    #[inline]
     fn get_children_sizes(&self, container: &TmuxContainer, size: i32) -> Vec<i32> {
-        let separators = self.separators.borrow();
-        let child_count = (separators.len() * 2) + 1;
-        let mut children_sizes = Vec::with_capacity(child_count);
-
-        // Handle being given size less than 0 (usually when not initialized yet or error)
-        if size < 0 {
-            for _ in 0..child_count {
-                children_sizes.push(-1);
-            }
-            return children_sizes;
-        }
-
-        // All Separators are the same size
-        let handle_size = separators.first().unwrap().get_handle_width();
-        // Cell size is 2px larger than handle_size, since we must account for VTE widget
-        // fixed padding of 1px on each side
-        let cell_size = handle_size + 2;
+        let mut next_child = container.first_child();
+        let mut children_sizes = Vec::with_capacity(16);
         let mut already_used_size = 0;
 
-        for separator in separators.iter() {
-            // Each child size is calculated like this: position of the Separator
-            // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
-            //  We then subtract how much size we used up to this point
-            let separator_position = (separator.get_position() * cell_size) + 2;
-            let child_size = separator_position - already_used_size;
-            children_sizes.push(child_size);
-            children_sizes.push(handle_size);
+        while let Some(child) = next_child.as_ref() {
+            // Check if child is TmuxSeparator
+            if size < 0 {
+                children_sizes.push(-1);
+                continue;
+            }
+            // TODO: Optimize this cast (if needed)
+            if let Ok(separator) = child.clone().downcast::<TmuxSeparator>() {
+                let handle_size = separator.get_handle_width();
 
-            already_used_size += child_size + handle_size;
+                // cell_size is size of handle + 2 (1px of padding on each side)
+                let cell_size = handle_size + 2;
+                let separator_position = (separator.get_position() * cell_size) + 2;
+                let child_size = separator_position - already_used_size;
+                children_sizes.push(child_size);
+                children_sizes.push(handle_size);
+
+                already_used_size += child_size + handle_size;
+            }
+
+            next_child = child.next_sibling();
         }
-        children_sizes.push(size - already_used_size);
+        // !(size < 0)
+        if size >= 0 {
+            children_sizes.push(size - already_used_size);
+        }
 
         children_sizes
     }
+
+    // #[inline]
+    // fn get_children_sizesXXX(&self, container: &TmuxContainer, size: i32) -> Vec<i32> {
+        // let separators = self.separators.borrow();
+        // let child_count = (separators.len() * 2) + 1;
+        // let mut children_sizes = Vec::with_capacity(child_count);
+
+        // // Handle being given size less than 0 (usually when not initialized yet or error)
+        // if size < 0 {
+        //     for _ in 0..child_count {
+        //         children_sizes.push(-1);
+        //     }
+        //     return children_sizes;
+        // }
+
+        // // All Separators are the same size
+        // let handle_size = separators.first().unwrap().get_handle_width();
+        // // Cell size is 2px larger than handle_size, since we must account for VTE widget
+        // // fixed padding of 1px on each side
+        // let cell_size = handle_size + 2;
+        // let mut already_used_size = 0;
+
+        // for separator in separators.iter() {
+        //     // Each child size is calculated like this: position of the Separator
+        //     // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
+        //     //  We then subtract how much size we used up to this point
+        //     let separator_position = (separator.get_position() * cell_size) + 2;
+        //     let child_size = separator_position - already_used_size;
+        //     children_sizes.push(child_size);
+        //     children_sizes.push(handle_size);
+
+        //     already_used_size += child_size + handle_size;
+        // }
+        // children_sizes.push(size - already_used_size);
+
+        // children_sizes
+    // }
 }

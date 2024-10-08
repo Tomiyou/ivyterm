@@ -2,20 +2,15 @@ use std::process::{ChildStdin, Command, Stdio};
 
 use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
+use gtk4::Orientation;
 use receive::tmux_read_stdout;
 
 use crate::helpers::IvyError;
 use crate::tmux_widgets::IvyTmuxWindow;
 
+mod parse_layout;
 mod receive;
 mod send;
-
-#[derive(PartialEq)]
-pub enum TmuxTristate {
-    Uninitialized,
-    WaitingResponse,
-    Done,
-}
 
 pub struct TmuxAPI {
     stdin_stream: ChildStdin,
@@ -23,6 +18,13 @@ pub struct TmuxAPI {
     window_size: (i32, i32),
     resize_future: bool,
     pub initial_output: TmuxTristate,
+}
+
+#[derive(PartialEq)]
+pub enum TmuxTristate {
+    Uninitialized,
+    WaitingResponse,
+    Done,
 }
 
 #[derive(Debug)]
@@ -37,14 +39,30 @@ pub enum TmuxCommand {
 
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
-    InitialLayout(Vec<u8>),
+    InitialLayout(u32, Vec<TmuxPane>),
     InitialOutputFinished(),
-    LayoutChanged(Vec<u8>),
+    LayoutChanged(u32, Vec<TmuxPane>),
     Output(u32, Vec<u8>),
     SizeChanged(),
-    PaneSplit(Vec<u8>),
+    PaneSplit(u32, Vec<TmuxPane>),
     FocusChanged(u32),
     Exit,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Rectangle {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+#[derive(Debug)]
+pub enum TmuxPane {
+    Terminal(u32, Rectangle),
+    /// Has tuple (is_vertical, bounds)
+    Container(Orientation, Rectangle),
+    Return,
 }
 
 impl TmuxAPI {

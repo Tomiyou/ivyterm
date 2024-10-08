@@ -8,7 +8,7 @@ use log::debug;
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
     tmux_api::{TmuxEvent, TmuxTristate},
-    tmux_widgets::{toplevel::TmuxTopLevel, window::tmux_layout_sync::parse_tmux_layout},
+    tmux_widgets::{toplevel::TmuxTopLevel, window::tmux_layout_sync::sync_tmux_layout},
 };
 
 use super::IvyTmuxWindow;
@@ -118,9 +118,9 @@ impl IvyTmuxWindow {
                     pane.feed_output(output);
                 }
             }
-            TmuxEvent::PaneSplit(layout) => {
-                println!("Pane split: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self);
+            TmuxEvent::PaneSplit(tab_id, hierarchy) => {
+                // println!("Pane split: {}", std::str::from_utf8(&layout).unwrap());
+                // parse_tmux_layout(&layout[1..], &self);
             }
             TmuxEvent::FocusChanged(pane_id) => {
                 let terminals = self.imp().terminals.borrow();
@@ -128,9 +128,10 @@ impl IvyTmuxWindow {
                     terminal.grab_focus();
                 }
             }
-            TmuxEvent::InitialLayout(layout) => {
-                println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self);
+            TmuxEvent::InitialLayout(tab_id, hierarchy) => {
+                println!("Initial layout ({}): {:?}", tab_id, hierarchy);
+                sync_tmux_layout(&self, tab_id, hierarchy);
+                // println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
@@ -140,10 +141,10 @@ impl IvyTmuxWindow {
                 let tmux = binding.as_mut().unwrap();
                 tmux.initial_output = TmuxTristate::Done;
             }
-            TmuxEvent::LayoutChanged(layout) => {
-                // todo!()
-                println!("Layout changed: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self);
+            TmuxEvent::LayoutChanged(tab_id, hierarchy) => {
+                // // todo!()
+                // println!("Layout changed: {}", std::str::from_utf8(&layout).unwrap());
+                // parse_tmux_layout(&layout[1..], &self);
             }
             TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();

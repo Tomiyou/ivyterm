@@ -1,11 +1,15 @@
-use std::{io::{BufRead, BufReader}, process::ChildStdout, str::from_utf8};
+use std::{
+    io::{BufRead, BufReader},
+    process::ChildStdout,
+    str::from_utf8,
+};
 
 use async_channel::{Receiver, Sender};
 use log::debug;
 
 use crate::tmux_api::TmuxEvent;
 
-use super::TmuxCommand;
+use super::{parse_layout::parse_tmux_layout, TmuxCommand};
 
 /// Parses Tmux output and replaces octal escapes sequences with correct binary
 /// characters
@@ -173,8 +177,9 @@ pub fn tmux_read_stdout(
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
+                let (tab_id, hierarchy) = parse_tmux_layout(&buffer);
                 event_channel
-                    .send_blocking(TmuxEvent::LayoutChanged(buffer.clone()))
+                    .send_blocking(TmuxEvent::LayoutChanged(tab_id, hierarchy))
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%error") {
                 // Command we executed produced an error
@@ -214,13 +219,15 @@ fn tmux_command_result(
 ) {
     match command {
         TmuxCommand::PaneSplit(_horizontal) => {
+            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::PaneSplit(buffer.clone()))
+                .send_blocking(TmuxEvent::PaneSplit(tab_id, hierarchy))
                 .unwrap();
         }
         TmuxCommand::InitialLayout => {
+            let (tab_id, hierarchy) = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::InitialLayout(buffer.clone()))
+                .send_blocking(TmuxEvent::InitialLayout(tab_id, hierarchy))
                 .unwrap();
         }
         TmuxCommand::InitialOutput(pane_id) => {
