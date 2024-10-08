@@ -148,7 +148,7 @@ impl IvyWindow {
             TmuxEvent::Output(pane_id, output) => {
                 // Ignore Output events until initial output has been captured
                 let tmux = imp.tmux.borrow();
-                if tmux.as_ref().unwrap().initial_output != TmuxTristate::Done {
+                if tmux.as_ref().unwrap().initial_output == TmuxTristate::Uninitialized {
                     return;
                 }
 
