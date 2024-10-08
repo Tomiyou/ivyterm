@@ -6,7 +6,6 @@ use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
 use layout::{parse_tmux_layout, read_first_u32};
 use log::debug;
-use vte4::GtkWindowExt;
 
 use crate::error::IvyError;
 use crate::window::IvyWindow;
@@ -87,13 +86,6 @@ impl Tmux {
     }
 }
 
-enum TmuxEvent {
-    Attached,
-    LayoutChanged(String),
-    Output(u32, Vec<u8>),
-    Exit,
-}
-
 #[derive(Debug)]
 pub enum TmuxCommand {
     Init,
@@ -101,6 +93,13 @@ pub enum TmuxCommand {
     Keypress,
     ChangeSize(u32, u32),
     InitialOutput(u32),
+}
+
+pub enum TmuxEvent {
+    ScrollOutput(u32, usize),
+    LayoutChanged(String),
+    Output(u32, Vec<u8>),
+    Exit,
 }
 
 pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
@@ -137,7 +136,7 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
     let window = window.clone();
     glib::spawn_future_local(async move {
         while let Ok(event) = tmux_event_receiver.recv().await {
-            tmux_event_future(event, &window);
+            window.tmux_event_callback(event)
         }
     });
 
@@ -150,26 +149,6 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
     };
 
     Ok(tmux)
-}
-
-#[inline]
-fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
-    // This future runs on main thread of GTK application
-    // It receives Tmux events from separate thread and runs GTK functions
-    match event {
-        TmuxEvent::Attached => {}
-        TmuxEvent::LayoutChanged(layout) => {
-            window.tmux_resize_window();
-            window.tmux_inital_output();
-        }
-        TmuxEvent::Output(pane_id, output) => {
-            window.output_on_pane(pane_id, output);
-        }
-        TmuxEvent::Exit => {
-            println!("Received EXIT event, closing window!");
-            window.close();
-        }
-    }
 }
 
 /// Parses Tmux output and replaces octal escapes sequences with correct binary
@@ -278,7 +257,13 @@ fn tmux_read_stdout(
                 let error = from_utf8(&buffer).unwrap();
                 println!("Error: ({:?}) {}", current_command, error);
             } else if let Some(command) = &current_command {
-                tmux_command_result(command, &mut buffer, result_line, empty_line_count, &event_channel);
+                tmux_command_result(
+                    command,
+                    &mut buffer,
+                    result_line,
+                    empty_line_count,
+                    &event_channel,
+                );
             }
 
             result_line += 1;
@@ -298,6 +283,17 @@ fn tmux_read_stdout(
                 current_command = Some(command_queue.recv_blocking().unwrap());
             } else if buffer_starts_with(&buffer, "%end") {
                 // End of output from a command we executed
+                if let Some(current_command) = current_command {
+                    match current_command {
+                        TmuxCommand::InitialOutput(pane_id) => {
+                            event_channel
+                                .send_blocking(TmuxEvent::ScrollOutput(pane_id, empty_line_count))
+                                .expect("Event channel closed!");
+                        }
+                        _ => {}
+                    }
+                }
+
                 current_command = None;
                 is_error = false;
                 result_line = 0;

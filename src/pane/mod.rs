@@ -129,6 +129,23 @@ impl Pane {
         vte.feed(&output);
     }
 
+    pub fn scroll_view(&self, empty_lines: usize) {
+        let mut output = Vec::with_capacity(empty_lines + 16);
+        // Scroll down 'empty_lines' lines
+        for _ in 0..empty_lines {
+            output.push(b'\n');
+        }
+        // Scroll back up '# = empty_lines' lines using ESC[#A
+        output.push(b'\x1b');
+        output.push(b'[');
+        for d in empty_lines.to_string().as_bytes() {
+            output.push(*d);
+        }
+        output.push(b'A');
+
+        self.feed_output(output);
+    }
+
     pub fn get_rows_cols_for_size(&self, width: i32, height: i32) -> (i32, i32) {
         let binding = self.imp().vte.borrow();
         let vte = binding.as_ref().unwrap();

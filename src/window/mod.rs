@@ -5,7 +5,7 @@ use gtk4::{gdk::{Key, ModifierType}, Align, Box, Button, Orientation, PackType, 
 use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
 use crate::{
-    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel
+    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand, TmuxEvent}, toplevel::TopLevel
 };
 
 glib::wrapper! {
@@ -179,18 +179,6 @@ impl IvyWindow {
         }
     }
 
-    // pub fn get_pane(&self, pane_id: u32) -> Option<&Pane> {
-    //     let binding = self.imp().terminals;
-    //     let pane = binding.borrow().get(&pane_id);
-    // }
-
-    pub fn output_on_pane(&self, pane_id: u32, output: Vec<u8>) {
-        let binding = &self.imp().terminals;
-        if let Some(pane) = binding.borrow().get(&pane_id) {
-            pane.feed_output(output);
-        }
-    }
-
     // pub fn get_tmux_cols_rows(&self) -> (i32, i32) {
     //     let imp = self.imp();
     //     let binding = imp.tabs.borrow();
@@ -215,6 +203,34 @@ impl IvyWindow {
         let terminals = imp.terminals.borrow();
         for (pane_id, _) in terminals.iter() {
             tmux.send_command(TmuxCommand::InitialOutput(*pane_id));
+        }
+    }
+
+    pub fn tmux_event_callback(&self, event: TmuxEvent) {
+        // This future runs on main thread of GTK application
+        // It receives Tmux events from separate thread and runs GTK functions
+        match event {
+            TmuxEvent::LayoutChanged(layout) => {
+                // TODO: Move this somewhere better
+                self.tmux_resize_window();
+                self.tmux_inital_output();
+            }
+            TmuxEvent::Output(pane_id, output) => {
+                let binding = &self.imp().terminals;
+                if let Some(pane) = binding.borrow().get(&pane_id) {
+                    pane.feed_output(output);
+                }
+            }
+            TmuxEvent::Exit => {
+                println!("Received EXIT event, closing window!");
+                self.close();
+            }
+            TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
+                let binding = &self.imp().terminals;
+                if let Some(pane) = binding.borrow().get(&pane_id) {
+                    pane.scroll_view(empty_lines);
+                }
+            }
         }
     }
 }
