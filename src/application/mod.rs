@@ -8,9 +8,8 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
+use crate::normal_widgets::IvyWindow;
 use crate::settings::show_preferences_window;
-use crate::tmux::attach_tmux;
-use crate::window::IvyWindow;
 
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)
@@ -44,16 +43,16 @@ impl IvyApplication {
         let imp = self.imp();
         let binding = imp.css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
-        let window = IvyWindow::new(self, css_provider);
 
-        if let Some(session_name) = tmux_session {
-            println!("Starting TMUX");
-            let tmux = attach_tmux(session_name, &window).unwrap();
-            window.init_tmux(tmux);
+        let window = if let Some(session_name) = tmux_session {
+            todo!();
+            // println!("Starting TMUX");
+            // let tmux = attach_tmux(session_name, &window).unwrap();
+            // window.init_tmux(tmux);
         } else {
             // Create initial Tab
-            window.new_tab(None);
-        }
+            IvyWindow::new(self, css_provider)
+        };
 
         window.present();
     }

@@ -6,10 +6,8 @@ use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
-    application::IvyApplication, keyboard::KeyboardAction,
+    application::IvyApplication, keyboard::KeyboardAction, toplevel::TopLevel, window::IvyWindow,
 };
-
-use super::{toplevel::TopLevel, window::IvyWindow};
 
 glib::wrapper! {
     pub struct Terminal(ObjectSubclass<imp::TerminalPriv>)
@@ -26,6 +24,7 @@ impl Terminal {
             None => window.unique_terminal_id(),
         };
 
+        let is_tmux = window.is_tmux();
         let top_level = top_level.clone();
 
         let app = window.application().unwrap();
@@ -95,8 +94,15 @@ impl Terminal {
                 if let Some(event) = eventctl.current_event() {
                     // Check if pressed keys match a keybinding
                     if let Some(action) = app.handle_keyboard_event(event) {
-                        handle_keyboard(action, &terminal, &top_level, &vte);
+                        match is_tmux {
+                            true => window.tmux_handle_keybinding(action, pane_id),
+                            false => handle_keyboard(action, &terminal, &top_level, &vte),
+                        }
                         return Propagation::Stop;
+                    }
+                    // Normal button press is handled separately for Tmux
+                    if is_tmux {
+                        window.tmux_keypress(pane_id, key, keyval, state)
                     }
                 }
                 Propagation::Proceed
@@ -104,29 +110,31 @@ impl Terminal {
         ));
         vte.add_controller(eventctl);
 
-        // Spawn terminal
-        let pty_flags = PtyFlags::DEFAULT;
-        let argv = ["/bin/bash"];
-        let envv = [];
-        let spawn_flags = SpawnFlags::DEFAULT;
+        if !is_tmux {
+            // Spawn terminal
+            let pty_flags = PtyFlags::DEFAULT;
+            let argv = ["/bin/bash"];
+            let envv = [];
+            let spawn_flags = SpawnFlags::DEFAULT;
 
-        vte.spawn_async(
-            pty_flags,
-            None,
-            &argv,
-            &envv,
-            spawn_flags,
-            || {},
-            -1,
-            gtk4::gio::Cancellable::NONE,
-            glib::clone!(
-                #[weak]
-                vte,
-                move |_result| {
-                    vte.grab_focus();
-                }
-            ),
-        );
+            vte.spawn_async(
+                pty_flags,
+                None,
+                &argv,
+                &envv,
+                spawn_flags,
+                || {},
+                -1,
+                gtk4::gio::Cancellable::NONE,
+                glib::clone!(
+                    #[weak]
+                    vte,
+                    move |_result| {
+                        vte.grab_focus();
+                    }
+                ),
+            );
+        }
 
         terminal
     }
@@ -211,7 +219,7 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
             top_level.close_pane(terminal);
         }
         KeyboardAction::TabNew => {
-            top_level.create_tab();
+            top_level.create_tab(None);
         }
         KeyboardAction::TabClose => {
             top_level.close_tab();

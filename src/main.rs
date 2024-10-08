@@ -3,14 +3,10 @@ use libadwaita::glib;
 use libadwaita::prelude::*;
 
 mod application;
-mod container;
 mod helpers;
 mod keyboard;
+mod normal_widgets;
 mod settings;
-mod terminal;
-mod tmux;
-mod toplevel;
-mod window;
 
 fn main() -> glib::ExitCode {
     let application = IvyApplication::new();
@@ -22,8 +18,8 @@ fn main() -> glib::ExitCode {
     });
 
     application.connect_activate(move |app| {
-        // app.new_window(None);
-        app.new_window(Some("blabla"));
+        app.new_window(None);
+        // app.new_window(Some("blabla"));
     });
     application.run()
 }

@@ -6,12 +6,10 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH,
+    container::Container, helpers::IdTerminal, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH, terminal::Terminal, window::IvyWindow
 };
 
 use self::imp::Zoomed;
-
-use super::{container::Container, terminal::Terminal, window::IvyWindow};
 
 glib::wrapper! {
     pub struct TopLevel(ObjectSubclass<imp::TopLevelPriv>)
@@ -20,7 +18,7 @@ glib::wrapper! {
 }
 
 impl TopLevel {
-    pub fn new(tab_view: &TabView, window: &IvyWindow, tab_id: u32) -> Self {
+    pub fn new(tab_view: &TabView, window: &IvyWindow, tab_id: u32, spawn_terminal: bool) -> Self {
         let top_level: TopLevel = Object::builder().build();
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
@@ -28,16 +26,18 @@ impl TopLevel {
 
         top_level.imp().init_values(tab_view, window, tab_id);
 
-        let terminal = Terminal::new(&top_level, window, None);
-        top_level.set_child(Some(&terminal));
+        if spawn_terminal {
+            let terminal = Terminal::new(&top_level, window, None);
+            top_level.set_child(Some(&terminal));
+        }
 
         top_level
     }
 
-    pub fn create_tab(&self) {
+    pub fn create_tab(&self, id: Option<u32>) {
         let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
-        window.new_tab();
+        window.new_tab(id);
     }
 
     pub fn close_tab(&self) {
@@ -68,8 +68,8 @@ impl TopLevel {
 
             self.set_child(None::<&Self>);
             let container = Container::new(orientation, window);
-            container.append(&old_terminal);
-            container.append(&new_terminal);
+            container.append(&old_terminal, None);
+            container.append(&new_terminal, None);
             self.set_child(Some(&container));
             return (new_terminal, Some(container));
         }
@@ -79,15 +79,15 @@ impl TopLevel {
 
         // If the split orientation is the same as Container's orientation, we can simply insert a new Pane
         if container.orientation() == orientation {
-            container.append(&new_terminal);
+            container.append(&new_terminal, None);
             return (new_terminal, None);
         }
 
         // The split orientation is different from Container's, meaning we have to insert a new Container
         let new_container = Container::new(orientation, window);
         container.replace(terminal, &new_container);
-        new_container.append(terminal);
-        new_container.append(&new_terminal);
+        new_container.append(terminal, None);
+        new_container.append(&new_terminal, None);
 
         return (new_terminal, Some(new_container));
     }
@@ -211,7 +211,7 @@ impl TopLevel {
         terminals_vec.push(terminal.clone());
 
         let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        lru_terminals.insert(0, WithId {
+        lru_terminals.insert(0, IdTerminal {
             id: pane_id,
             terminal: terminal.clone(),
         });
@@ -263,7 +263,7 @@ impl TopLevel {
         }
 
         // Insert at the beginning
-        lru_terminals.insert(0, WithId { id: id, terminal: terminal.clone() });
+        lru_terminals.insert(0, IdTerminal { id: id, terminal: terminal.clone() });
     }
 
     pub fn lru_terminal(&self) -> Option<Terminal> {
@@ -342,6 +342,11 @@ impl TopLevel {
         }
 
         (0, 0)
+    }
+
+    pub fn layout_alloc_changed(&self) {
+        let window = self.imp().window.borrow();
+        window.as_ref().unwrap().resync_tmux_size();
     }
 
     pub fn unregister_unparented_terminals(&self) {

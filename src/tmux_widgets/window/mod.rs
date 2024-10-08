@@ -1,4 +1,6 @@
 mod imp;
+mod tmux_translation;
+mod tmux_layout_translation;
 
 use std::sync::atomic::Ordering;
 
@@ -12,9 +14,9 @@ use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use crate::{
     application::IvyApplication,
     settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    terminal::Terminal,
+    toplevel::TopLevel,
 };
-
-use super::{terminal::Terminal, toplevel::TopLevel};
 
 glib::wrapper! {
     pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
@@ -87,9 +89,6 @@ impl IvyWindow {
         window_box.append(&tab_view);
         window.set_content(Some(&window_box));
 
-        // Spawn the first tab
-        window.new_tab();
-
         window
     }
 
@@ -103,15 +102,22 @@ impl IvyWindow {
         binding.fetch_add(1, Ordering::Relaxed)
     }
 
-    pub fn new_tab(&self) -> TopLevel {
+    pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
         let imp = self.imp();
-        let tab_id = self.unique_tab_id();
+
+        let tab_id = if let Some(id) = id {
+            id
+        } else {
+            self.unique_tab_id()
+        };
+
+        let is_tmux = imp.tmux.borrow().is_some();
 
         let binding = imp.tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
 
         // Create new TopLevel widget
-        let top_level = TopLevel::new(tab_view, self, tab_id);
+        let top_level = TopLevel::new(tab_view, self, tab_id, !is_tmux);
         let mut tabs = imp.tabs.borrow_mut();
         tabs.push(top_level.clone());
 
@@ -137,12 +143,29 @@ impl IvyWindow {
         let mut terminals = imp.terminals.borrow_mut();
         terminals.insert(pane_id, &terminal);
         println!("Terminal with ID {} registered", pane_id);
+
+        if self.is_tmux() {
+            let char_size = terminal.get_char_width_height();
+            imp.char_size.replace(char_size);
+        }
     }
 
     pub fn unregister_terminal(&self, pane_id: u32) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
         println!("Terminal with ID {} unregistered", pane_id);
+    }
+
+    pub fn get_top_level(&self, id: u32) -> Option<TopLevel> {
+        let tabs = self.imp().tabs.borrow();
+        for top_level in tabs.iter() {
+            println!("Top level iter {}", top_level.tab_id());
+            if top_level.tab_id() == id {
+                return Some(top_level.clone());
+            }
+        }
+
+        None
     }
 
     pub fn get_pane(&self, id: u32) -> Option<Terminal> {

@@ -1,14 +1,16 @@
 mod imp;
 mod layout_default;
+mod layout_tmux;
 mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
+use imp::Layout;
 use libadwaita::{glib, prelude::*};
 
+use crate::{terminal::Terminal, window::IvyWindow};
 pub use layout_default::ContainerLayout;
-
-use super::{terminal::Terminal, window::IvyWindow};
+pub use layout_tmux::TmuxLayout;
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -26,18 +28,33 @@ impl Container {
         let imp = container.imp();
         imp.window.replace(Some(window.clone()));
 
-        let layout: ContainerLayout = container.layout_manager().unwrap().downcast().unwrap();
+        let layout = if window.is_tmux() {
+            let tmux_layout = TmuxLayout::new();
+            container.set_layout_manager(Some(tmux_layout.clone()));
+            Layout::Tmux(tmux_layout)
+        } else {
+            let default_layout: ContainerLayout =
+                container.layout_manager().unwrap().downcast().unwrap();
+            Layout::Default(default_layout)
+        };
         imp.layout.replace(Some(layout));
 
         container
     }
 
-    pub fn append(&self, child: &impl IsA<Widget>) {
+    pub fn append(&self, child: &impl IsA<Widget>, tmux_position: Option<i32>) {
         let imp = self.imp();
         if let Some(last_child) = self.last_child() {
-            let binding = imp.layout.borrow();
-            let layout = binding.as_ref().unwrap();
-            let new_separator = layout.add_separator(self);
+            let layout = imp.layout.borrow();
+            let new_separator = match layout.as_ref().unwrap() {
+                Layout::Default(layout) => layout.add_separator(self),
+                Layout::Tmux(layout) => {
+                    let binding = imp.window.borrow();
+                    let window = binding.as_ref().unwrap();
+                    let char_size = window.get_char_size();
+                    layout.add_separator(self, tmux_position.unwrap(), char_size)
+                },
+            };
 
             new_separator.insert_after(self, Some(&last_child));
             child.insert_after(self, Some(&new_separator));
@@ -46,18 +63,25 @@ impl Container {
         }
     }
 
-    pub fn prepend(&self, child: &impl IsA<Widget>, sibling: &Option<impl IsA<Widget>>) {
+    pub fn prepend(&self, child: &impl IsA<Widget>, sibling: &Option<impl IsA<Widget>>, tmux_position: Option<i32>) {
         // TODO: Prepend on sibling None means append() last...
         if let Some(sibling) = sibling {
             let imp = self.imp();
-            let binding = imp.layout.borrow();
-            let layout = binding.as_ref().unwrap();
-            let new_separator = layout.add_separator(self);
+            let layout = imp.layout.borrow();
+            let new_separator = match layout.as_ref().unwrap() {
+                Layout::Default(layout) => layout.add_separator(self),
+                Layout::Tmux(layout) => {
+                    let binding = imp.window.borrow();
+                    let window = binding.as_ref().unwrap();
+                    let char_size = window.get_char_size();
+                    layout.add_separator(self, tmux_position.unwrap(), char_size)
+                },
+            };
 
             child.insert_before(self, Some(sibling));
             new_separator.insert_after(self, Some(child));
         } else {
-            self.append(child);
+            self.append(child, tmux_position);
         }
     }
 
@@ -68,9 +92,11 @@ impl Container {
 
     pub fn remove(&self, child: &impl IsA<Widget>) -> usize {
         let separator = child.next_sibling();
-        let binding = self.imp().layout.borrow();
-        let layout = binding.as_ref().unwrap();
-        let len = layout.remove_separator(separator);
+        let layout = self.imp().layout.borrow();
+        let len = match layout.as_ref().unwrap() {
+            Layout::Default(layout) => layout.remove_separator(separator),
+            Layout::Tmux(layout) => layout.remove_separator(),
+        };
 
         // Now remove the child
         child.unparent();

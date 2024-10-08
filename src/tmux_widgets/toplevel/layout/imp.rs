@@ -5,9 +5,20 @@ use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 use vte4::{Cast, LayoutManagerExt, WidgetExt};
 
+use crate::toplevel::TopLevel;
+
 // Object holding the state
-#[derive(Default)]
-pub struct TopLevelLayoutPriv {}
+pub struct TopLevelLayoutPriv {
+    last_allocated_size: Cell<(i32, i32)>,
+}
+
+impl Default for TopLevelLayoutPriv {
+    fn default() -> Self {
+        Self {
+            last_allocated_size: Cell::new((0, 0)),
+        }
+    }
+}
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
@@ -61,6 +72,17 @@ impl LayoutManagerImpl for TopLevelLayoutPriv {
             }
 
             next_child = child.next_sibling();
+        }
+
+        let last_allocated_size = self.last_allocated_size.get();
+        let new_allocated_size = (width, height);
+        if last_allocated_size != new_allocated_size {
+            self.last_allocated_size.replace(new_allocated_size);
+
+            if let Some(top_level) = self.obj().widget() {
+                let top_level: TopLevel = top_level.downcast().unwrap();
+                top_level.layout_alloc_changed();
+            }
         }
     }
 }

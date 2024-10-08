@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use libadwaita::{glib, subclass::prelude::*};
 use vte4::{Terminal as Vte, WidgetExt};
 
-use crate::normal_widgets::window::IvyWindow;
+use crate::window::IvyWindow;
 
 // Object holding the state
 #[derive(Default)]

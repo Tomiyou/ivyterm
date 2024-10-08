@@ -5,8 +5,8 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, Bin};
 use vte4::{Cast, WidgetExt};
 
-use crate::normal_widgets::container::separator::Separator;
-use crate::normal_widgets::container::Container;
+use crate::container::separator::Separator;
+use crate::container::Container;
 
 pub struct TmuxSeparator {
     pub s: Separator,

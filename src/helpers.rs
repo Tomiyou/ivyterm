@@ -1,4 +1,4 @@
-use crate::terminal::Terminal;
+// use crate::terminal::Terminal;
 
 #[derive(Debug)]
 pub enum IvyError {
@@ -6,31 +6,38 @@ pub enum IvyError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct IdTerminal {
+pub struct WithId <T> {
     pub id: u32,
-    pub terminal: Terminal,
+    pub terminal: T,
 }
 
-impl Ord for IdTerminal {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id.cmp(&other.id)
-    }
-}
-
-impl PartialOrd for IdTerminal {
+impl <T: PartialEq + Eq> PartialOrd for WithId <T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-#[derive(Default)]
-pub struct SortedTerminals {
-    terminals: Vec<IdTerminal>,
+impl <T: Eq> Ord for WithId <T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
 }
 
-impl SortedTerminals {
-    pub fn insert(&mut self, id: u32, terminal: &Terminal) -> usize {
-        let terminal = IdTerminal {
+pub struct SortedVec <T> {
+    terminals: Vec<WithId<T>>,
+}
+
+impl <T> Default for SortedVec<T> {
+    fn default() -> Self {
+        Self {
+            terminals: vec![],
+        }
+    }
+}
+
+impl <T: Eq + Clone> SortedVec <T> {
+    pub fn insert(&mut self, id: u32, terminal: &T) -> usize {
+        let terminal = WithId {
             id: id,
             terminal: terminal.clone(),
         };
@@ -42,8 +49,8 @@ impl SortedTerminals {
         insert_at
     }
 
-    pub fn push(&mut self, id: u32, terminal: &Terminal) -> usize {
-        let sorted_terminal = IdTerminal {
+    pub fn push(&mut self, id: u32, terminal: &T) -> usize {
+        let sorted_terminal = WithId {
             id: id,
             terminal: terminal.clone(),
         };
@@ -68,7 +75,7 @@ impl SortedTerminals {
         }
     }
 
-    pub fn remove(&mut self, id: u32) -> Option<Terminal> {
+    pub fn remove(&mut self, id: u32) -> Option<T> {
         match self
             .terminals
             .binary_search_by(|terminal| terminal.id.cmp(&id))
@@ -78,7 +85,7 @@ impl SortedTerminals {
         }
     }
 
-    pub fn get(&self, id: u32) -> Option<Terminal> {
+    pub fn get(&self, id: u32) -> Option<T> {
         match self
             .terminals
             .binary_search_by(|terminal| terminal.id.cmp(&id))
@@ -88,7 +95,7 @@ impl SortedTerminals {
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, IdTerminal> {
+    pub fn iter(&self) -> std::slice::Iter<'_, WithId<T>> {
         self.terminals.iter()
     }
 }
