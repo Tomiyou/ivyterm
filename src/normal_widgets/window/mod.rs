@@ -145,16 +145,6 @@ impl IvyWindow {
         println!("Terminal with ID {} unregistered", pane_id);
     }
 
-    pub fn get_pane(&self, id: u32) -> Option<Terminal> {
-        let terminals = self.imp().terminals.borrow();
-        let pane = terminals.get(id);
-        if let Some(pane) = pane {
-            return Some(pane.clone());
-        }
-
-        None
-    }
-
     pub fn update_terminal_config(
         &self,
         font_desc: &FontDescription,

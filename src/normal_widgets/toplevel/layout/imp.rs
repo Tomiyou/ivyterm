@@ -1,9 +1,7 @@
-use std::cell::Cell;
-
 use gtk4::{LayoutManager, Orientation, Widget};
 use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
-use vte4::{Cast, LayoutManagerExt, WidgetExt};
+use vte4::WidgetExt;
 
 // Object holding the state
 #[derive(Default)]

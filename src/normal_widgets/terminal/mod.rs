@@ -91,7 +91,7 @@ impl Terminal {
             terminal,
             #[strong]
             vte,
-            move |eventctl, keyval, key, state| {
+            move |eventctl, _keyval, _key, _state| {
                 if let Some(event) = eventctl.current_event() {
                     // Check if pressed keys match a keybinding
                     if let Some(action) = app.handle_keyboard_event(event) {
