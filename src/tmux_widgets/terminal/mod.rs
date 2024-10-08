@@ -5,7 +5,7 @@ use gtk4::{gdk::RGBA, pango::FontDescription, EventControllerKey, ScrolledWindow
 use libadwaita::{glib, prelude::*};
 use vte4::{Terminal as Vte, TerminalExt, TerminalExtManual};
 
-use crate::application::IvyApplication;
+use crate::{application::IvyApplication, keyboard::KeyboardAction};
 
 use super::{toplevel::TmuxTopLevel, IvyTmuxWindow};
 
@@ -66,9 +66,7 @@ impl TmuxTerminal {
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
         vte.connect_has_focus_notify(glib::clone!(
-            #[weak]
-            top_level,
-            #[weak]
+            #[strong]
             terminal,
             move |vte| {
                 if vte.has_focus() {
@@ -79,18 +77,24 @@ impl TmuxTerminal {
         ));
 
         let eventctl = EventControllerKey::new();
-        eventctl.connect_key_pressed(move |eventctl, keyval, key, state| {
-            if let Some(event) = eventctl.current_event() {
-                // Check if pressed keys match a keybinding
-                if let Some(action) = app.handle_keyboard_event(event) {
-                    window.tmux_handle_keybinding(action, pane_id);
-                    return Propagation::Stop;
+        eventctl.connect_key_pressed(glib::clone!(
+            #[weak]
+            vte,
+            #[upgrade_or]
+            Propagation::Proceed,
+            move |eventctl, keyval, key, state| {
+                if let Some(event) = eventctl.current_event() {
+                    // Check if pressed keys match a keybinding
+                    if let Some(action) = app.handle_keyboard_event(event) {
+                        handle_keyboard_event(action, &vte, pane_id, &window);
+                        return Propagation::Stop;
+                    }
+                    // Normal button press is handled separately for Tmux
+                    window.tmux_keypress(pane_id, key, keyval, state)
                 }
-                // Normal button press is handled separately for Tmux
-                window.tmux_keypress(pane_id, key, keyval, state)
+                Propagation::Proceed
             }
-            Propagation::Proceed
-        });
+        ));
         vte.add_controller(eventctl);
 
         terminal
@@ -160,43 +164,19 @@ impl TmuxTerminal {
     }
 }
 
-// #[inline]
-// fn handle_keyboard(
-//     action: KeyboardAction,
-//     terminal: &TmuxTerminal,
-//     top_level: &TmuxTopLevel,
-//     vte: &Vte,
-// ) {
-//     match action {
-//         KeyboardAction::PaneSplit(vertical) => {
-//             let orientation = if vertical {
-//                 Orientation::Vertical
-//             } else {
-//                 Orientation::Horizontal
-//             };
-
-//             // top_level.split_pane(terminal, orientation);
-//         }
-//         KeyboardAction::PaneClose => {
-//             // top_level.close_pane(terminal);
-//         }
-//         KeyboardAction::TabNew => {
-//             // top_level.create_tab(None);
-//         }
-//         KeyboardAction::TabClose => {
-//             // top_level.close_tab();
-//         }
-//         KeyboardAction::SelectPane(direction) => {
-//             let previous_size = top_level.unzoom();
-//             if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
-//                 new_focus.grab_focus();
-//             }
-//         }
-//         KeyboardAction::ToggleZoom => {
-//             top_level.toggle_zoom(terminal);
-//         }
-//         KeyboardAction::CopySelected => {
-//             vte.emit_copy_clipboard();
-//         }
-//     }
-// }
+#[inline]
+fn handle_keyboard_event(
+    action: KeyboardAction,
+    vte: &Vte,
+    pane_id: u32,
+    window: &IvyTmuxWindow,
+) {
+    match action {
+        KeyboardAction::CopySelected => {
+            vte.emit_copy_clipboard();
+        }
+        _ => {
+            window.tmux_handle_keybinding(action, pane_id);
+        }
+    }
+}

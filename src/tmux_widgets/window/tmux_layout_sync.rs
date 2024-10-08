@@ -243,7 +243,6 @@ fn sync_layout_recursive(
                 let container = container_callback(
                     orientation,
                     window,
-                    top_level,
                     parent,
                     allocation,
                     &current_sibling,
@@ -292,7 +291,6 @@ fn sync_layout_recursive(
 fn container_callback(
     orientation: &Orientation,
     window: &IvyTmuxWindow,
-    top_level: &TmuxTopLevel,
     parent: &ParentContainer,
     bounds: &Rectangle,
     next_sibling: &Option<Widget>,
