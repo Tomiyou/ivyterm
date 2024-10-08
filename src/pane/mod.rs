@@ -1,5 +1,7 @@
 mod imp;
 
+use std::rc::Rc;
+
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
     gdk::{ModifierType, RGBA},
@@ -9,7 +11,7 @@ use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
 use crate::{
-    global_state::GLOBAL_SETTINGS,
+    global_state::{WindowState, GLOBAL_SETTINGS},
     keyboard::{handle_input, Keybinding},
     toplevel::TopLevel,
 };
@@ -21,7 +23,7 @@ glib::wrapper! {
 }
 
 impl Pane {
-    pub fn new(top_level: &TopLevel) -> Self {
+    pub fn new(top_level: &TopLevel, window_state: Rc<WindowState>) -> Self {
         let top_level = top_level.clone();
 
         // Get terminal font
@@ -52,7 +54,7 @@ impl Pane {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().set_terminal(&vte);
+        terminal.imp().init_values(&vte, window_state);
 
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);

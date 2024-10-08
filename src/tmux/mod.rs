@@ -1,7 +1,7 @@
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::process::{ChildStdout, Command, Stdio};
+use std::rc::Rc;
 use std::str::{from_utf8, from_utf8_unchecked};
-use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -26,7 +26,7 @@ enum IvyEvent {}
 
 pub fn attach_tmux(
     session_name: &str,
-    window_state: &Arc<Mutex<WindowState>>,
+    window_state: &Rc<WindowState>,
 ) -> Result<(), IvyError> {
     // Create async channels
     let (event_sender, event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
@@ -76,14 +76,13 @@ pub fn attach_tmux(
 }
 
 #[inline]
-fn tmux_event_future(event: TmuxEvent, window_state: &Arc<Mutex<WindowState>>) {
+fn tmux_event_future(event: TmuxEvent, window_state: &Rc<WindowState>) {
     match event {
         TmuxEvent::Attached => {}
         TmuxEvent::OutputLine(line) => {}
         TmuxEvent::Exit => {
             println!("Received EXIT event, closing window!");
-            let guard = window_state.lock().unwrap();
-            guard.window.close();
+            window_state.window.close();
         }
     }
 }

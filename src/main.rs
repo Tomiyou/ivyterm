@@ -1,5 +1,5 @@
+use std::rc::Rc;
 use std::sync::atomic::AtomicU32;
-use std::sync::{Arc, Mutex};
 
 use gtk4::gdk::Display;
 use gtk4::{
@@ -8,7 +8,9 @@ use gtk4::{
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
-use global_state::{show_settings_window, WindowState, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
+use global_state::{
+    show_settings_window, WindowState, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH,
+};
 use tmux::attach_tmux;
 use toplevel::create_tab;
 
@@ -35,7 +37,7 @@ fn load_css() {
     );
 }
 
-fn create_window(app: &Application /* , tmux_session: Option<&str> */) {
+fn create_window(app: &Application, tmux_session: Option<&str>) {
     // Create a new window
     let window = ApplicationWindow::builder()
         .application(app)
@@ -68,14 +70,14 @@ fn create_window(app: &Application /* , tmux_session: Option<&str> */) {
         tabs: Vec::new(),
         tmux: false,
     };
-    let window_state = Arc::new(Mutex::new(window_state));
+    let window_state = Rc::new(window_state);
 
     // if let Some(session_name) = tmux_session {
     //     println!("Starting TMUX");
     // attach_tmux("terminator", &window_state);
     // } else {
-        // Create initial Tab
-        create_tab(&tab_view, None);
+    // Create initial Tab
+    create_tab(&tab_view, None, window_state);
     // }
 
     // Terminal settings
@@ -126,6 +128,8 @@ fn main() -> glib::ExitCode {
         .build();
 
     application.connect_startup(|_| load_css());
-    application.connect_activate(create_window);
+    application.connect_activate(|app| {
+        create_window(app, None);
+    });
     application.run()
 }

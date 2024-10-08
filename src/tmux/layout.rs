@@ -1,3 +1,4 @@
+// list-windows -F "#{window_layout}"
 // @0 6a18,191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]
 
 pub fn parse_tmux_layout(buffer: &[u8]) -> usize {

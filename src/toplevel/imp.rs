@@ -1,4 +1,7 @@
-use std::cell::RefCell;
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use gtk4::{Box as Container, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
@@ -15,26 +18,35 @@ pub struct Zoomed {
 
 // Object holding the state
 #[derive(Default)]
-pub struct TopLevel {
-    pub window_state: RefCell<Option<WindowState>>,
+pub struct TopLevelPriv {
+    pub window_state: RefCell<Option<Rc<WindowState>>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<Pane>>,
     pub zoomed: RefCell<Option<Zoomed>>,
+    pub is_tmux: Cell<bool>,
 }
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for TopLevel {
+impl ObjectSubclass for TopLevelPriv {
     const NAME: &'static str = "TopLevelTerminalContainer";
     type Type = super::TopLevel;
     type ParentType = libadwaita::Bin;
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for TopLevel {}
+impl ObjectImpl for TopLevelPriv {}
 
 // Trait shared by all widgets
-impl WidgetImpl for TopLevel {}
+impl WidgetImpl for TopLevelPriv {}
 
 // Trait shared by all Bins
-impl BinImpl for TopLevel {}
+impl BinImpl for TopLevelPriv {}
+
+impl TopLevelPriv {
+    pub fn init_values(&self, tab_view: &TabView, window_state: Rc<WindowState>) {
+        self.is_tmux.replace(window_state.tmux);
+        self.window_state.replace(Some(window_state));
+        self.tab_view.replace(Some(tab_view.clone()));
+    }
+}
