@@ -1,7 +1,5 @@
 mod imp;
 
-use std::str::from_utf8;
-
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
     gdk::{ModifierType, RGBA},

@@ -1,6 +1,7 @@
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::ascii::escape_default;
+use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
-use std::str::{from_utf8, from_utf8_unchecked};
+use std::str::from_utf8;
 
 use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
@@ -29,7 +30,7 @@ impl Tmux {
                 debug!("Getting initial layout");
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream
-                    .write_all(b"list-windows -F \"#{window_layout}\"\n")
+                    .write_all(b"list-windows -F \"#{window_layout},#{history_size}\"\n")
                     .unwrap();
             }
             TmuxCommand::ChangeSize(cols, rows) => {
@@ -164,11 +165,19 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
 }
 
 // #[inline]
-fn parse_escaped_output(input: &[u8], prepend_newline: bool) -> Vec<u8> {
+fn parse_escaped_output(input: &[u8], prepend_newline: bool, empty_line_count: u32) -> Vec<u8> {
     let input_len = input.len();
     let mut output = Vec::with_capacity(input_len);
 
     if prepend_newline {
+        output.push(b'\r');
+        output.push(b'\n');
+    }
+
+    // We ignored empty lines to this point, but now we know we actually need
+    // to print something to the screen, which means we should also print those
+    // empty lines
+    for _ in 0..empty_line_count {
         output.push(b'\r');
         output.push(b'\n');
     }
@@ -236,6 +245,7 @@ fn tmux_read_stdout(
     // Variable containing Tmux state
     let mut current_command = None;
     let mut output_line = 0;
+    let mut empty_line_count = 0;
     let mut is_error = false;
 
     // TODO: Handle output larger than 65534 bytes
@@ -249,9 +259,25 @@ fn tmux_read_stdout(
         // end of the buffer. We should strip it here.
         buffer.pop();
         debug!("Tmux output: {}", from_utf8(&buffer).unwrap());
+        if false {
+            let mut escaped = String::with_capacity(buffer.len() * 2);
+            for c in &buffer {
+                if c.is_ascii_control() {
+                    let x = escape_default(*c);
+                    for c in x {
+                        escaped.push(c as char);
+                    }
+                } else {
+                    escaped.push(*c as char);
+                }
+            }
+            println!("Tmux output: |{}|", escaped);
+        }
 
-        // TODO: Probably not OK for initial output?
+        // Don't print empty lines at the end of output
         if buffer.is_empty() {
+            empty_line_count += 1;
+            output_line += 1;
             continue;
         }
 
@@ -262,17 +288,25 @@ fn tmux_read_stdout(
                 println!("Error: ({:?}) {}", current_command, error);
             } else {
                 if let Some(command) = &current_command {
-                    tmux_command_response(command, &buffer, output_line, &event_channel);
+                    tmux_command_response(
+                        command,
+                        &buffer,
+                        output_line,
+                        empty_line_count,
+                        &event_channel,
+                    );
                 }
             }
 
+            // Reset empty line count (since this wasn't an empty line)
+            empty_line_count = 0;
             output_line += 1;
         } else {
             // This is a notification
             if buffer_starts_with(&buffer, "%output") {
                 // We were given output, we can assume that up until pane_id, output is ASCII
                 let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
-                let output = parse_escaped_output(&buffer[9 + chars_read..], false);
+                let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
 
                 event_channel
                     .send_blocking(TmuxEvent::Output(pane_id, output))
@@ -285,6 +319,7 @@ fn tmux_read_stdout(
                 // End of output from a command we executed
                 current_command = None;
                 output_line = 0;
+                empty_line_count = 0;
                 is_error = false;
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
@@ -319,6 +354,7 @@ fn tmux_command_response(
     command: &TmuxCommand,
     buffer: &[u8],
     line: u32,
+    empty_line_count: u32,
     event_channel: &Sender<TmuxEvent>,
 ) {
     match command {
@@ -337,7 +373,7 @@ fn tmux_command_response(
             //     return;
             // }
 
-            let output = parse_escaped_output(buffer, line >= 2);
+            let output = parse_escaped_output(buffer, line >= 2, empty_line_count);
             event_channel
                 .send_blocking(TmuxEvent::Output(*pane_id, output))
                 .expect("Event channel closed!");
