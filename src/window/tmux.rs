@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::{
     keyboard::keycode_to_arrow_key,
-    tmux::{Tmux, TmuxEvent},
+    tmux::{Tmux, TmuxEvent, TmuxTristate},
     toplevel::TopLevel,
     window::layout::parse_tmux_layout,
 };
@@ -125,29 +125,30 @@ impl IvyWindow {
             TmuxEvent::InitialOutputFinished() => {
                 let mut binding = imp.tmux.borrow_mut();
                 let tmux = binding.as_mut().unwrap();
-                tmux.initial_output_captured = true;
+                tmux.initial_output = TmuxTristate::Done;
             }
             TmuxEvent::LayoutChanged(layout) => {
+                // todo!()
+            }
+            TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();
                 let tmux = binding.as_mut().unwrap();
 
-                // If initial output has not been captured, this must be a Tmux resize event
-                if tmux.initial_output_captured == false {
-                    tmux.initial_size_set = true;
+                // If initial output has not been captured yet, now is the time
+                if tmux.initial_output == TmuxTristate::Uninitialized {
+                    println!("Getting initial output");
+                    tmux.initial_output = TmuxTristate::WaitingResponse;
 
                     let terminals = imp.terminals.borrow();
                     for (pane_id, _) in terminals.iter() {
                         tmux.get_initial_output(*pane_id);
                     }
-                    return;
                 }
-
-                // todo!()
             }
             TmuxEvent::Output(pane_id, output) => {
                 // Ignore Output events until initial output has been captured
                 let tmux = imp.tmux.borrow();
-                if tmux.as_ref().unwrap().initial_output_captured == false {
+                if tmux.as_ref().unwrap().initial_output != TmuxTristate::Done {
                     return;
                 }
 

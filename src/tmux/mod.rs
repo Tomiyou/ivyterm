@@ -9,13 +9,19 @@ use log::debug;
 use crate::error::IvyError;
 use crate::window::IvyWindow;
 
+#[derive(PartialEq)]
+pub enum TmuxTristate {
+    Uninitialized,
+    WaitingResponse,
+    Done,
+}
+
 pub struct Tmux {
     stdin_stream: ChildStdin,
     command_queue: Sender<TmuxCommand>,
     window_size: (i32, i32),
     resize_future: bool,
-    pub initial_size_set: bool,
-    pub initial_output_captured: bool,
+    pub initial_output: TmuxTristate,
 }
 
 impl Tmux {
@@ -113,6 +119,7 @@ pub enum TmuxEvent {
     InitialOutputFinished(),
     LayoutChanged(Vec<u8>),
     Output(u32, Vec<u8>),
+    SizeChanged(),
     Exit,
 }
 
@@ -161,8 +168,7 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
         command_queue: cmd_queue_sender,
         window_size: (0, 0),
         resize_future: false,
-        initial_size_set: false,
-        initial_output_captured: false,
+        initial_output: TmuxTristate::Uninitialized,
     };
 
     Ok(tmux)
@@ -308,6 +314,11 @@ fn tmux_read_stdout(
                                 .expect("Event channel closed!");
                             event_channel
                                 .send_blocking(TmuxEvent::InitialOutputFinished())
+                                .expect("Event channel closed!");
+                        }
+                        TmuxCommand::ChangeSize(_, _) => {
+                            event_channel
+                                .send_blocking(TmuxEvent::SizeChanged())
                                 .expect("Event channel closed!");
                         }
                         _ => {}
