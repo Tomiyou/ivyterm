@@ -8,7 +8,7 @@ use gtk4::{
     WindowHandle,
 };
 
-use global_state::{GlobalSettings, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
+use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
 
 mod global_state;
 mod keyboard;
@@ -59,7 +59,7 @@ fn main() -> glib::ExitCode {
             .build();
 
         // Initialize global settings
-        let global_settings = GlobalSettings::new(app);
+        // let global_settings = GlobalSettings::new(app);
 
         // Window content box holds title bar and panes
         let window_box = Box::new(Orientation::Vertical, 0);
@@ -70,8 +70,9 @@ fn main() -> glib::ExitCode {
 
         // Terminal settings
         let settings_button = Button::with_label("Settings");
+        let _app = app.clone();
         settings_button.connect_clicked(move |_button| {
-            global_settings.show_settings_window();
+            show_settings_window(_app.clone());
         });
 
         // View switcher for switching between open tabs

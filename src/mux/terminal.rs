@@ -1,9 +1,26 @@
 use glib::SpawnFlags;
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual, WidgetExt};
 
-pub fn create_terminal() -> Terminal {
-    let terminal = Terminal::builder().vexpand(true).hexpand(true).build();
+use crate::global_state::GLOBAL_SETTINGS;
 
+pub fn create_terminal() -> Terminal {
+    // Get terminal font
+    let font_desc = {
+        let reader = GLOBAL_SETTINGS.read().unwrap();
+        reader.font_desc.clone()
+    };
+
+    let terminal = Terminal::builder()
+        .vexpand(true)
+        .hexpand(true)
+        .font_desc(&font_desc)
+        .build();
+
+    terminal.connect_child_exited(|terminal, exit_code| {
+        println!("Exited!");
+    });
+
+    // Spawn terminal
     let pty_flags = PtyFlags::DEFAULT;
     let argv = ["/bin/bash"];
     let envv = [];
@@ -26,13 +43,6 @@ pub fn create_terminal() -> Terminal {
             _terminal.grab_focus();
         },
     );
-
-    terminal.connect_child_exited(|terminal, exit_code| {
-        println!("Exited!");
-    });
-
-    // Change terminal font
-    // terminal.set_font_desc(font_desc)
 
     terminal
 }
