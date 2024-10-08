@@ -171,7 +171,10 @@ pub fn tmux_read_stdout(
                 let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
                 let buffer = &buffer[22 + chars_read + 1..];
                 let (pane_id, _) = read_first_u32(buffer);
-                println!("Tmux event: Window {} focus changed to pane {}", tab_id, pane_id);
+                println!(
+                    "Tmux event: Window {} focus changed to pane {}",
+                    tab_id, pane_id
+                );
                 event_channel
                     .send_blocking(TmuxEvent::PaneFocusChanged(tab_id, pane_id))
                     .unwrap();
@@ -180,7 +183,10 @@ pub fn tmux_read_stdout(
                 let (session_id, chars_read) = read_first_u32(&buffer[25..]);
                 let buffer = &buffer[25 + chars_read + 1..];
                 let (tab_id, _) = read_first_u32(buffer);
-                println!("Tmux event: Session {} focus changed to window {}", session_id, tab_id);
+                println!(
+                    "Tmux event: Session {} focus changed to window {}",
+                    session_id, tab_id
+                );
                 event_channel
                     .send_blocking(TmuxEvent::TabFocusChanged(tab_id))
                     .unwrap();

@@ -3,7 +3,10 @@ use std::cell::{Cell, RefCell};
 use gtk4::Widget;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{helpers::WithId, tmux_widgets::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow}};
+use crate::{
+    helpers::WithId,
+    tmux_widgets::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow},
+};
 
 use super::layout::TopLevelLayout;
 

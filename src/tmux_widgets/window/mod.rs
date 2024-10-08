@@ -25,7 +25,12 @@ glib::wrapper! {
 }
 
 impl IvyTmuxWindow {
-    pub fn new(app: &IvyApplication, css_provider: &CssProvider, tmux_session: &str, ssh_target: Option<&str>) -> Self {
+    pub fn new(
+        app: &IvyApplication,
+        css_provider: &CssProvider,
+        tmux_session: &str,
+        ssh_target: Option<&str>,
+    ) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));
         window.set_title(Some(APPLICATION_TITLE));

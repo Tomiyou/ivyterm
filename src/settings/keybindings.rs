@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use glib::Propagation;
-use gtk4::{gdk::ModifierType, Align, Box, EventControllerKey, GestureClick, Label, Orientation, ShortcutTrigger};
+use gtk4::{
+    gdk::ModifierType, Align, Box, EventControllerKey, GestureClick, Label, Orientation,
+    ShortcutTrigger,
+};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
 use crate::{application::IvyApplication, keyboard::Keybinding};
@@ -87,9 +90,7 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
         .build();
     row_box.append(&label_widget);
 
-    let keybind_widget = Label::builder()
-        .halign(Align::End)
-        .build();
+    let keybind_widget = Label::builder().halign(Align::End).build();
     set_text_from_trigger(&keybind_widget, &keybinding.trigger);
     row_box.append(&keybind_widget);
 

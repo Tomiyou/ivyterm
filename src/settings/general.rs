@@ -1,4 +1,7 @@
-use gtk4::{Align, Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Label, Orientation, Widget};
+use gtk4::{
+    Align, Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Label, Orientation,
+    Widget,
+};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
 use crate::application::IvyApplication;
@@ -11,7 +14,7 @@ fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
         .halign(Align::Start)
         .label(name)
         .build();
-    
+
     let row_box = Box::new(Orientation::Horizontal, 0);
     row_box.append(&label);
     row_box.append(&child);

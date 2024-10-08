@@ -6,36 +6,34 @@ pub enum IvyError {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct WithId <T> {
+pub struct WithId<T> {
     pub id: u32,
     pub terminal: T,
 }
 
-impl <T: PartialEq + Eq> PartialOrd for WithId <T> {
+impl<T: PartialEq + Eq> PartialOrd for WithId<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl <T: Eq> Ord for WithId <T> {
+impl<T: Eq> Ord for WithId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.id.cmp(&other.id)
     }
 }
 
-pub struct SortedVec <T> {
+pub struct SortedVec<T> {
     terminals: Vec<WithId<T>>,
 }
 
-impl <T> Default for SortedVec<T> {
+impl<T> Default for SortedVec<T> {
     fn default() -> Self {
-        Self {
-            terminals: vec![],
-        }
+        Self { terminals: vec![] }
     }
 }
 
-impl <T: Eq + Clone> SortedVec <T> {
+impl<T: Eq + Clone> SortedVec<T> {
     pub fn insert(&mut self, id: u32, terminal: &T) -> usize {
         let terminal = WithId {
             id: id,

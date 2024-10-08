@@ -5,9 +5,7 @@ use gtk4::{gdk::RGBA, pango::FontDescription, EventControllerKey, Orientation, S
 use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
-use crate::{
-    application::IvyApplication, keyboard::KeyboardAction,
-};
+use crate::{application::IvyApplication, keyboard::KeyboardAction};
 
 use super::{toplevel::TopLevel, window::IvyNormalWindow};
 

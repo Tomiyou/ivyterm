@@ -3,7 +3,10 @@ use std::cell::{Cell, RefCell};
 use gtk4::Widget;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{helpers::WithId, normal_widgets::{container::Container, terminal::Terminal, window::IvyNormalWindow}};
+use crate::{
+    helpers::WithId,
+    normal_widgets::{container::Container, terminal::Terminal, window::IvyNormalWindow},
+};
 
 use super::layout::TopLevelLayout;
 
