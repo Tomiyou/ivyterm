@@ -20,9 +20,19 @@ struct ParentContainer {
     bounds: Rectangle,
 }
 
+#[inline]
 fn print_tab(nested: u32) {
     for _ in 0..nested {
         print!("    ");
+    }
+}
+
+#[inline]
+fn print_tab_debug(nested: u32) {
+    if log::log_enabled!(log::Level::Debug) {
+        for _ in 0..nested {
+            debug!("    ");
+        }
     }
 }
 
@@ -123,11 +133,11 @@ impl TmuxTopLevel {
                         if let Some(child) = self.child() {
                             if existing.eq(&child) {
                                 // Pane is already in the correct place, nothing to do
-                                println!("Pane already correctly placed {}", term_id);
+                                debug!("Pane already correctly placed {}", term_id);
                             } else {
                                 // Replace the current child with ourselves
                                 self.set_child(Some(&existing));
-                                println!("Pane {} replaced the only child", term_id);
+                                debug!("Pane {} replaced the only child", term_id);
                             }
                         } else {
                             // This is a very strange case, Terminal already exists, but top_level has
@@ -143,25 +153,25 @@ impl TmuxTopLevel {
                         // Terminal does not exist yet, simply append it after previous_sibling
                         let new_terminal = TmuxTerminal::new(self, window, term_id);
                         self.set_child(Some(&new_terminal));
-                        println!("Created pane {} as only child", term_id);
+                        debug!("Created pane {} as only child", term_id);
                     }
                 }
                 TmuxPane::Container(orientation, allocation) => {
                     let container = if let Some(child) = self.child() {
                         if let Ok(container) = child.downcast::<TmuxContainer>() {
                             // The first child is already a Container
-                            println!("The first child is already a Container");
+                            debug!("The first child is already a Container");
                             container
                         } else {
                             // The first child is a Terminal, replace with a new Container
-                            println!("The first child is a Terminal, replace with a new Container");
+                            debug!("The first child is a Terminal, replace with a new Container");
                             let container = TmuxContainer::new(orientation, window);
                             self.set_child(Some(&container));
                             container
                         }
                     } else {
                         // top_level doesn't have any children yet
-                        println!("top_level doesn't have any children yet");
+                        debug!("top_level doesn't have any children yet");
                         let container = TmuxContainer::new(orientation, window);
                         self.set_child(Some(&container));
                         container
@@ -243,8 +253,7 @@ fn sync_layout_recursive(
                 return;
             }
             TmuxPane::Terminal(term_id, allocation) => {
-                print_tab(nested);
-                println!("-- NEXT ITEM: {:?}", tmux_pane);
+                debug!("-- NEXT ITEM: {:?}", tmux_pane);
 
                 let terminal = terminal_callback(
                     *term_id,
@@ -258,8 +267,8 @@ fn sync_layout_recursive(
                 move_sibling_pointer(&mut current_sibling, &terminal);
             }
             TmuxPane::Container(orientation, allocation) => {
-                print_tab(nested);
-                println!("-- NEXT ITEM: {:?}", tmux_pane);
+                print_tab_debug(nested);
+                debug!("-- NEXT ITEM: {:?}", tmux_pane);
 
                 let container = container_callback(
                     orientation,
@@ -285,8 +294,8 @@ fn sync_layout_recursive(
 
     // Unparent all siblings we have left (since Tmux session obviously doesn't have them here)
     while let Some(child) = current_sibling {
-        print_tab(nested);
-        println!("Unparenting child!!!");
+        print_tab_debug(nested);
+        debug!("Unparenting child!!!");
         child.unparent();
         // We do this here to avoid cloning on downcast()
         current_sibling = child.next_sibling();
@@ -334,23 +343,23 @@ fn container_callback(
     // If the next_sibling is already a Container, we don't have to create it
     if let Some(next_pane) = next_sibling {
         if let Ok(container) = next_pane.clone().downcast::<TmuxContainer>() {
-            print_tab(nested);
-            println!("Container is already in the correct place");
+            print_tab_debug(nested);
+            debug!("Container is already in the correct place");
             if let Some(separator) = container.next_sibling() {
                 let separator: TmuxSeparator = separator.downcast().unwrap();
                 separator.set_position(position.next);
             }
             return container;
         } else {
-            print_tab(nested);
+            print_tab_debug(nested);
             if let Ok(terminal) = next_pane.clone().downcast::<TmuxTerminal>() {
-                println!(
+                debug!(
                     "Creating new Container to replace the current child TERMINAL {}, position {}",
                     terminal.pane_id(),
                     position
                 );
             } else {
-                println!(
+                debug!(
                     "Creating new Container to replace the current child (type {}), position {}",
                     next_pane.type_(),
                     position
@@ -358,8 +367,8 @@ fn container_callback(
             }
         }
     } else {
-        print_tab(nested);
-        println!(
+        print_tab_debug(nested);
+        debug!(
             "Creating new Container, next_sibling is None, position {}",
             position
         )
@@ -392,8 +401,8 @@ fn terminal_callback(
         if let Some(next_pane) = next_sibling {
             // Check if this next_pane is already this terminal
             if existing.eq(next_pane) {
-                print_tab(nested);
-                println!(
+                print_tab_debug(nested);
+                debug!(
                     "Terminal with ID {} already in the correct place, position is {}",
                     pane_id, position.next
                 );
@@ -411,8 +420,8 @@ fn terminal_callback(
         remove_pane(&existing);
         // Now insert it in the correct place
         prepend_pane(window, &parent.c, &existing, next_sibling, &position);
-        print_tab(nested);
-        println!(
+        print_tab_debug(nested);
+        debug!(
             "Terminal with ID {} moved to new position ({})",
             pane_id, position
         );
@@ -421,10 +430,10 @@ fn terminal_callback(
     }
 
     // Terminal does not exist yet, simply prepend it before next_sibling
-    print_tab(nested);
+    print_tab_debug(nested);
     let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
-    print_tab(nested);
-    println!("   \\---> position {}", position);
+    print_tab_debug(nested);
+    debug!("   \\---> position {}", position);
     prepend_pane(window, &parent.c, &new_terminal, next_sibling, &position);
 
     new_terminal
@@ -533,7 +542,7 @@ fn replace_container(closing: &impl IsA<Widget>, survivor: &impl IsA<Widget>) {
     // TODO: use match for all castings
     match parent.downcast::<TmuxTopLevel>() {
         Ok(top_level) => {
-            println!("Using set_child() instead of unparent() ...");
+            debug!("Using set_child() instead of unparent() ...");
             top_level.set_child(Some(survivor));
         }
         Err(container) => {

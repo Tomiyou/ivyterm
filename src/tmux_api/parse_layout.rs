@@ -1,6 +1,7 @@
 use std::str::from_utf8;
 
 use gtk4::Orientation;
+use log::debug;
 
 use super::{Rectangle, TmuxPane};
 
@@ -9,7 +10,7 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
 
     let buffer = if buffer[0] == b'@' {
         // Skip @
-        println!("Skipping @");
+        debug!("Skipping @");
         &buffer[1..]
     } else {
         &buffer
@@ -28,7 +29,7 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
     let bytes_read = read_until_char(buffer, b' ');
     let buffer = &buffer[..bytes_read];
 
-    println!(
+    debug!(
         "Tab id is {}, remaining buffer: {}",
         tab_id,
         from_utf8(buffer).unwrap()
@@ -46,7 +47,7 @@ fn parse_layout_recursive(buffer: &[u8], hierarchy: &mut Vec<TmuxPane>, nested: 
 
     loop {
         // print_tab(nested);
-        // println!("Remaining buffer: {}", from_utf8(buffer).unwrap());
+        debug!("Remaining buffer: {}", from_utf8(buffer).unwrap());
         // Read width
         let (width, bytes_read) = read_first_u32(buffer);
         buffer = &buffer[bytes_read + 1..];
@@ -137,11 +138,9 @@ pub fn find_closing_bracket(buffer: &[u8], open: u8, close: u8) -> usize {
         // Assumes there is at least one opening bracket before a closing one
         if b == open {
             nested += 1;
-            // println!("Matched open: {} {}", b as char, open as char);
         } else if b == close {
             nested -= 1;
 
-            // println!("Matched close: {} {}", b as char, close as char);
             if nested == 0 {
                 return i;
             }

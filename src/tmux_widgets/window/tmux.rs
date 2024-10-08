@@ -3,6 +3,7 @@ use std::time::Duration;
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::gdk::{Key, ModifierType};
 use libadwaita::{glib, prelude::*};
+use log::debug;
 
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
@@ -101,10 +102,10 @@ impl IvyTmuxWindow {
 
     fn sync_tmux_layout(&self, tab_id: u32, layout: Vec<TmuxPane>) {
         let top_level = if let Some(top_level) = self.get_top_level(tab_id) {
-            println!("Reusing top Level {}", top_level.tab_id());
+            debug!("Reusing top Level {}", top_level.tab_id());
             top_level
         } else {
-            println!("Creating new Tab (with new top_level)");
+            debug!("Creating new Tab (with new top_level)");
             self.new_tab(tab_id)
         };
 
