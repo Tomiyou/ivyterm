@@ -89,7 +89,7 @@ impl IvyWindow {
             let tmux = binding.as_mut().unwrap();
             // Tell Tmux resize future is no longer running
             tmux.update_resize_future(false);
-            tmux.change_size(cols as i32, rows as i32);
+            tmux.change_size(cols, rows);
         }
     }
 
@@ -130,7 +130,7 @@ impl IvyWindow {
             }
             TmuxEvent::InitialLayout(layout) => {
                 println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self);
+                parse_tmux_layout(&layout[1..], &self, true);
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK

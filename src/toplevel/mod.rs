@@ -68,8 +68,8 @@ impl TopLevel {
 
             self.set_child(None::<&Self>);
             let container = Container::new(orientation, window);
-            container.append(&old_terminal);
-            container.append(&new_terminal);
+            container.append(&old_terminal, None);
+            container.append(&new_terminal, None);
             self.set_child(Some(&container));
             return (new_terminal, Some(container));
         }
@@ -79,15 +79,15 @@ impl TopLevel {
 
         // If the split orientation is the same as Container's orientation, we can simply insert a new Pane
         if container.orientation() == orientation {
-            container.append(&new_terminal);
+            container.append(&new_terminal, None);
             return (new_terminal, None);
         }
 
         // The split orientation is different from Container's, meaning we have to insert a new Container
         let new_container = Container::new(orientation, window);
         container.replace(terminal, &new_container);
-        new_container.append(terminal);
-        new_container.append(&new_terminal);
+        new_container.append(terminal, None);
+        new_container.append(&new_terminal, None);
 
         return (new_terminal, Some(new_container));
     }
@@ -328,18 +328,17 @@ impl TopLevel {
         None
     }
 
-    pub fn get_cols_rows(&self) -> (i64, i64) {
-        // TODO: Doing things this way means different TopLevels can have different sizes...
-        // Just do it the Tmux way
-
-        if let Some(child) = self.child() {
-            // If our child is a Terminal, we can measure its cols,rows directly
-            if let Ok(container) = child.clone().downcast::<Container>() {
-                return container.recursive_size_measure();
-            } else {
-                let terminal: Terminal = child.downcast().unwrap();
-                return terminal.get_cols_or_rows();
-            }
+    pub fn get_cols_rows(&self) -> (i32, i32) {
+        let terminals = self.imp().terminals.borrow();
+        if let Some(terminal) = terminals.first() {
+            let allocation = self.allocation();
+            let (char_width, char_height) = terminal.get_char_width_height();
+            // VTE widget has a fixed padding of 1px on each side
+            let cols = (allocation.width() - 2) / char_width;
+            let rows = (allocation.height() - 2) / char_height;
+            // println!("Cols: {} | total width {} char width {}", cols, allocation.width(), char_width);
+            // println!("Rows: {} | total width {} char width {}", rows, allocation.height(), char_height);
+            return (cols, rows);
         }
 
         (0, 0)

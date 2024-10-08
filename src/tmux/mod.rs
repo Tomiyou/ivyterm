@@ -349,6 +349,8 @@ fn tmux_read_stdout(
                 event_channel
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
+            } else if buffer_starts_with(&buffer, "%client-session-changed") {
+                
             } else {
                 // Unsupported notification
                 let notification = from_utf8(&buffer).unwrap();
