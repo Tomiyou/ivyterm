@@ -1,6 +1,3 @@
-use std::ascii::escape_default;
-use std::borrow::BorrowMut;
-use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 use std::str::from_utf8;
@@ -178,49 +175,57 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
 /// Parses Tmux output and replaces octal escapes sequences with correct binary
 /// characters
 #[inline]
-fn parse_tmux_output<'a>(
-    input: impl Iterator<Item = &'a u8>,
-    input_len: usize,
-) -> (Vec<u8>, usize) {
-    let mut input = input;
-    let mut output = Vec::with_capacity(input_len);
+fn parse_escaped_output(input: &[u8], prepend_linebreak: bool, empty_lines: usize) -> Vec<u8> {
+    let input_len = input.len();
+    let mut output = Vec::with_capacity(input_len + (empty_lines * 2) + 3);
 
-    let mut bytes_read = 0;
-    while let Some(char) = input.next() {
-        let char = *char;
+    if prepend_linebreak {
+        output.push(b'\r');
+        output.push(b'\n');
+    }
+
+    for _ in 0..empty_lines {
+        output.push(b'\r');
+        output.push(b'\n');
+    }
+
+    let mut i = 0;
+    while i < input_len {
+        let char = input[i];
         if char == b'\\' {
             // First \ is an escape, meaning there is 100% another char after it
-            let char = *input.next().unwrap();
-            if char == b'\\' {
+            if input[i + 1] == b'\\' {
                 // First \ is followed by another \
                 output.push(b'\\');
-                bytes_read += 2;
+                i += 2;
                 continue;
+            }
+
+            // Maybe an escape sequence?
+            if i + 3 >= input_len {
+                panic!("Found escape character but string too short");
             }
 
             // This is an escape sequence
             // TODO: This crashes when output is:
             // tomi:~/plume/opensync/sdk/device-sdk-qca (master) $ danes je pa tako M-\M-\
-            let mut ascii = char - 48;
-            for _ in 0..2 {
-                let num = *input.next().unwrap() - 48;
+            let mut ascii = 0;
+            for j in i + 1..i + 4 {
+                let num = input[j] - 48;
                 ascii *= 8;
                 ascii += num;
             }
             output.push(ascii);
-            bytes_read += 4;
+
+            // We also read 3 extra characters after \
+            i += 4;
         } else {
             output.push(char);
-            bytes_read += 1;
-        }
-
-        if char == b'\n' {
-            // We stop at \n
-            break;
+            i += 1;
         }
     }
 
-    (output, bytes_read)
+    output
 }
 
 #[inline]
@@ -235,13 +240,6 @@ fn buffer_starts_with(buffer: &Vec<u8>, prefix: &str) -> bool {
     buffer == prefix
 }
 
-struct InitialOutputState {
-    buffer: VecDeque<u8>,
-    lines: u32,
-    max_lines: u32,
-    empty_lines_end: u32,
-}
-
 #[inline]
 fn tmux_read_stdout(
     stdout_stream: ChildStdout,
@@ -249,17 +247,13 @@ fn tmux_read_stdout(
     command_queue: Receiver<TmuxCommand>,
 ) {
     let mut buffer = Vec::with_capacity(65534);
-    let mut initial_output = InitialOutputState {
-        buffer: VecDeque::new(),
-        lines: 0,
-        max_lines: 0,
-        empty_lines_end: 0,
-    };
     let mut reader = BufReader::new(stdout_stream);
 
     // Variable containing Tmux state
     let mut current_command = None;
     let mut is_error = false;
+    let mut result_line = 0;
+    let mut empty_line_count = 0;
 
     // TODO: Handle output larger than 65534 bytes
     while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
@@ -271,38 +265,30 @@ fn tmux_read_stdout(
         // Since we read until (and including) '\n', it will always be at the
         // end of the buffer. We should strip it here.
         buffer.pop();
-        debug!("Tmux output: {}", from_utf8(&buffer).unwrap());
-        if false {
-            let mut escaped = String::with_capacity(buffer.len() * 2);
-            for c in &buffer {
-                if c.is_ascii_control() {
-                    let x = escape_default(*c);
-                    for c in x {
-                        escaped.push(c as char);
-                    }
-                } else {
-                    escaped.push(*c as char);
-                }
-            }
-            println!("Tmux output: |{}|", escaped);
+        if buffer.is_empty() {
+            empty_line_count += 1;
+            continue;
         }
 
-        // Don't print empty lines at the end of output
+        debug!("Tmux output: {}", from_utf8(&buffer).unwrap());
+
         if buffer.is_empty() || buffer[0] != b'%' {
             // This is output from a command we ran
             if is_error {
                 let error = from_utf8(&buffer).unwrap();
                 println!("Error: ({:?}) {}", current_command, error);
             } else if let Some(command) = &current_command {
-                tmux_command_response(command, &buffer, &event_channel, &mut initial_output, false);
+                tmux_command_result(command, &mut buffer, result_line, empty_line_count, &event_channel);
             }
+
+            result_line += 1;
+            empty_line_count = 0;
         } else {
             // This is a notification
             if buffer_starts_with(&buffer, "%output") {
                 // We were given output, we can assume that up until pane_id, output is ASCII
                 let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
-                let remaining = &buffer[9 + chars_read..];
-                let (output, _) = parse_tmux_output(remaining.iter(), remaining.len());
+                let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
 
                 event_channel
                     .send_blocking(TmuxEvent::Output(pane_id, output))
@@ -312,18 +298,10 @@ fn tmux_read_stdout(
                 current_command = Some(command_queue.recv_blocking().unwrap());
             } else if buffer_starts_with(&buffer, "%end") {
                 // End of output from a command we executed
-                if let Some(current_command) = current_command {
-                    tmux_command_response(
-                        &current_command,
-                        &buffer,
-                        &event_channel,
-                        &mut initial_output,
-                        true,
-                    );
-                }
-
                 current_command = None;
                 is_error = false;
+                result_line = 0;
+                empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
             } else if buffer_starts_with(&buffer, "%error") {
@@ -344,7 +322,7 @@ fn tmux_read_stdout(
             } else {
                 // Unsupported notification
                 let notification = from_utf8(&buffer).unwrap();
-                print!("Unknown notification: {}", notification)
+                println!("Unknown notification: {}", notification)
             }
         }
 
@@ -354,15 +332,15 @@ fn tmux_read_stdout(
 }
 
 #[inline]
-fn tmux_command_response(
+fn tmux_command_result(
     command: &TmuxCommand,
     buffer: &[u8],
+    result_line: usize,
+    empty_lines: usize,
     event_channel: &Sender<TmuxEvent>,
-    initial_output: &mut InitialOutputState,
-    end: bool,
 ) {
-    match (command, end) {
-        (TmuxCommand::InitialLayout, false) => {
+    match command {
+        TmuxCommand::InitialLayout => {
             // let bytes = output.as_bytes();
             // parse_tmux_layout(bytes);
             let layout = String::from_utf8(buffer.to_vec()).unwrap();
@@ -370,99 +348,25 @@ fn tmux_command_response(
                 .send_blocking(TmuxEvent::LayoutChanged(layout))
                 .unwrap();
         }
-        (TmuxCommand::InitialOutput(pane_id), end) => {
-            let ring_buffer = initial_output.buffer.borrow_mut();
+        TmuxCommand::InitialOutput(pane_id) => {
+            let output = parse_escaped_output(&buffer, result_line > 0, empty_lines);
 
-            if end {
-                // Clear screen (but keep history)
-                ring_buffer.pop_back();
-                ring_buffer.pop_back();
-                for b in b"J2[\x1bH[\x1b" {
-                    // for b in b"\x1b[H\x1b[2J" {
-                    ring_buffer.push_front(*b);
-                }
+            // let mut escaped = String::with_capacity(output.len() * 2);
+            // for c in &output {
+            //     if c.is_ascii_control() {
+            //         let x = std::ascii::escape_default(*c);
+            //         for c in x {
+            //             escaped.push(c as char);
+            //         }
+            //     } else {
+            //         escaped.push(*c as char);
+            //     }
+            // }
+            // println!("Tmux output: |{}|", escaped);
 
-                let mut blabla = Vec::new();
-                for b in ring_buffer.iter() {
-                    if b.is_ascii_control() {
-                        for x in escape_default(*b) {
-                            blabla.push(x);
-                        }
-                    } else {
-                        blabla.push(*b);
-                    }
-                }
-                println!("This was STILL in ringbuffer: \n{}", from_utf8(&blabla).unwrap());
-
-                // Flush anything remaining in the ringbuffer, but ignore empty lines at the end
-                for _ in 0..initial_output.empty_lines_end + 1 {
-                    ring_buffer.pop_back(); // Pop \n
-                    ring_buffer.pop_back(); // Pop \r
-                }
-
-                let len = ring_buffer.len();
-                let (line, _) = parse_tmux_output(ring_buffer.iter(), len);
-                event_channel
-                    .send_blocking(TmuxEvent::Output(*pane_id, line))
-                    .expect("Event channel closed!");
-
-                initial_output.buffer.clear();
-                initial_output.lines = 0;
-                initial_output.empty_lines_end = 0;
-                return;
-            }
-
-            // If ringbuffer is full, we need to remove a line from ringbuffer and print it on the screen
-            if initial_output.lines >= initial_output.max_lines {
-                let mut blabla = Vec::new();
-                for b in ring_buffer.iter() {
-                    if b.is_ascii_control() {
-                        for x in escape_default(*b) {
-                            blabla.push(x);
-                        }
-                    } else {
-                        blabla.push(*b);
-                    }
-                }
-                // println!("This was in ringbuffer: {}", from_utf8(&blabla).unwrap());
-
-                // TODO: Get size of the line using O(n)
-                let len = ring_buffer.len();
-                let (line, bytes_read) = parse_tmux_output(ring_buffer.iter(), len);
-                event_channel
-                    .send_blocking(TmuxEvent::Output(*pane_id, line))
-                    .expect("Event channel closed!");
-
-                ring_buffer.drain(..bytes_read);
-
-                // TODO: Remove line from ringbuffer
-                initial_output.lines -= 1;
-            }
-
-            // Keep track of empty lines at the end of pane output
-            if buffer.is_empty() {
-                initial_output.empty_lines_end += 1;
-            } else {
-                initial_output.empty_lines_end = 0;
-            }
-
-            println!("Given output {}", from_utf8(buffer).unwrap());
-            // Append the buffer to ringbuffer
-            for b in buffer {
-                ring_buffer.push_back(*b);
-            }
-            ring_buffer.push_back(b'\r');
-            ring_buffer.push_back(b'\n');
-            initial_output.lines += 1;
-        }
-        (TmuxCommand::ChangeSize(cols, rows), true) => {
-            initial_output.max_lines = *rows;
-
-            // If buffer is already large enough, leave it be
-            let desired_capacity = ((rows + 1) * cols * 4) as usize;
-            if initial_output.buffer.capacity() < desired_capacity {
-                initial_output.buffer = VecDeque::with_capacity(desired_capacity)
-            }
+            event_channel
+                .send_blocking(TmuxEvent::Output(*pane_id, output))
+                .expect("Event channel closed!");
         }
         _ => {}
     }

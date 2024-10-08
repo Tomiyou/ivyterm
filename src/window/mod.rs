@@ -187,8 +187,7 @@ impl IvyWindow {
     pub fn output_on_pane(&self, pane_id: u32, output: Vec<u8>) {
         let binding = &self.imp().terminals;
         if let Some(pane) = binding.borrow().get(&pane_id) {
-            pane.feed_output(output)
-            
+            pane.feed_output(output);
         }
     }
 
@@ -205,7 +204,7 @@ impl IvyWindow {
     pub fn tmux_resize_window(&self) {
         let mut binding = self.imp().tmux.borrow_mut();
         let tmux = binding.as_mut().unwrap();
-        tmux.change_size(80, 24);
+        tmux.change_size(80, 30);
     }
 
     pub fn tmux_inital_output(&self) {
