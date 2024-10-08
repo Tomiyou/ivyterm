@@ -5,6 +5,7 @@ use std::str::{from_utf8, from_utf8_unchecked};
 use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
 use layout::{parse_tmux_layout, read_first_u32};
+use log::debug;
 use vte4::GtkWindowExt;
 
 use crate::error::IvyError;
@@ -25,18 +26,20 @@ impl Tmux {
 
         match command {
             TmuxCommand::InitialLayout => {
-                println!("Getting initial layout");
+                debug!("Getting initial layout");
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream
                     .write_all(b"list-windows -F \"#{window_layout}\"\n")
                     .unwrap();
             }
             TmuxCommand::ChangeSize(cols, rows) => {
+                debug!("Resizing Tmux client to {}x{}", cols, rows);
                 let cmd = format!("refresh-client -C {},{}\n", cols, rows);
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream.write_all(cmd.as_bytes()).unwrap();
             }
             TmuxCommand::InitialOutput(pane_id) => {
+                debug!("Getting initial output of pane {}", pane_id);
                 let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream.write_all(cmd.as_bytes()).unwrap();
@@ -128,7 +131,6 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     match event {
         TmuxEvent::Attached => {}
         TmuxEvent::LayoutChanged(layout) => {
-            println!("Resizing TMUX");
             window.tmux_resize_window();
             window.tmux_inital_output();
         }
@@ -217,6 +219,9 @@ fn tmux_read_stdout(
         // Since we read until (and including) '\n', it will always be at the
         // end of the buffer. We should strip it here.
         buffer.pop();
+        debug!("Tmux output: {}", from_utf8(&buffer).unwrap());
+
+        // TODO: Probably not OK for initial output?
         if buffer.is_empty() {
             continue;
         }
@@ -298,9 +303,10 @@ fn tmux_command_response(
         }
         TmuxCommand::InitialOutput(pane_id) => {
             // Skip the first line of output
-            if line == 0 {
-                return;
-            }
+            // TODO: What do we do with this?
+            // if line == 0 {
+            //     return;
+            // }
 
             let output = parse_escaped_output(buffer, line >= 2);
             event_channel

@@ -11,4 +11,5 @@ glib = "0.19.5"
 gtk4 = { version = "0.8.2", features = ["v4_12"] }
 lazy_static = "1.4.0"
 libadwaita = "0.6.0"
+log = "0.4.22"
 vte4 = { version = "0.7.1", features = ["v0_74"] }
