@@ -5,13 +5,8 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, Bin};
 use vte4::{Cast, WidgetExt};
 
-use crate::container::separator::Separator;
-use crate::container::Container;
-
-pub struct TmuxSeparator {
-    pub s: Separator,
-    pub position: i32,
-}
+use crate::tmux_widgets::container::separator::TmuxSeparator;
+use crate::tmux_widgets::container::TmuxContainer;
 
 // Object holding the state
 #[derive(Default)]
@@ -50,7 +45,7 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
         orientation: Orientation,
         for_size: i32,
     ) -> (i32, i32, i32, i32) {
-        let container: Container = widget.clone().downcast().unwrap();
+        let container: TmuxContainer = widget.clone().downcast().unwrap();
 
         let (minimum, natural) = if orientation == container.orientation() {
             self.get_preferred_size_for_same_orientation(&container, orientation, for_size)
@@ -62,7 +57,7 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
     }
 
     fn allocate(&self, widget: &Widget, width: i32, height: i32, _baseline: i32) {
-        let container: Container = widget.clone().downcast().unwrap();
+        let container: TmuxContainer = widget.clone().downcast().unwrap();
         let orientation = container.orientation();
 
         let allocations: Vec<Allocation> = if orientation == Orientation::Horizontal {
@@ -106,7 +101,7 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
 impl TmuxLayoutPriv {
     fn get_preferred_size_for_opposite_orientation(
         &self,
-        container: &Container,
+        container: &TmuxContainer,
         opposite_orientation: gtk4::Orientation,
         size: i32,
     ) -> (i32, i32) {
@@ -136,7 +131,7 @@ impl TmuxLayoutPriv {
 
     fn get_preferred_size_for_same_orientation(
         &self,
-        paned: &Container,
+        paned: &TmuxContainer,
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32) {
@@ -166,7 +161,7 @@ impl TmuxLayoutPriv {
     }
 
     #[inline]
-    fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
+    fn get_children_sizes(&self, container: &TmuxContainer, size: i32) -> Vec<i32> {
         let separators = self.separators.borrow();
         let child_count = (separators.len() * 2) + 1;
         let mut children_sizes = Vec::with_capacity(child_count);
@@ -180,7 +175,7 @@ impl TmuxLayoutPriv {
         }
 
         // All Separators are the same size
-        let handle_size = separators.first().unwrap().s.get_handle_width();
+        let handle_size = separators.first().unwrap().get_handle_width();
         // Cell size is 2px larger than handle_size, since we must account for VTE widget
         // fixed padding of 1px on each side
         let cell_size = handle_size + 2;
@@ -190,7 +185,7 @@ impl TmuxLayoutPriv {
             // Each child size is calculated like this: position of the Separator
             // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
             //  We then subtract how much size we used up to this point
-            let separator_position = (separator.position * cell_size) + 2;
+            let separator_position = (separator.get_position() * cell_size) + 2;
             let child_size = separator_position - already_used_size;
             children_sizes.push(child_size);
             children_sizes.push(handle_size);

@@ -4,21 +4,16 @@ use gtk4::{Orientation, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*};
 
-use crate::window::IvyWindow;
+use crate::tmux_widgets::IvyTmuxWindow;
 
-use super::{layout_default::ContainerLayout, layout_tmux::TmuxLayout};
-
-pub enum Layout {
-    Default(ContainerLayout),
-    Tmux(TmuxLayout),
-}
+use super::{layout_tmux::TmuxLayout};
 
 // Object holding the state
 #[derive(glib::Properties)]
-#[properties(wrapper_type = super::Container)]
+#[properties(wrapper_type = super::TmuxContainer)]
 pub struct ContainerPriv {
-    pub window: RefCell<Option<IvyWindow>>,
-    pub layout: RefCell<Option<Layout>>,
+    pub window: RefCell<Option<IvyTmuxWindow>>,
+    pub layout: RefCell<Option<TmuxLayout>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
 }
@@ -27,13 +22,13 @@ pub struct ContainerPriv {
 #[glib::object_subclass]
 impl ObjectSubclass for ContainerPriv {
     const NAME: &'static str = "IvyTerminalContainer";
-    type Type = super::Container;
+    type Type = super::TmuxContainer;
     type ParentType = Widget;
     type Interfaces = (gtk4::Orientable,);
 
     fn class_init(gtk_class: &mut Self::Class) {
         // The layout manager determines how child widgets are laid out.
-        gtk_class.set_layout_manager_type::<ContainerLayout>();
+        gtk_class.set_layout_manager_type::<TmuxLayout>();
     }
 
     fn new() -> Self {

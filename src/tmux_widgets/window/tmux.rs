@@ -6,17 +6,14 @@ use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
-    keyboard::{keycode_to_arrow_key, KeyboardAction},
-    tmux::{Tmux, TmuxEvent, TmuxTristate},
-    toplevel::TopLevel,
-    window::tmux_layout_translation::parse_tmux_layout,
+    keyboard::{keycode_to_arrow_key, KeyboardAction}, tmux_widgets::{api::{Tmux, TmuxEvent, TmuxTristate}, toplevel::TmuxTopLevel, window::tmux_layout_sync::parse_tmux_layout},
 };
 
-use super::IvyWindow;
+use super::IvyTmuxWindow;
 
 const RESIZE_TIMEOUT: Duration = Duration::from_millis(5);
 
-impl IvyWindow {
+impl IvyTmuxWindow {
     pub fn init_tmux(&self, tmux: Tmux) {
         let imp = self.imp();
 
@@ -85,7 +82,7 @@ impl IvyWindow {
         let selected_page = tab_view.selected_page();
 
         if let Some(selected_page) = selected_page {
-            let top_level: TopLevel = selected_page.child().downcast().unwrap();
+            let top_level: TmuxTopLevel = selected_page.child().downcast().unwrap();
             println!("Top Level width {} height {}", top_level.width(), top_level.height());
             let (cols, rows) = top_level.get_cols_rows();
 

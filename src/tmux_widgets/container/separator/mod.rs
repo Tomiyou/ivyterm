@@ -1,4 +1,4 @@
-use glib::Object;
+use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Cursor, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
@@ -7,13 +7,13 @@ use crate::settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH};
 mod imp;
 
 glib::wrapper! {
-    pub struct Separator(ObjectSubclass<imp::SeparatorPriv>)
+    pub struct TmuxSeparator(ObjectSubclass<imp::SeparatorPriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Orientable;
 }
 
-impl Separator {
-    pub fn new(orientation: &Orientation, handle_size: Option<i32>) -> Self {
+impl TmuxSeparator {
+    pub fn new(orientation: &Orientation, handle_size: i32, position: i32) -> Self {
         let (separator_orientation, cursor) = match orientation {
             Orientation::Horizontal => (Orientation::Vertical, "col-resize"),
             Orientation::Vertical => (Orientation::Horizontal, "row-resize"),
@@ -31,7 +31,7 @@ impl Separator {
         // Calculate Handle size and apply margins
         // Since each VTE widget also has a fixed padding of 1 px for each direction,
         // we subtract 2
-        let handle_size = handle_size.unwrap_or(SPLIT_HANDLE_WIDTH) - 2;
+        let handle_size = handle_size - 2;
         let margin_size = handle_size - SPLIT_VISUAL_WIDTH;
         let first_half = margin_size / 2;
         let second_half = margin_size - first_half;
@@ -42,6 +42,8 @@ impl Separator {
             separator.set_margin_start(first_half);
             separator.set_margin_end(second_half);
         }
+
+        bin.set_position(position);
 
         // Change the cursor when hovering separator and container
         let cursor = Cursor::from_name(cursor, None);
@@ -56,6 +58,14 @@ impl Separator {
         let orientation = get_opposite_orientation(self.orientation());
         let (_, handle_size, _, _) = self.measure(orientation, -1);
         handle_size
+    }
+
+    pub fn get_position(&self) -> i32 {
+        self.imp().position.get()
+    }
+
+    pub fn set_position(&self, new: i32) {
+        self.imp().position.replace(new);
     }
 }
 

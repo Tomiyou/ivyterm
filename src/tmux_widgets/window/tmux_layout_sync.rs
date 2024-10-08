@@ -3,7 +3,9 @@ use std::str::from_utf8;
 use gtk4::{Orientation, Widget};
 use libadwaita::prelude::*;
 
-use crate::{container::{Container, TmuxLayout}, terminal::Terminal, toplevel::TopLevel, window::IvyWindow};
+use crate::tmux_widgets::{container::{TmuxContainer, TmuxSeparator}, terminal::TmuxTerminal, toplevel::TmuxTopLevel};
+
+use super::IvyTmuxWindow;
 
 #[derive(Debug)]
 struct Rectangle {
@@ -19,7 +21,7 @@ fn print_tab(nested: u32) {
     }
 }
 
-pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
+pub fn parse_tmux_layout(buffer: &[u8], window: &IvyTmuxWindow) {
     // Read tab ID
     let (tab_id, bytes_read) = read_first_u32(buffer);
     let buffer = &buffer[bytes_read + 1..];
@@ -34,7 +36,7 @@ pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
         top_level
     } else {
         println!("Creating new Tab (with new top_level)");
-        window.new_tab(Some(tab_id))
+        window.new_tab(tab_id)
     };
 
     println!(
@@ -48,16 +50,15 @@ pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
     parse_layout_root(buffer, window, &top_level);
 }
 
-struct TmuxContainer {
-    c: Container,
-    layout: TmuxLayout,
+struct ParentContainer {
+    c: TmuxContainer,
     bounds: Rectangle,
 }
 
 fn parse_layout_root(
     buffer: &[u8],
-    window: &IvyWindow,
-    top_level: &TopLevel,
+    window: &IvyTmuxWindow,
+    top_level: &TmuxTopLevel,
 ) {
     let mut buffer = buffer;
 
@@ -92,7 +93,7 @@ fn parse_layout_root(
         let (pane_id, bytes_read) = read_first_u32(buffer);
 
         // terminal_callback(pane_id, window, top_level, parent, allocation, &mut current_sibling);
-        if let Some(existing) = window.get_pane(pane_id) {
+        if let Some(existing) = window.get_terminal_by_id(pane_id) {
             // Pane already exists
             if let Some(child) = top_level.child() {
                 if existing.eq(&child) {
@@ -112,7 +113,7 @@ fn parse_layout_root(
         } else {
             // Terminal doesn't exist yet, we need to create it
             // Terminal does not exist yet, simply append it after previous_sibling
-            let new_terminal = Terminal::new(top_level, window, Some(pane_id));
+            let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
             top_level.set_child(Some(&new_terminal));
             println!("Created pane {} as only child", pane_id);
         }
@@ -125,7 +126,7 @@ fn parse_layout_root(
         };
 
         let container = if let Some(child) = top_level.child() {
-            if let Ok(container) = child.downcast::<Container>() {
+            if let Ok(container) = child.downcast::<TmuxContainer>() {
                 println!("The first child is already a Container");
                 // The first child is already a Container
                 container
@@ -133,22 +134,20 @@ fn parse_layout_root(
                 // The first child is a Terminal, replace with a new Container
                 println!("The first child is a Terminal, replace with a new Container");
                 top_level.set_child(None::<&Widget>);
-                let container = Container::new(orientation, window);
+                let container = TmuxContainer::new(orientation, window);
                 top_level.set_child(Some(&container));
                 container
             }
         } else {
             // top_level doesn't have any children yet
             println!("top_level doesn't have any children yet");
-            let container = Container::new(orientation, window);
+            let container = TmuxContainer::new(orientation, window);
             top_level.set_child(Some(&container));
             container
         };
 
-        let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
-        let container = TmuxContainer {
+        let container = ParentContainer {
             c: container,
-            layout,
             bounds: allocation,
         };
 
@@ -169,9 +168,9 @@ fn parse_layout_root(
 // @0,6306,80x5,0,0[80x2,0,0,0,80x2,0,3{40x2,0,3,1,39x2,41,3,2}]
 fn parse_layout_recursive(
     buffer: &[u8],
-    window: &IvyWindow,
-    top_level: &TopLevel,
-    parent: &TmuxContainer,
+    window: &IvyTmuxWindow,
+    top_level: &TmuxTopLevel,
+    parent: &ParentContainer,
     nested: u32,
 ) {
     // We can assume that layout is purse ASCII text
@@ -281,7 +280,7 @@ fn parse_layout_recursive(
         child.unparent();
         // We do this here to avoid cloning on downcast()
         current_sibling = child.next_sibling();
-        if let Ok(container) = child.downcast::<Container>() {
+        if let Ok(container) = child.downcast::<TmuxContainer>() {
             remove_unparented_widgets(&container);
         }
     }
@@ -299,29 +298,28 @@ fn parse_layout_recursive(
 #[inline]
 fn container_callback(
     orientation: Orientation,
-    window: &IvyWindow,
-    top_level: &TopLevel,
-    parent: &TmuxContainer,
+    window: &IvyTmuxWindow,
+    top_level: &TmuxTopLevel,
+    parent: &ParentContainer,
     bounds: Rectangle,
     next_sibling: &mut Option<Widget>,
     nested: u32,
-) -> TmuxContainer {
+) -> ParentContainer {
     let position = calculate_position(&bounds, parent);
 
     // If the next_sibling is already a Container, we don't have to create it
     if let Some(next_pane) = next_sibling {
-        if let Ok(container) = next_pane.clone().downcast::<Container>() {
+        if let Ok(container) = next_pane.clone().downcast::<TmuxContainer>() {
             // Ensure bounds (position) are correct?
             println!("Container is already in the correct place");
             if let Some(separator) = container.next_sibling() {
-                print_tab(nested);
-                parent.layout.set_separator_position(&separator, position);
+                let separator: TmuxSeparator = separator.downcast().unwrap();
+                separator.set_position(position);
+                // print_tab(nested);
             }
-            let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
             move_child_pointer(next_sibling, container.clone().upcast());
-            return TmuxContainer {
+            return ParentContainer {
                 c: container,
-                layout,
                 bounds,
             };
         } else {
@@ -331,13 +329,11 @@ fn container_callback(
         println!("Created new Container, next_sibling is None, position {}", position)
     }
 
-    let container = Container::new(orientation, window);
-    let layout: TmuxLayout = container.layout_manager().unwrap().downcast().unwrap();
-    parent.c.prepend(&container, next_sibling, Some(position));
+    let container = TmuxContainer::new(orientation, window);
+    parent.c.prepend(&container, next_sibling, position);
 
-    return TmuxContainer {
+    return ParentContainer {
         c: container,
-        layout,
         bounds,
     };
 }
@@ -346,19 +342,19 @@ fn container_callback(
 #[inline]
 fn terminal_callback(
     pane_id: u32,
-    window: &IvyWindow,
-    top_level: &TopLevel,
-    parent: &TmuxContainer,
+    window: &IvyTmuxWindow,
+    top_level: &TmuxTopLevel,
+    parent: &ParentContainer,
     bounds: Rectangle,
     next_sibling: &mut Option<Widget>,
     nested: u32,
-) -> Terminal {
+) -> TmuxTerminal {
     // We know Terminal with given pane_id should be exactly *here* (as in before/exactly next_sibling)
     // next_sibling is always either Terminal or Container
     let position = calculate_position(&bounds, parent);
 
     // Check if a terminal with the given pane_id already exists
-    if let Some(existing) = window.get_pane(pane_id) {
+    if let Some(existing) = window.get_terminal_by_id(pane_id) {
         // Check if there is a next_sibling
         if let Some(next_pane) = next_sibling {
             // Check if this next_pane is already this terminal
@@ -366,8 +362,8 @@ fn terminal_callback(
                 println!("Pane with ID {} already in the correct place, position is {}", pane_id, position);
                 // Pane is in correct place, just make sure the Separator position is correct
                 if let Some(separator) = next_pane.next_sibling() {
-                    print_tab(nested);
-                    parent.layout.set_separator_position(&separator, position);
+                    let separator: TmuxSeparator = separator.downcast().unwrap();
+                    separator.set_position(position);
                 }
                 // Since we skipped prepending a Terminal, we have to move the next_sibling pointer
                 move_child_pointer(next_sibling, existing.clone().upcast());
@@ -379,7 +375,7 @@ fn terminal_callback(
         // current position first
         unparent_pane(&existing);
         // Now insert it in the correct place
-        parent.c.prepend(&existing, next_sibling, Some(position));
+        parent.c.prepend(&existing, next_sibling, position);
         println!("Pane with ID {} moved to new position ({})", pane_id, position);
 
         return existing;
@@ -387,8 +383,8 @@ fn terminal_callback(
 
     // Terminal does not exist yet, simply append it after previous_sibling
     // print_tab(nested);
-    let new_terminal = Terminal::new(top_level, window, Some(pane_id));
-    parent.c.prepend(&new_terminal, next_sibling, Some(position));
+    let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
+    parent.c.prepend(&new_terminal, next_sibling, position);
     // println!("Created new Terminal {}", pane_id);
 
     new_terminal
@@ -396,7 +392,7 @@ fn terminal_callback(
 
 // @0,6306,80x5,0,0[80x2,0,0,0,80x2,0,3{40x2,0,3,1,39x2,41,3,2}]
 #[inline]
-fn calculate_position(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
+fn calculate_position(bounds: &Rectangle, parent: &ParentContainer) -> i32 {
     let orientation = parent.c.orientation();
     // match orientation {
     //     Orientation::Horizontal => bounds.x - parent.bounds.x - 1,
@@ -432,14 +428,14 @@ fn move_child_pointer(next_sibling: &mut Option<Widget>, new_child: Widget) {
     }
 }
 
-fn remove_unparented_widgets(container: &Container) {
+fn remove_unparented_widgets(container: &TmuxContainer) {
     let mut next_child = container.first_child();
 
     while let Some(child) = next_child {
         child.unparent();
         // We do this here to avoid cloning on downcast()
         next_child = child.next_sibling();
-        if let Ok(container) = child.downcast::<Container>() {
+        if let Ok(container) = child.downcast::<TmuxContainer>() {
             remove_unparented_widgets(&container);
         }
     }

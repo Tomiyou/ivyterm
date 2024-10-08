@@ -6,25 +6,21 @@ use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
-    application::IvyApplication, keyboard::KeyboardAction, toplevel::TopLevel, window::IvyWindow,
+    application::IvyApplication, keyboard::KeyboardAction,
 };
 
+use super::{toplevel::TmuxTopLevel, IvyTmuxWindow};
+
 glib::wrapper! {
-    pub struct Terminal(ObjectSubclass<imp::TerminalPriv>)
+    pub struct TmuxTerminal(ObjectSubclass<imp::TerminalPriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Actionable, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
-impl Terminal {
-    pub fn new(top_level: &TopLevel, window: &IvyWindow, pane_id: Option<u32>) -> Self {
+impl TmuxTerminal {
+    pub fn new(top_level: &TmuxTopLevel, window: &IvyTmuxWindow, pane_id: u32) -> Self {
         let window = window.clone();
 
-        let pane_id = match pane_id {
-            Some(pane_id) => pane_id,
-            None => window.unique_terminal_id(),
-        };
-
-        let is_tmux = window.is_tmux();
         let top_level = top_level.clone();
 
         let app = window.application().unwrap();
@@ -57,15 +53,15 @@ impl Terminal {
         top_level.register_terminal(&terminal);
 
         // Close terminal + pane/tab when the child (shell) exits
-        vte.connect_child_exited(glib::clone!(
-            #[weak]
-            top_level,
-            #[weak]
-            terminal,
-            move |_, _| {
-                top_level.close_pane(&terminal);
-            }
-        ));
+        // vte.connect_child_exited(glib::clone!(
+        //     #[weak]
+        //     top_level,
+        //     #[weak]
+        //     terminal,
+        //     move |_, _| {
+        //         top_level.close_pane(&terminal);
+        //     }
+        // ));
 
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
@@ -94,47 +90,16 @@ impl Terminal {
                 if let Some(event) = eventctl.current_event() {
                     // Check if pressed keys match a keybinding
                     if let Some(action) = app.handle_keyboard_event(event) {
-                        match is_tmux {
-                            true => window.tmux_handle_keybinding(action, pane_id),
-                            false => handle_keyboard(action, &terminal, &top_level, &vte),
-                        }
+                        window.tmux_handle_keybinding(action, pane_id);
                         return Propagation::Stop;
                     }
                     // Normal button press is handled separately for Tmux
-                    if is_tmux {
-                        window.tmux_keypress(pane_id, key, keyval, state)
-                    }
+                    window.tmux_keypress(pane_id, key, keyval, state)
                 }
                 Propagation::Proceed
             }
         ));
         vte.add_controller(eventctl);
-
-        if !is_tmux {
-            // Spawn terminal
-            let pty_flags = PtyFlags::DEFAULT;
-            let argv = ["/bin/bash"];
-            let envv = [];
-            let spawn_flags = SpawnFlags::DEFAULT;
-
-            vte.spawn_async(
-                pty_flags,
-                None,
-                &argv,
-                &envv,
-                spawn_flags,
-                || {},
-                -1,
-                gtk4::gio::Cancellable::NONE,
-                glib::clone!(
-                    #[weak]
-                    vte,
-                    move |_result| {
-                        vte.grab_focus();
-                    }
-                ),
-            );
-        }
 
         terminal
     }
@@ -204,7 +169,7 @@ impl Terminal {
 }
 
 #[inline]
-fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopLevel, vte: &Vte) {
+fn handle_keyboard(action: KeyboardAction, terminal: &TmuxTerminal, top_level: &TmuxTopLevel, vte: &Vte) {
     match action {
         KeyboardAction::PaneSplit(vertical) => {
             let orientation = if vertical {
@@ -213,16 +178,16 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
                 Orientation::Horizontal
             };
 
-            top_level.split_pane(terminal, orientation);
+            // top_level.split_pane(terminal, orientation);
         }
         KeyboardAction::PaneClose => {
-            top_level.close_pane(terminal);
+            // top_level.close_pane(terminal);
         }
         KeyboardAction::TabNew => {
-            top_level.create_tab(None);
+            // top_level.create_tab(None);
         }
         KeyboardAction::TabClose => {
-            top_level.close_tab();
+            // top_level.close_tab();
         }
         KeyboardAction::SelectPane(direction) => {
             let previous_size = top_level.unzoom();

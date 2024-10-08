@@ -7,11 +7,10 @@ use libadwaita::{glib, prelude::*, Bin};
 
 // Object holding the state
 #[derive(Debug, glib::Properties)]
-#[properties(wrapper_type = super::Separator)]
+#[properties(wrapper_type = super::TmuxSeparator)]
 pub struct SeparatorPriv {
     // Left/top position of handle
-    pub percentage: Cell<f64>,
-    pub prev_sibling_size: Cell<i32>,
+    pub position: Cell<i32>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
 }
@@ -20,15 +19,14 @@ pub struct SeparatorPriv {
 #[glib::object_subclass]
 impl ObjectSubclass for SeparatorPriv {
     const NAME: &'static str = "IvyTerminalSeparator";
-    type Type = super::Separator;
+    type Type = super::TmuxSeparator;
     type ParentType = Bin;
     type Interfaces = (gtk4::Orientable,);
 
     fn new() -> Self {
         // Here we set the default orientation.
         Self {
-            percentage: Cell::new(0.0),
-            prev_sibling_size: Cell::new(0),
+            position: Cell::new(0),
             orientation: RefCell::new(Orientation::Horizontal),
         }
     }

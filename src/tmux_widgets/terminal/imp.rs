@@ -3,13 +3,13 @@ use std::cell::{Cell, RefCell};
 use libadwaita::{glib, subclass::prelude::*};
 use vte4::{Terminal as Vte, WidgetExt};
 
-use crate::window::IvyWindow;
+use crate::tmux_widgets::IvyTmuxWindow;
 
 // Object holding the state
 #[derive(Default)]
 pub struct TerminalPriv {
     pub vte: RefCell<Option<Vte>>,
-    window: RefCell<Option<IvyWindow>>,
+    window: RefCell<Option<IvyTmuxWindow>>,
     pub id: Cell<u32>,
 }
 
@@ -17,7 +17,7 @@ pub struct TerminalPriv {
 #[glib::object_subclass]
 impl ObjectSubclass for TerminalPriv {
     const NAME: &'static str = "IvyTerminalCustomTerminal";
-    type Type = super::Terminal;
+    type Type = super::TmuxTerminal;
     type ParentType = libadwaita::Bin;
 }
 
@@ -37,7 +37,7 @@ impl WidgetImpl for TerminalPriv {
 impl BinImpl for TerminalPriv {}
 
 impl TerminalPriv {
-    pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyWindow) {
+    pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyTmuxWindow) {
         self.id.replace(id);
         self.vte.borrow_mut().replace(terminal.clone());
         self.window.borrow_mut().replace(window.clone());

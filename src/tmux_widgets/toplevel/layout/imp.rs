@@ -5,7 +5,7 @@ use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 use vte4::{Cast, LayoutManagerExt, WidgetExt};
 
-use crate::toplevel::TopLevel;
+use crate::tmux_widgets::toplevel::TmuxTopLevel;
 
 // Object holding the state
 pub struct TopLevelLayoutPriv {
@@ -80,7 +80,7 @@ impl LayoutManagerImpl for TopLevelLayoutPriv {
             self.last_allocated_size.replace(new_allocated_size);
 
             if let Some(top_level) = self.obj().widget() {
-                let top_level: TopLevel = top_level.downcast().unwrap();
+                let top_level: TmuxTopLevel = top_level.downcast().unwrap();
                 top_level.layout_alloc_changed();
             }
         }

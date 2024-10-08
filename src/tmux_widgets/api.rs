@@ -8,7 +8,8 @@ use log::debug;
 
 use crate::helpers::IvyError;
 use crate::keyboard::KeyboardAction;
-use crate::window::IvyWindow;
+
+use super::IvyTmuxWindow;
 
 #[derive(PartialEq)]
 pub enum TmuxTristate {
@@ -177,7 +178,7 @@ pub enum TmuxEvent {
     Exit,
 }
 
-pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
+pub fn attach_tmux(session_name: &str, window: &IvyTmuxWindow) -> Result<Tmux, IvyError> {
     // Create async channels
     let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
         async_channel::unbounded();

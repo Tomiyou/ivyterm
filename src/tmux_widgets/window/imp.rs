@@ -4,19 +4,20 @@ use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
-// use crate::helpers::SortedTerminals;
-// use crate::tmux::Tmux;
-// use crate::toplevel::TopLevel;
+use crate::helpers::SortedVec;
+use crate::tmux_widgets::api::Tmux;
+use crate::tmux_widgets::terminal::TmuxTerminal;
+use crate::tmux_widgets::toplevel::TmuxTopLevel;
 
 // Object holding the state
 #[derive(Default)]
 pub struct IvyWindowPriv {
-    // pub tmux: RefCell<Option<Tmux>>,
+    pub tmux: RefCell<Option<Tmux>>,
     pub tab_view: RefCell<Option<TabView>>,
-    // pub tabs: RefCell<Vec<TopLevel>>,
-    // pub terminals: RefCell<SortedTerminals>,
+    pub tabs: RefCell<Vec<TmuxTopLevel>>,
+    pub terminals: RefCell<SortedVec<TmuxTerminal>>,
     pub css_provider: RefCell<CssProvider>,
-    // pub char_size: Cell<(i32, i32)>,
+    pub char_size: Cell<(i32, i32)>,
 }
 
 // The central trait for subclassing a GObject

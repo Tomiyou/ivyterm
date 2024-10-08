@@ -1,6 +1,6 @@
 mod imp;
-// mod tmux_translation;
-// mod tmux_layout_translation;
+mod tmux;
+mod tmux_layout_sync;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
@@ -15,6 +15,8 @@ use crate::{
     // terminal::Terminal,
     // toplevel::TopLevel,
 };
+
+use super::{terminal::TmuxTerminal, toplevel::TmuxTopLevel};
 
 glib::wrapper! {
     pub struct IvyTmuxWindow(ObjectSubclass<imp::IvyWindowPriv>)
@@ -90,34 +92,26 @@ impl IvyTmuxWindow {
         window
     }
 
-    // pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
-    //     let imp = self.imp();
+    pub fn new_tab(&self, id: u32) -> TmuxTopLevel {
+        let imp = self.imp();
 
-    //     let tab_id = if let Some(id) = id {
-    //         id
-    //     } else {
-    //         self.unique_tab_id()
-    //     };
+        let binding = imp.tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
 
-    //     let is_tmux = imp.tmux.borrow().is_some();
+        // Create new TopLevel widget
+        let top_level = TmuxTopLevel::new(tab_view, self, id);
+        let mut tabs = imp.tabs.borrow_mut();
+        tabs.push(top_level.clone());
 
-    //     let binding = imp.tab_view.borrow();
-    //     let tab_view = binding.as_ref().unwrap();
+        // Add pane as a page
+        let page = tab_view.append(&top_level);
 
-    //     // Create new TopLevel widget
-    //     let top_level = TopLevel::new(tab_view, self, tab_id, !is_tmux);
-    //     let mut tabs = imp.tabs.borrow_mut();
-    //     tabs.push(top_level.clone());
+        let text = format!("Terminal {}", id);
+        page.set_title(&text);
+        tab_view.set_selected_page(&page);
 
-    //     // Add pane as a page
-    //     let page = tab_view.append(&top_level);
-
-    //     let text = format!("Terminal {}", tab_id);
-    //     page.set_title(&text);
-    //     tab_view.set_selected_page(&page);
-
-    //     top_level
-    // }
+        top_level
+    }
 
     // pub fn close_tab(&self, child: &TopLevel) {
     //     let binding = self.imp().tab_view.borrow();
@@ -126,45 +120,43 @@ impl IvyTmuxWindow {
     //     tab_view.close_page(&page);
     // }
 
-    // pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
-    //     let imp = self.imp();
-    //     let mut terminals = imp.terminals.borrow_mut();
-    //     terminals.insert(pane_id, &terminal);
-    //     println!("Terminal with ID {} registered", pane_id);
+    pub fn register_terminal(&self, pane_id: u32, terminal: &TmuxTerminal) {
+        let imp = self.imp();
+        let mut terminals = imp.terminals.borrow_mut();
+        terminals.insert(pane_id, &terminal);
+        println!("Terminal with ID {} registered", pane_id);
 
-    //     if self.is_tmux() {
-    //         let char_size = terminal.get_char_width_height();
-    //         imp.char_size.replace(char_size);
-    //     }
-    // }
+        let char_size = terminal.get_char_width_height();
+        imp.char_size.replace(char_size);
+    }
 
-    // pub fn unregister_terminal(&self, pane_id: u32) {
-    //     let mut terminals = self.imp().terminals.borrow_mut();
-    //     terminals.remove(pane_id);
-    //     println!("Terminal with ID {} unregistered", pane_id);
-    // }
+    pub fn unregister_terminal(&self, pane_id: u32) {
+        let mut terminals = self.imp().terminals.borrow_mut();
+        terminals.remove(pane_id);
+        println!("Terminal with ID {} unregistered", pane_id);
+    }
 
-    // pub fn get_top_level(&self, id: u32) -> Option<TopLevel> {
-    //     let tabs = self.imp().tabs.borrow();
-    //     for top_level in tabs.iter() {
-    //         println!("Top level iter {}", top_level.tab_id());
-    //         if top_level.tab_id() == id {
-    //             return Some(top_level.clone());
-    //         }
-    //     }
+    pub fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
+        let tabs = self.imp().tabs.borrow();
+        for top_level in tabs.iter() {
+            println!("Top level iter {}", top_level.tab_id());
+            if top_level.tab_id() == id {
+                return Some(top_level.clone());
+            }
+        }
 
-    //     None
-    // }
+        None
+    }
 
-    // pub fn get_pane(&self, id: u32) -> Option<Terminal> {
-    //     let terminals = self.imp().terminals.borrow();
-    //     let pane = terminals.get(id);
-    //     if let Some(pane) = pane {
-    //         return Some(pane.clone());
-    //     }
+    pub fn get_terminal_by_id(&self, id: u32) -> Option<TmuxTerminal> {
+        let terminals = self.imp().terminals.borrow();
+        let pane = terminals.get(id);
+        if let Some(pane) = pane {
+            return Some(pane.clone());
+        }
 
-    //     None
-    // }
+        None
+    }
 
     // pub fn update_terminal_config(
     //     &self,

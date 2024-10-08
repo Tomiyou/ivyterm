@@ -5,145 +5,47 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
-use crate::{
-    container::Container, helpers::IdTerminal, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH, terminal::Terminal, window::IvyWindow
-};
+use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
 
 use self::imp::Zoomed;
 
+use super::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow};
+
 glib::wrapper! {
-    pub struct TopLevel(ObjectSubclass<imp::TopLevelPriv>)
+    pub struct TmuxTopLevel(ObjectSubclass<imp::TopLevelPriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Actionable, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
-impl TopLevel {
-    pub fn new(tab_view: &TabView, window: &IvyWindow, tab_id: u32, spawn_terminal: bool) -> Self {
-        let top_level: TopLevel = Object::builder().build();
+impl TmuxTopLevel {
+    pub fn new(tab_view: &TabView, window: &IvyTmuxWindow, tab_id: u32) -> Self {
+        let top_level: TmuxTopLevel = Object::builder().build();
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
         top_level.set_focusable(true);
 
         top_level.imp().init_values(tab_view, window, tab_id);
 
-        if spawn_terminal {
-            let terminal = Terminal::new(&top_level, window, None);
-            top_level.set_child(Some(&terminal));
-        }
-
         top_level
     }
 
-    pub fn create_tab(&self, id: Option<u32>) {
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
-        window.new_tab(id);
-    }
+    // pub fn create_tab(&self, id: Option<u32>) {
+    //     let binding = self.imp().window.borrow();
+    //     let window = binding.as_ref().unwrap();
+    //     window.new_tab(id);
+    // }
 
-    pub fn close_tab(&self) {
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
-        window.close_tab(self);
-    }
+    // pub fn close_tab(&self) {
+    //     let binding = self.imp().window.borrow();
+    //     let window = binding.as_ref().unwrap();
+    //     window.close_tab(self);
+    // }
 
     pub fn tab_id(&self) -> u32 {
         self.imp().tab_id.get()
     }
 
-    pub fn split_pane(
-        &self,
-        terminal: &Terminal,
-        orientation: Orientation,
-    ) -> (Terminal, Option<Container>) {
-        self.unzoom();
-
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
-        let new_terminal = Terminal::new(&self, window, None);
-
-        let parent = terminal.parent().unwrap();
-        if parent.eq(self) {
-            // Terminal's parent is myself
-            let old_terminal = self.child().unwrap();
-
-            self.set_child(None::<&Self>);
-            let container = Container::new(orientation, window);
-            container.append(&old_terminal, None);
-            container.append(&new_terminal, None);
-            self.set_child(Some(&container));
-            return (new_terminal, Some(container));
-        }
-
-        // Terminal's parent is a Container widget
-        let container: Container = parent.downcast().unwrap();
-
-        // If the split orientation is the same as Container's orientation, we can simply insert a new Pane
-        if container.orientation() == orientation {
-            container.append(&new_terminal, None);
-            return (new_terminal, None);
-        }
-
-        // The split orientation is different from Container's, meaning we have to insert a new Container
-        let new_container = Container::new(orientation, window);
-        container.replace(terminal, &new_container);
-        new_container.append(terminal, None);
-        new_container.append(&new_terminal, None);
-
-        return (new_terminal, Some(new_container));
-    }
-
-    pub fn close_pane(&self, closing_terminal: &Terminal) {
-        self.unzoom();
-        self.unregister_terminal(closing_terminal);
-
-        let parent = closing_terminal.parent().unwrap();
-        if parent.eq(self) {
-            // Parent of the closing terminal is myself, we need to close this tab
-            self.close_tab();
-            return;
-        }
-
-        // Parent of the closing terminal is a Container widget
-        let container: Container = parent.downcast().unwrap();
-        let remaining_count = container.remove(closing_terminal);
-
-        // At this point we know there is at least 1 remaining terminal
-        let last_focused_terminal = self.lru_terminal().unwrap();
-
-        // If the conatiner has more than 1 child left, we are done. Otherwise remove the container
-        // and leave the 1 child in its place.
-        if remaining_count > 1 {
-            last_focused_terminal.grab_focus();
-            return;
-        }
-
-        // Remove the last child from Container, which will be deleted
-        let retained_child = container.first_child().unwrap();
-        retained_child.unparent();
-
-        // Determine if parent is type Bin or Container
-        let parent = container.parent().unwrap();
-
-        if let Ok(parent) = parent.clone().downcast::<TopLevel>() {
-            // Parent is TopLevel
-            parent.set_child(Some(&retained_child));
-            // Since retained_child is the only terminal remaining, focus it
-            last_focused_terminal.grab_focus();
-            return;
-        }
-
-        if let Ok(parent) = parent.downcast::<Container>() {
-            // Parent is another Container
-            parent.replace(&container, &retained_child);
-            // Grab focus on the least recently used terminal
-            last_focused_terminal.grab_focus();
-            return;
-        }
-
-        panic!("Parent is neither Bin nor Paned");
-    }
-
-    pub fn toggle_zoom(&self, terminal: &Terminal) {
+    pub fn toggle_zoom(&self, terminal: &TmuxTerminal) {
         let imp = self.imp();
         let binding = imp.terminals.borrow();
         if binding.len() < 2 {
@@ -168,12 +70,12 @@ impl TopLevel {
         let (x, y, width, height) = terminal.bounds().unwrap();
 
         // Remove Terminal from its parent Container
-        let container: Container = terminal.parent().unwrap().downcast().unwrap();
+        let container: TmuxContainer = terminal.parent().unwrap().downcast().unwrap();
         let previous_sibling = terminal.prev_sibling();
         terminal.unparent();
 
         // Remove root Container and replace it with Terminal
-        let root_paned: Container = self.child().unwrap().downcast().unwrap();
+        let root_paned: TmuxContainer = self.child().unwrap().downcast().unwrap();
         self.set_child(Some(terminal));
         terminal.grab_focus();
 
@@ -203,7 +105,7 @@ impl TopLevel {
         None
     }
 
-    pub fn register_terminal(&self, terminal: &Terminal) {
+    pub fn register_terminal(&self, terminal: &TmuxTerminal) {
         let pane_id = terminal.pane_id();
         let imp = self.imp();
 
@@ -211,10 +113,13 @@ impl TopLevel {
         terminals_vec.push(terminal.clone());
 
         let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        lru_terminals.insert(0, IdTerminal {
-            id: pane_id,
-            terminal: terminal.clone(),
-        });
+        lru_terminals.insert(
+            0,
+            WithId {
+                id: pane_id,
+                terminal: terminal.clone(),
+            },
+        );
 
         // Also update global terminal hashmap
         let window = imp.window.borrow();
@@ -224,7 +129,7 @@ impl TopLevel {
             .register_terminal(pane_id, terminal);
     }
 
-    pub fn unregister_terminal(&self, terminal: &Terminal) {
+    pub fn unregister_terminal(&self, terminal: &TmuxTerminal) {
         let pane_id = terminal.pane_id();
         let imp = self.imp();
 
@@ -244,7 +149,7 @@ impl TopLevel {
         window.as_ref().unwrap().unregister_terminal(pane_id);
     }
 
-    pub fn focus_changed(&self, id: u32, terminal: &Terminal) {
+    pub fn focus_changed(&self, id: u32, terminal: &TmuxTerminal) {
         let mut lru_terminals = self.imp().lru_terminals.borrow_mut();
 
         if let Some(id_terminal) = lru_terminals.first() {
@@ -263,10 +168,16 @@ impl TopLevel {
         }
 
         // Insert at the beginning
-        lru_terminals.insert(0, IdTerminal { id: id, terminal: terminal.clone() });
+        lru_terminals.insert(
+            0,
+            WithId {
+                id: id,
+                terminal: terminal.clone(),
+            },
+        );
     }
 
-    pub fn lru_terminal(&self) -> Option<Terminal> {
+    pub fn lru_terminal(&self) -> Option<TmuxTerminal> {
         let lru_terminals = self.imp().lru_terminals.borrow();
         match lru_terminals.first() {
             Some(id_terminal) => Some(id_terminal.terminal.clone()),
@@ -276,10 +187,10 @@ impl TopLevel {
 
     pub fn find_neighbor(
         &self,
-        terminal: &Terminal,
+        terminal: &TmuxTerminal,
         direction: Direction,
         use_size: Option<(i32, i32, i32, i32)>,
-    ) -> Option<Terminal> {
+    ) -> Option<TmuxTerminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
             return None;
@@ -365,7 +276,10 @@ impl TopLevel {
             // Retain only if it has a parent
             let has_parent = terminal.terminal.parent().is_some();
             if !has_parent {
-                println!("unregister_unparented_terminals: removing pane with ID {}", terminal.id);
+                println!(
+                    "unregister_unparented_terminals: removing pane with ID {}",
+                    terminal.id
+                );
                 window.unregister_terminal(terminal.id);
             }
             has_parent
