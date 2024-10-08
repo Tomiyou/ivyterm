@@ -292,6 +292,18 @@ fn sync_layout_recursive(
     }
 }
 
+struct Position {
+    next: i32,
+    prev: i32,
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Customize so only `x` and `y` are denoted.
+        write!(f, "Position {{ next: {}, prev: {} }}", self.next, self.prev)
+    }
+}
+
 /// fn container_callback()
 ///
 ///     Handles Terminal layout
@@ -319,7 +331,7 @@ fn container_callback(
             println!("Container is already in the correct place");
             if let Some(separator) = container.next_sibling() {
                 let separator: TmuxSeparator = separator.downcast().unwrap();
-                separator.set_position(position);
+                separator.set_position(position.next);
             }
             return container;
         } else {
@@ -347,7 +359,7 @@ fn container_callback(
     }
 
     let container = TmuxContainer::new(&orientation, window);
-    prepend_pane(window, &parent.c, &container, next_sibling, position);
+    prepend_pane(window, &parent.c, &container, next_sibling, &position);
 
     container
 }
@@ -376,12 +388,12 @@ fn terminal_callback(
                 print_tab(nested);
                 println!(
                     "Terminal with ID {} already in the correct place, position is {}",
-                    pane_id, position
+                    pane_id, position.next
                 );
                 // Pane is in correct place, just make sure the Separator position is correct
                 if let Some(separator) = next_pane.next_sibling() {
                     let separator: TmuxSeparator = separator.downcast().unwrap();
-                    separator.set_position(position);
+                    separator.set_position(position.next);
                 }
                 return existing;
             }
@@ -391,7 +403,7 @@ fn terminal_callback(
         // current position first
         remove_pane(&existing);
         // Now insert it in the correct place
-        prepend_pane(window, &parent.c, &existing, next_sibling, position);
+        prepend_pane(window, &parent.c, &existing, next_sibling, &position);
         print_tab(nested);
         println!(
             "Terminal with ID {} moved to new position ({})",
@@ -404,23 +416,33 @@ fn terminal_callback(
     // Terminal does not exist yet, simply prepend it before next_sibling
     print_tab(nested);
     let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
-    prepend_pane(window, &parent.c, &new_terminal, next_sibling, position);
+    print_tab(nested);
+    println!("   \\---> position {}", position);
+    prepend_pane(window, &parent.c, &new_terminal, next_sibling, &position);
 
     new_terminal
 }
 
 // TODO: Turn this into impl {} for Rectangle
 #[inline]
-fn calculate_position(bounds: &Rectangle, parent: &ParentContainer) -> i32 {
+fn calculate_position(bounds: &Rectangle, parent: &ParentContainer) -> Position {
     let orientation = parent.c.orientation();
-    // match orientation {
-    //     Orientation::Horizontal => bounds.x - parent.bounds.x - 1,
-    //     _ => bounds.y - parent.bounds.y - 1,
-    // }
 
+    // Depending if widget is last or not is why we need BOTH a position for
+    // a next_sibling() Separator and a prev_sibling() Separator
     match orientation {
-        Orientation::Horizontal => bounds.width,
-        _ => bounds.height,
+        Orientation::Horizontal => {
+            Position {
+                prev: bounds.x - parent.bounds.x - 1,
+                next: bounds.x - parent.bounds.x + bounds.width,
+            }
+        },
+        _ => {
+            Position {
+                prev: bounds.y - parent.bounds.y - 1,
+                next: bounds.y - parent.bounds.y + bounds.height,
+            }
+        },
     }
 }
 
@@ -475,15 +497,15 @@ fn prepend_pane(
     container: &TmuxContainer,
     child: &impl IsA<Widget>,
     sibling: &Option<impl IsA<Widget>>,
-    position: i32,
+    position: &Position,
 ) {
     // TODO: Prepend on sibling None means append() last...
     if let Some(sibling) = sibling {
-        let new_separator = create_separator(window, container, position);
+        let new_separator = create_separator(window, container, position.next);
         child.insert_before(container, Some(sibling));
         new_separator.insert_after(container, Some(child));
     } else {
-        append_pane(window, container, child, position);
+        append_pane(window, container, child, position.prev);
     }
 }
 
