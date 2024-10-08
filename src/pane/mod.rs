@@ -15,12 +15,12 @@ use crate::{
 };
 
 glib::wrapper! {
-    pub struct IvyTerminal(ObjectSubclass<imp::IvyTerminalPriv>)
+    pub struct Pane(ObjectSubclass<imp::PanePriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Actionable, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
-impl IvyTerminal {
+impl Pane {
     pub fn new(top_level: &TopLevel) -> Self {
         let top_level = top_level.clone();
 
@@ -108,7 +108,7 @@ impl IvyTerminal {
 fn handle_keyboard(
     keycode: u32,
     state: ModifierType,
-    terminal: &IvyTerminal,
+    terminal: &Pane,
     top_level: &TopLevel,
 ) -> Propagation {
     // Handle terminal splits

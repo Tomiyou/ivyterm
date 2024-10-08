@@ -5,19 +5,19 @@ use gtk4::Orientation;
 use libadwaita::{glib, Bin};
 use vte4::WidgetExt;
 
-use super::IvyPaned;
+use super::Container;
 
 glib::wrapper! {
-    pub struct IvyLayout(ObjectSubclass<imp::IvyLayoutPriv>)
+    pub struct ContainerLayout(ObjectSubclass<imp::ContainerLayoutPriv>)
         @extends gtk4::LayoutManager;
 }
 
-impl IvyLayout {
+impl ContainerLayout {
     pub fn new() -> Self {
         Object::builder().build()
     }
 
-    pub fn drag_update(&self, paned: &IvyPaned, separator: &Bin, x: f64, y: f64) {
+    pub fn drag_update(&self, paned: &Container, separator: &Bin, x: f64, y: f64) {
         let imp = self.imp();
         let orientation = paned.orientation();
 

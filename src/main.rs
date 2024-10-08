@@ -11,12 +11,13 @@ use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
 use global_state::{show_settings_window, WindowState, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
 use tmux::attach_tmux;
+use toplevel::create_tab;
 
 mod error;
 mod global_state;
 mod keyboard;
-mod paned;
-mod terminal;
+mod container;
+mod pane;
 mod tmux;
 mod toplevel;
 
@@ -72,10 +73,10 @@ fn create_window(app: &Application /* , tmux_session: Option<&str> */) {
 
     // if let Some(session_name) = tmux_session {
     //     println!("Starting TMUX");
-    attach_tmux("terminator", &window_state);
+    // attach_tmux("terminator", &window_state);
     // } else {
-    //     // Create initial Tab
-    //     create_tab(&tab_view);
+        // Create initial Tab
+        create_tab(&tab_view, None);
     // }
 
     // Terminal settings

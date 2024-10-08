@@ -5,23 +5,23 @@ use vte4::{Terminal, WidgetExt};
 
 // Object holding the state
 #[derive(Default)]
-pub struct IvyTerminalPriv {
+pub struct PanePriv {
     terminal: RefCell<Option<Terminal>>,
 }
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for IvyTerminalPriv {
+impl ObjectSubclass for PanePriv {
     const NAME: &'static str = "IvyTerminalCustomTerminal";
-    type Type = super::IvyTerminal;
+    type Type = super::Pane;
     type ParentType = libadwaita::Bin;
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for IvyTerminalPriv {}
+impl ObjectImpl for PanePriv {}
 
 // Trait shared by all widgets
-impl WidgetImpl for IvyTerminalPriv {
+impl WidgetImpl for PanePriv {
     fn grab_focus(&self) -> bool {
         self.parent_grab_focus();
 
@@ -30,9 +30,9 @@ impl WidgetImpl for IvyTerminalPriv {
 }
 
 // Trait shared by all buttons
-impl BinImpl for IvyTerminalPriv {}
+impl BinImpl for PanePriv {}
 
-impl IvyTerminalPriv {
+impl PanePriv {
     pub fn set_terminal(&self, terminal: &Terminal) {
         self.terminal.borrow_mut().replace(terminal.clone());
     }

@@ -6,12 +6,12 @@ use gtk4::{Orientation, Widget};
 use libadwaita::{glib, prelude::*, Bin};
 
 glib::wrapper! {
-    pub struct IvyPaned(ObjectSubclass<imp::IvyPanedPriv>)
+    pub struct Container(ObjectSubclass<imp::ContainerPriv>)
         @extends Widget,
         @implements gtk4::Orientable;
 }
 
-impl IvyPaned {
+impl Container {
     pub fn new(
         orientation: Orientation,
         start_child: impl IsA<Widget>,

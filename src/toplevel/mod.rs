@@ -7,7 +7,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal, GLOBAL_TAB_ID,
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, container::Container, pane::Pane, GLOBAL_TAB_ID,
 };
 
 use self::imp::Zoomed;
@@ -28,7 +28,7 @@ impl TopLevel {
             .borrow_mut()
             .replace(tab_view.clone());
 
-        let terminal = IvyTerminal::new(&top_level);
+        let terminal = Pane::new(&top_level);
 
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
@@ -51,10 +51,10 @@ impl TopLevel {
         tab_view.close_page(&page);
     }
 
-    pub fn split_pane(&self, terminal: &IvyTerminal, orientation: Orientation) {
+    pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) {
         self.unzoom();
 
-        let new_terminal = IvyTerminal::new(&self);
+        let new_terminal = Pane::new(&self);
 
         let parent = terminal.parent().unwrap();
         if parent.eq(self) {
@@ -62,19 +62,19 @@ impl TopLevel {
             let old_terminal = self.child().unwrap();
 
             self.set_child(None::<&Self>);
-            let new_paned = IvyPaned::new(orientation, old_terminal, new_terminal);
+            let new_paned = Container::new(orientation, old_terminal, new_terminal);
             self.set_child(Some(&new_paned));
             return;
         }
         // Terminal's parent is a Paned widget
 
-        let paned: IvyPaned = parent.downcast().unwrap();
+        let paned: Container = parent.downcast().unwrap();
         let start_child = paned.start_child().unwrap();
         if start_child.eq(terminal) {
             // Replace first child
             paned.set_start_child(None::<&Widget>);
 
-            let new_paned = IvyPaned::new(orientation, start_child, new_terminal);
+            let new_paned = Container::new(orientation, start_child, new_terminal);
             paned.set_start_child(Some(&new_paned));
 
             return;
@@ -85,14 +85,14 @@ impl TopLevel {
             // Replace end child
             paned.set_end_child(None::<&Widget>);
 
-            let new_paned = IvyPaned::new(orientation, end_child, new_terminal);
+            let new_paned = Container::new(orientation, end_child, new_terminal);
             paned.set_end_child(Some(&new_paned));
 
             return;
         }
     }
 
-    pub fn close_pane(&self, closing_terminal: &IvyTerminal) {
+    pub fn close_pane(&self, closing_terminal: &Pane) {
         let previous_size = self.unzoom();
 
         let parent = closing_terminal.parent().unwrap();
@@ -103,7 +103,7 @@ impl TopLevel {
         }
 
         // Parent of the closing terminal is a Paned widget
-        let closing_paned: IvyPaned = parent.downcast().unwrap();
+        let closing_paned: Container = parent.downcast().unwrap();
 
         // Paned always has 2 children present, if not, then it would have been deleted
         let start_child = closing_paned.start_child().unwrap();
@@ -132,7 +132,7 @@ impl TopLevel {
         // Find terminal to focus after the closing terminal is unrealized
         let new_focus = self
             .find_neighbor(&closing_terminal, direction, previous_size)
-            .or_else(|| Some(retained_child.clone().downcast::<IvyTerminal>().unwrap()))
+            .or_else(|| Some(retained_child.clone().downcast::<Pane>().unwrap()))
             .unwrap();
         new_focus.grab_focus();
 
@@ -149,7 +149,7 @@ impl TopLevel {
             return;
         }
 
-        if let Ok(parent) = parent.downcast::<IvyPaned>() {
+        if let Ok(parent) = parent.downcast::<Container>() {
             // Parent is another gtk4::Paned
             // parent.emit_cycle_child_focus(true);
 
@@ -175,7 +175,7 @@ impl TopLevel {
         panic!("Parent is neither Bin nor Paned");
     }
 
-    pub fn toggle_zoom(&self, terminal: &IvyTerminal) {
+    pub fn toggle_zoom(&self, terminal: &Pane) {
         let imp = self.imp();
         let binding = imp.terminals.borrow();
         if binding.len() < 2 {
@@ -205,7 +205,7 @@ impl TopLevel {
         let (x, y, width, height) = terminal.bounds().unwrap();
 
         // Remove Terminal from its parent Paned
-        let terminal_paned: IvyPaned = terminal.parent().unwrap().downcast().unwrap();
+        let terminal_paned: Container = terminal.parent().unwrap().downcast().unwrap();
         let is_start_child = if terminal_paned.start_child().unwrap().eq(terminal) {
             terminal_paned.set_start_child(None::<&Widget>);
             true
@@ -215,7 +215,7 @@ impl TopLevel {
         };
 
         // Remove root Paned and replace it with Terminal
-        let root_paned: IvyPaned = self.child().unwrap().downcast().unwrap();
+        let root_paned: Container = self.child().unwrap().downcast().unwrap();
         self.set_child(Some(terminal));
         terminal.grab_focus();
 
@@ -250,22 +250,22 @@ impl TopLevel {
         None
     }
 
-    pub fn register_terminal(&self, terminal: &IvyTerminal) {
+    pub fn register_terminal(&self, terminal: &Pane) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.push(terminal.clone());
     }
 
-    pub fn unregister_terminal(&self, terminal: &IvyTerminal) {
+    pub fn unregister_terminal(&self, terminal: &Pane) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.retain(|t| t != terminal);
     }
 
     pub fn find_neighbor(
         &self,
-        terminal: &IvyTerminal,
+        terminal: &Pane,
         direction: Direction,
         use_size: Option<(i32, i32, i32, i32)>,
-    ) -> Option<IvyTerminal> {
+    ) -> Option<Pane> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
             return None;

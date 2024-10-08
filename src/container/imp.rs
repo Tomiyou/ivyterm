@@ -5,12 +5,12 @@ use gtk4::{GestureDrag, Orientation, Separator, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*, Bin};
 
-use super::layout::IvyLayout;
+use super::layout::ContainerLayout;
 
 // Object holding the state
 #[derive(Debug, glib::Properties)]
-#[properties(wrapper_type = super::IvyPaned)]
-pub struct IvyPanedPriv {
+#[properties(wrapper_type = super::Container)]
+pub struct ContainerPriv {
     pub separator: RefCell<Option<Bin>>,
     pub start_child: RefCell<Option<Widget>>,
     pub end_child: RefCell<Option<Widget>>,
@@ -20,15 +20,15 @@ pub struct IvyPanedPriv {
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for IvyPanedPriv {
+impl ObjectSubclass for ContainerPriv {
     const NAME: &'static str = "IvyTerminalCustomPaned";
-    type Type = super::IvyPaned;
+    type Type = super::Container;
     type ParentType = Widget;
     type Interfaces = (gtk4::Orientable,);
 
     fn class_init(gtk_class: &mut Self::Class) {
         // The layout manager determines how child widgets are laid out.
-        gtk_class.set_layout_manager_type::<IvyLayout>();
+        gtk_class.set_layout_manager_type::<ContainerLayout>();
     }
 
     fn new() -> Self {
@@ -43,7 +43,7 @@ impl ObjectSubclass for IvyPanedPriv {
 }
 
 #[glib::derived_properties]
-impl ObjectImpl for IvyPanedPriv {
+impl ObjectImpl for ContainerPriv {
     fn dispose(&self) {
         while let Some(child) = self.obj().first_child() {
             child.unparent();
@@ -51,10 +51,10 @@ impl ObjectImpl for IvyPanedPriv {
     }
 }
 
-impl WidgetImpl for IvyPanedPriv {}
-impl OrientableImpl for IvyPanedPriv {}
+impl WidgetImpl for ContainerPriv {}
+impl OrientableImpl for ContainerPriv {}
 
-impl IvyPanedPriv {
+impl ContainerPriv {
     pub fn set_orientation(&self, orientation: Orientation) {
         self.orientation.replace(orientation);
 
@@ -89,7 +89,7 @@ impl IvyPanedPriv {
         // Add ability to drag
         let drag = GestureDrag::new();
         let paned = self.obj().clone();
-        let layout: IvyLayout = paned.layout_manager().unwrap().downcast().unwrap();
+        let layout: ContainerLayout = paned.layout_manager().unwrap().downcast().unwrap();
         let _separator_container = separator_container.clone();
         drag.connect_drag_update(move |drag, offset_x, offset_y| {
             let (start_x, start_y) = drag.start_point().unwrap();

@@ -5,16 +5,16 @@ use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 use vte4::{Cast, WidgetExt};
 
-use crate::paned::IvyPaned;
+use crate::container::Container;
 
 // Object holding the state
-pub struct IvyLayoutPriv {
+pub struct ContainerLayoutPriv {
     pub percentage: Cell<f64>,
     pub last_combined_size: Cell<i32>,
     pub current_first_child_size: Cell<i32>,
 }
 
-impl Default for IvyLayoutPriv {
+impl Default for ContainerLayoutPriv {
     fn default() -> Self {
         Self {
             percentage: Cell::new(0.5),
@@ -26,23 +26,23 @@ impl Default for IvyLayoutPriv {
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
-impl ObjectSubclass for IvyLayoutPriv {
+impl ObjectSubclass for ContainerLayoutPriv {
     const NAME: &'static str = "MyGtkAppCustomButton";
-    type Type = super::IvyLayout;
+    type Type = super::ContainerLayout;
     type ParentType = LayoutManager;
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for IvyLayoutPriv {}
+impl ObjectImpl for ContainerLayoutPriv {}
 
-impl LayoutManagerImpl for IvyLayoutPriv {
+impl LayoutManagerImpl for ContainerLayoutPriv {
     fn measure(
         &self,
         widget: &gtk4::Widget,
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32, i32, i32) {
-        let paned: IvyPaned = widget.clone().downcast().unwrap();
+        let paned: Container = widget.clone().downcast().unwrap();
 
         let (minimum, natural) = if orientation == paned.orientation() {
             self.get_preferred_size_for_same_orientation(&paned, orientation, for_size)
@@ -54,7 +54,7 @@ impl LayoutManagerImpl for IvyLayoutPriv {
     }
 
     fn allocate(&self, widget: &gtk4::Widget, width: i32, height: i32, _baseline: i32) {
-        let paned: IvyPaned = widget.clone().downcast().unwrap();
+        let paned: Container = widget.clone().downcast().unwrap();
 
         let start_child = paned.start_child();
         let start_child_visible =
@@ -138,10 +138,10 @@ impl LayoutManagerImpl for IvyLayoutPriv {
     }
 }
 
-impl IvyLayoutPriv {
+impl ContainerLayoutPriv {
     fn get_preferred_size_for_opposite_orientation(
         &self,
-        paned: &IvyPaned,
+        paned: &Container,
         opposite_orientation: gtk4::Orientation,
         size: i32,
     ) -> (i32, i32) {
@@ -206,7 +206,7 @@ impl IvyLayoutPriv {
 
     fn get_preferred_size_for_same_orientation(
         &self,
-        paned: &IvyPaned,
+        paned: &Container,
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32) {
