@@ -170,18 +170,18 @@ impl IvyTmuxWindow {
         None
     }
 
-    // pub fn update_terminal_config(
-    //     &self,
-    //     font_desc: &FontDescription,
-    //     main_colors: [RGBA; 2],
-    //     palette_colors: [RGBA; 16],
-    //     scrollback_lines: u32,
-    // ) {
-    //     let binding = self.imp().terminals.borrow();
-    //     for sorted in binding.iter() {
-    //         sorted
-    //             .terminal
-    //             .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
-    //     }
-    // }
+    pub fn update_terminal_config(
+        &self,
+        font_desc: &FontDescription,
+        main_colors: [RGBA; 2],
+        palette_colors: [RGBA; 16],
+        scrollback_lines: u32,
+    ) {
+        let binding = self.imp().terminals.borrow();
+        for sorted in binding.iter() {
+            sorted
+                .terminal
+                .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+        }
+    }
 }

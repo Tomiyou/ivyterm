@@ -3,7 +3,6 @@ use std::time::Duration;
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::gdk::{Key, ModifierType};
 use libadwaita::{glib, prelude::*};
-use log::debug;
 
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
