@@ -13,7 +13,7 @@ pub enum Direction {
     Down,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum KeyboardAction {
     TabNew,
     TabClose,

@@ -1,5 +1,5 @@
 use glib::subclass::types::ObjectSubclassIsExt;
-use gtk4::{gdk::{Event, RGBA}, pango::FontDescription};
+use gtk4::{gdk::{Event, RGBA}, pango::FontDescription, ShortcutTrigger};
 
 use crate::{keyboard::{check_keybinding_match, Keybinding, KeyboardAction}, settings::{IvyColor, IvyFont}};
 
@@ -19,6 +19,21 @@ impl IvyApplication {
     pub fn get_keybindings(&self) -> Vec<Keybinding> {
         let keybindings = self.imp().keybindings.borrow();
         keybindings.clone()
+    }
+
+    pub fn update_keybinding(&self, old: &Keybinding, new_trigger: &Option<ShortcutTrigger>) {
+        let mut keybindings = self.imp().keybindings.borrow_mut();
+        for keybinding in keybindings.iter_mut() {
+            // Update the Trigger for the correct Keybinding
+            if keybinding.action == old.action {
+                keybinding.trigger = new_trigger.clone();
+                continue;
+            }
+            // If another Keybinding has the same Trigger as the new one, unassign it
+            if keybinding.trigger.eq(new_trigger) {
+                keybinding.trigger = None;
+            }
+        }
     }
 
     pub fn update_foreground_color(&self, rgba: RGBA) {

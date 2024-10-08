@@ -40,16 +40,22 @@ impl LearningKeybinding {
     }
 
     pub fn update_and_remove(&self, update: Option<String>) {
+        let mut keybinding = self.keybinding.borrow_mut();
+
         if let Some(trigger) = update {
             let trigger = ShortcutTrigger::parse_string(&trigger);
-            if let Some(trigger) = trigger {
-                println!("Parsed trigger {}", trigger);
-                // TODO: Store Keybindings in a global list and simply swap lists
+            println!("Parsed trigger {:?}", trigger);
+
+            // Update the global Keybinding array for Application
+            if let Some(root) = self.row.root() {
+                let window: libadwaita::Window = root.downcast().unwrap();
+                let app: IvyApplication = window.application().unwrap().downcast().unwrap();
+                app.update_keybinding(&keybinding, &trigger);
             }
+            keybinding.trigger = trigger;
         }
 
-        let binding = self.keybinding.borrow();
-        set_text_from_trigger(&self.display_widget, &binding.trigger);
+        set_text_from_trigger(&self.display_widget, &keybinding.trigger);
 
         // Remove keyboard controller if any
         println!("Removed controller");
