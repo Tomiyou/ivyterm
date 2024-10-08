@@ -131,6 +131,10 @@ impl Terminal {
     }
 
     pub fn scroll_view(&self, empty_lines: usize) {
+        if empty_lines < 1 {
+            return;
+        }
+
         let mut output = Vec::with_capacity(empty_lines + 16);
         // Scroll down 'empty_lines' lines
         for _ in 0..empty_lines {

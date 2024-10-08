@@ -389,7 +389,7 @@ fn tmux_command_result(
             //         escaped.push(*c as char);
             //     }
             // }
-            // println!("Tmux output: |{}|", escaped);
+            // println!("Tmux initial output for pane {}: |{}|", pane_id, escaped);
 
             event_channel
                 .send_blocking(TmuxEvent::Output(*pane_id, output))
