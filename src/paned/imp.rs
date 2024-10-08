@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
 use gtk4::gdk::Cursor;
 use gtk4::{Orientation, Separator, Widget};
@@ -12,7 +12,6 @@ use super::layout::IvyLayout;
 #[properties(wrapper_type = super::IvyPaned)]
 pub struct IvyPanedPriv {
     pub separator: RefCell<Option<Bin>>,
-    pub separator_visible: Cell<bool>,
     pub start_child: RefCell<Option<Widget>>,
     pub end_child: RefCell<Option<Widget>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
@@ -36,7 +35,6 @@ impl ObjectSubclass for IvyPanedPriv {
         // Here we set the default orientation.
         Self {
             separator: RefCell::new(None),
-            separator_visible: Cell::new(false),
             start_child: RefCell::new(None),
             end_child: RefCell::new(None),
             orientation: RefCell::new(Orientation::Horizontal),
@@ -60,17 +58,18 @@ impl IvyPanedPriv {
     pub fn set_orientation(&self, orientation: Orientation) {
         self.orientation.replace(orientation);
 
-        let orientation = match orientation {
-            Orientation::Horizontal => Orientation::Vertical,
-            Orientation::Vertical => Orientation::Horizontal,
+        let (separator_orientation, css_class) = match orientation {
+            Orientation::Horizontal => (Orientation::Vertical, "separator_cont_vertical"),
+            Orientation::Vertical => (Orientation::Horizontal, "separator_cont_horizontal"),
             _ => panic!("Unable to invert orientation to create separator"),
         };
+        println!("Setting orientation: paned {:?}, separator {:?}", orientation, separator_orientation);
 
         // Create separator widget
-        let separator = Separator::new(orientation);
+        let separator = Separator::new(separator_orientation);
         let separator_container = libadwaita::Bin::builder()
             .child(&separator)
-            .css_classes(vec!["separator_bg"])
+            .css_classes(vec![css_class])
             .build();
         separator_container.set_parent(self.obj().as_ref());
 

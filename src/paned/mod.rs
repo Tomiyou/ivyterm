@@ -71,10 +71,9 @@ impl IvyPaned {
         self.imp().end_child.borrow().clone()
     }
 
-    pub fn get_separator(&self) -> (Bin, bool) {
+    pub fn get_separator(&self) -> Bin {
         let imp = self.imp();
         let bin = imp.separator.borrow().as_ref().unwrap().clone();
-        let visible = imp.separator_visible.get();
-        (bin, visible)
+        bin
     }
 }

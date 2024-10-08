@@ -8,8 +8,13 @@ paned separator {
     min-height: 2px;
 }
 
-.separator_bg {
+.separator_cont_vertical {
     padding: 0px 3px;
+    background-color: black;
+}
+
+.separator_cont_horizontal {
+    padding: 3px 0px;
     background-color: black;
 }
 
