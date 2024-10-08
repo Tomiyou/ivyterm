@@ -92,7 +92,7 @@ impl TopLevel {
     }
 
     pub fn close_pane(&self, closing_terminal: &Pane) {
-        let previous_size = self.unzoom();
+        self.unzoom();
 
         let parent = closing_terminal.parent().unwrap();
         if parent.eq(self) {
@@ -129,7 +129,6 @@ impl TopLevel {
         if let Ok(parent) = parent.clone().downcast::<TopLevel>() {
             // Parent is TopLevel
             parent.set_child(Some(&retained_child));
-            // new_focus.grab_focus();
             return;
         }
 
@@ -137,10 +136,6 @@ impl TopLevel {
             // Parent is another Container
             parent.insert_child_after(&retained_child, Some(&container));
             container.unparent();
-
-            // Grab focus for a new terminal
-            // new_focus.grab_focus();
-
             return;
         }
 

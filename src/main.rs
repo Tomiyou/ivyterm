@@ -2,7 +2,6 @@ use std::sync::atomic::AtomicU32;
 use std::sync::{Arc, Mutex};
 
 use gtk4::gdk::Display;
-use gtk4::gio::ApplicationFlags;
 use gtk4::{
     Align, Box as GtkBox, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle,
 };
@@ -124,32 +123,7 @@ fn create_window(app: &Application /* , tmux_session: Option<&str> */) {
 fn main() -> glib::ExitCode {
     let application = Application::builder()
         .application_id("com.tomiyou.ivyTerm")
-        // .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
-
-    // application.connect_command_line(move |app, cli| {
-    //     let mut tmux_mode: Option<&str> = None;
-
-    //     let args = cli.arguments();
-    //     let mut iterator = args.iter();
-    //     while let Some(arg) = iterator.next() {
-    //         if arg.eq_ignore_ascii_case("--tmux") {
-    //             // println!("Launching as tmux");
-    //             tmux_mode = if let Some(ssh) = iterator.next() {
-    //                 println!("Attaching TMUX remote on {:?}", ssh);
-    //                 ssh.to_str()
-    //             } else {
-    //                 println!("Attaching TMUX locally");
-    //                 Some("")
-    //             };
-    //         }
-    //     }
-
-    //     // Handle this better
-    //     create_window(app, tmux_mode);
-
-    //     0
-    // });
 
     application.connect_startup(|_| load_css());
     application.connect_activate(create_window);
