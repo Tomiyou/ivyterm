@@ -6,7 +6,7 @@ use gtk4::gdk::{Display, RGBA};
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
-use vte4::{ApplicationExt, GtkWindowExt};
+use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
@@ -41,10 +41,6 @@ impl IvyApplication {
         let css_provider = binding.as_ref().unwrap();
         let window = IvyWindow::new(self, css_provider);
 
-        // Add Window to
-        let mut binding = imp.windows.borrow_mut();
-        binding.push(window.clone());
-
         if let Some(session_name) = tmux_session {
             println!("Starting TMUX");
             let tmux = attach_tmux(session_name, &window).unwrap();
@@ -74,14 +70,15 @@ impl IvyApplication {
         let (font_desc, main_colors, palette_colors, scrollback_lines) = self.get_terminal_config();
 
         // Refresh terminals to respect the new colors
-        let binding = self.imp().windows.borrow();
-        for window in binding.iter() {
-            window.update_terminal_config(
-                &font_desc,
-                main_colors,
-                palette_colors,
-                scrollback_lines,
-            );
+        for window in self.windows() {
+            if let Ok(window) = window.downcast::<IvyWindow>() {
+                window.update_terminal_config(
+                    &font_desc,
+                    main_colors,
+                    palette_colors,
+                    scrollback_lines,
+                );
+            }
         }
     }
 }
@@ -107,5 +104,5 @@ fn rgba_to_hex(rgba: &RGBA) -> String {
     let red = (rgba.red() * 255.).round() as i32;
     let green = (rgba.green() * 255.).round() as i32;
     let blue = (rgba.blue() * 255.).round() as i32;
-    format!("#{:02X}{:02X}{:02X}", 0, 0, 0)
+    format!("#{:02X}{:02X}{:02X}", red, green, blue)
 }
