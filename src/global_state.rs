@@ -26,7 +26,7 @@ lazy_static! {
 impl GlobalSettings {
     pub fn new() -> Self {
         // Font
-        let font_desc = FontDescription::from_string("CommitMono-Tomo weight=475 13");
+        let font_desc = FontDescription::from_string("CommitMono weight=400 13");
 
         // Colors
         let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
