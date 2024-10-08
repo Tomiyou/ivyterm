@@ -53,8 +53,8 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
 
     let eventctl = EventControllerKey::new();
     let _terminal = terminal.clone();
-    eventctl.connect_key_pressed(move |eventctl, _keyval, key, state| {
-        handle_keyboard(eventctl, key, state, &_terminal, &top_level)
+    eventctl.connect_key_pressed(move |_eventctl, _keyval, key, state| {
+        handle_keyboard(key, state, &_terminal, &top_level)
     });
     terminal.add_controller(eventctl);
 
@@ -84,7 +84,6 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
 
 #[inline]
 fn handle_keyboard(
-    eventctl: &EventControllerKey,
     keycode: u32,
     state: ModifierType,
     terminal: &Terminal,
