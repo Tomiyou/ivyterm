@@ -99,7 +99,7 @@ impl TopLevel {
     }
 
     pub fn close_pane(&self, closing_terminal: &IvyTerminal) {
-        self.unzoom();
+        let previous_size = self.unzoom();
 
         let parent = closing_terminal.parent().unwrap();
         if parent.eq(self) {
@@ -137,7 +137,7 @@ impl TopLevel {
 
         // Find terminal to focus after the closing terminal is unrealized
         let new_focus = self
-            .find_neighbor(&closing_terminal, direction)
+            .find_neighbor(&closing_terminal, direction, previous_size)
             .or_else(|| Some(retained_child.clone().downcast::<IvyTerminal>().unwrap()))
             .unwrap();
         new_focus.grab_focus();
@@ -211,6 +211,9 @@ impl TopLevel {
         }
         // Zoom the terminal
 
+        // We need to remember the current width and height for the unzoom portion
+        let (_, _, width, height) = terminal.bounds().unwrap();
+
         // Remove Terminal from its parent Paned
         let terminal_paned: Paned = terminal.parent().unwrap().downcast().unwrap();
         let is_start_child = if terminal_paned.start_child().unwrap().eq(terminal) {
@@ -231,11 +234,12 @@ impl TopLevel {
             root_paned,
             terminal_paned,
             is_start_child,
+            previous_size: (width, height),
         };
         binding.replace(zoomed);
     }
 
-    pub fn unzoom(&self) {
+    pub fn unzoom(&self) -> Option<(i32, i32)> {
         let mut binding = self.imp().zoomed.borrow_mut();
         if let Some(zoomed) = binding.take() {
             self.set_child(None::<&Widget>);
@@ -249,7 +253,11 @@ impl TopLevel {
 
             self.set_child(Some(&zoomed.root_paned));
             zoomed.terminal.grab_focus();
+
+            return Some(zoomed.previous_size)
         }
+
+        None
     }
 
     pub fn register_terminal(&self, terminal: &IvyTerminal) {
@@ -266,6 +274,7 @@ impl TopLevel {
         &self,
         terminal: &IvyTerminal,
         direction: Direction,
+        use_size: Option<(i32, i32)>,
     ) -> Option<IvyTerminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
@@ -277,7 +286,12 @@ impl TopLevel {
         // We will use Rect intersection to find a matching neighbor. For this to work, the Rect
         // used for calculating the intersection must be slightly larger in the direction we
         // wish to find a neighbor.
-        let (_, _, width, height) = terminal.bounds().unwrap();
+        let (width, height) = if let Some((width, height)) = use_size {
+            (width, height)
+        } else {
+            let (_, _, width, height) = terminal.bounds().unwrap();
+            (width, height)
+        };
         let terminal_rect = match direction {
             Direction::Up => Rect::new(0.0, -PAD, width as f32, height as f32 + PAD),
             Direction::Down => Rect::new(0.0, 0.0, width as f32, height as f32 + PAD),

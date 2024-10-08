@@ -10,6 +10,7 @@ pub struct Zoomed {
     pub root_paned: Paned,
     pub terminal_paned: Paned,
     pub is_start_child: bool,
+    pub previous_size: (i32, i32),
 }
 
 // Object holding the state

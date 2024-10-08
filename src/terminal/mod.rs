@@ -140,8 +140,8 @@ fn handle_keyboard(
             top_level.close_tab();
         }
         Some(Keybinding::SelectPane(direction)) => {
-            top_level.unzoom();
-            if let Some(new_focus) = top_level.find_neighbor(terminal, direction) {
+            let previous_size = top_level.unzoom();
+            if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
                 new_focus.grab_focus();
             }
         }
