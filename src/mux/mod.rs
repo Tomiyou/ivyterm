@@ -1,86 +1,26 @@
 mod pane;
 mod terminal;
+mod toplevel;
 
-use libadwaita::glib::signal::Propagation;
-use libadwaita::{prelude::*, Bin};
-use gtk4::{EventControllerKey, Orientation, Paned, ScrolledWindow};
+use std::sync::atomic::Ordering;
 
-use crate::keyboard::matches_keybinding;
+use libadwaita::TabView;
 
-use self::pane::Pane;
-use self::terminal::create_terminal;
+use crate::GLOBAL_TAB_ID;
 
-pub struct Tab {
-    // id: u32,
-    // panes: Arc<RwLock<HashMap<u32, Arc<RwLock<Terminal>>>>>,
-    // child: Paned,
-}
+use self::toplevel::TopLevel;
 
-impl Tab {
-    pub fn new(tab_id: u32) -> Bin {
-        let terminal = create_terminal();
+pub fn create_tab(tab_view: &TabView) {
+    let tab_id = GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed);
+    let top_level = TopLevel::new();
 
-        let bin = Bin::builder()
-            .child(&terminal)
-            .vexpand(true)
-            .hexpand(true)
-            .focusable(true)
-            .build();
+    // Add pane as a page
+    let page = tab_view.append(&top_level);
 
-        let eventctl = EventControllerKey::new();
-        eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
-            // Handle terminal splits
-            let bin = eventctl.widget();
-            let bin = bin.downcast::<Bin>().unwrap();
+    // Inform newly created Tab of the page
+    top_level.set_tab_view(tab_view, &page);
 
-            // println!("Bin keycode {}\n", keycode);
-
-            if matches_keybinding(
-                keyval,
-                keycode,
-                state,
-                crate::keyboard::Keybinding::PaneSplit(true),
-            ) {
-                split(bin, Orientation::Vertical);
-                return Propagation::Stop;
-            }
-            if matches_keybinding(
-                keyval,
-                keycode,
-                state,
-                crate::keyboard::Keybinding::PaneSplit(false),
-            ) {
-                split(bin, Orientation::Horizontal);
-                return Propagation::Stop;
-            }
-
-            Propagation::Proceed
-        });
-        bin.add_controller(eventctl);
-
-        bin
-    }
-}
-
-fn split(bin: Bin, orientation: Orientation) {
-    let old_terminal = bin.child().unwrap();
-
-    // If GTK focus is wrong, don't split the pane
-    if !old_terminal.clone().downcast::<Paned>().is_err() {
-        return;
-    }
-
-    let new_terminal = create_terminal();
-    let none: Option<&Bin> = None;
-
-    bin.set_child(none);
-    let new_paned = Pane::new(orientation, old_terminal, new_terminal);
-    bin.set_child(Some(&new_paned));
-
-    println!("New PANE {:?}", new_paned.as_ptr())
-}
-
-pub fn close_tab(bin: Bin) {
-    println!("Closing tab!");
-    bin.unrealize();
+    let text = format!("Terminal {}", tab_id);
+    page.set_title(&text);
+    tab_view.set_selected_page(&page);
 }

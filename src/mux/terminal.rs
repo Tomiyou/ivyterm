@@ -1,9 +1,10 @@
+use std::sync::atomic::Ordering;
+
 use glib::SpawnFlags;
 use gtk4::{gdk::RGBA, Paned};
-use libadwaita::Bin;
-use vte4::{BuildableExt, Cast, PtyFlags, Terminal, TerminalExt, TerminalExtManual, WidgetExt};
+use vte4::{Cast, PtyFlags, Terminal, TerminalExt, TerminalExtManual, WidgetExt};
 
-use crate::{global_state::GLOBAL_SETTINGS, mux::{close_tab, pane::close_pane}};
+use crate::{global_state::GLOBAL_SETTINGS, mux::{pane::close_pane, toplevel::TopLevel}, GLOBAL_TERMINAL_ID};
 
 fn default_colors() -> (RGBA, RGBA) {
     let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
@@ -13,6 +14,8 @@ fn default_colors() -> (RGBA, RGBA) {
 }
 
 pub fn create_terminal() -> Terminal {
+    let terminal_id = GLOBAL_TERMINAL_ID.fetch_add(1, Ordering::Relaxed);
+
     // Get terminal font
     let font_desc = {
         let reader = GLOBAL_SETTINGS.read().unwrap();
@@ -32,8 +35,8 @@ pub fn create_terminal() -> Terminal {
         let parent = terminal.parent().unwrap();
         if let Ok(paned) = parent.clone().downcast::<Paned>() {
             close_pane(paned);
-        } else if let Ok(bin) = parent.downcast::<Bin>() {
-            close_tab(bin);
+        } else if let Ok(bin) = parent.downcast::<TopLevel>() {
+            bin.close_tab();
         } else {
             panic!("Parent is neither Bin nor Paned");
         }

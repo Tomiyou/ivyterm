@@ -1,14 +1,15 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use libadwaita::prelude::*;
-use libadwaita::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
 use gtk4::gdk::{Display, ModifierType};
 use gtk4::{
     Align, Box, Button, CssProvider, EventControllerKey, Orientation, PackType, WindowControls,
     WindowHandle,
 };
+use libadwaita::prelude::*;
+use libadwaita::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
 
 use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
+use mux::create_tab;
 
 mod global_state;
 mod keyboard;
@@ -29,17 +30,6 @@ fn load_css() {
         &provider,
         gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
-}
-
-fn create_tab(tab_view: &TabView) {
-    let tab_id = GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed);
-    let tab = mux::Tab::new(tab_id);
-
-    // Add pane as a page
-    let page = tab_view.append(&tab);
-    let text = format!("Terminal {}", tab_id);
-    page.set_title(&text);
-    tab_view.set_selected_page(&page);
 }
 
 fn main() -> glib::ExitCode {
@@ -66,6 +56,17 @@ fn main() -> glib::ExitCode {
 
         // View stack holds all panes
         let tab_view = TabView::new();
+
+        // Close the tab_view when 0 tabs remain
+        let _window = window.clone();
+        tab_view.connect_close_page(move |tab_view, page| {
+            let page_count = tab_view.n_pages();
+            if page_count < 2 {
+                _window.close();
+            }
+            true
+        });
+
         create_tab(&tab_view);
 
         // Terminal settings

@@ -7,8 +7,7 @@ use crate::mux::terminal::create_terminal;
 
 pub struct Pane {}
 
-impl Pane {
-    pub fn new(
+    pub fn new_paned(
         orientation: Orientation,
         start_child: impl IsA<Widget>,
         end_child: impl IsA<Widget>,
@@ -54,7 +53,6 @@ impl Pane {
 
         paned
     }
-}
 
 fn split_pane(paned: Paned, orientation: Orientation) {
     let none: Option<&Widget> = None;
@@ -65,7 +63,7 @@ fn split_pane(paned: Paned, orientation: Orientation) {
         paned.set_start_child(none);
 
         let terminal = create_terminal();
-        let new_paned = Pane::new(orientation, start_child, terminal);
+        let new_paned = new_paned(orientation, start_child, terminal);
         paned.set_start_child(Some(&new_paned));
 
         // Re-calculate panes divider position
@@ -81,7 +79,7 @@ fn split_pane(paned: Paned, orientation: Orientation) {
         paned.set_end_child(none);
 
         let terminal = create_terminal();
-        let new_paned = Pane::new(orientation, end_child, terminal);
+        let new_paned = new_paned(orientation, end_child, terminal);
         paned.set_end_child(Some(&new_paned));
 
         // Re-calculate panes divider position
