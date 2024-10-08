@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use std::sync::atomic::AtomicU32;
 
 use gtk4::gdk::Display;
@@ -6,13 +5,14 @@ use gtk4::{
     Align, Box as GtkBox, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle,
 };
 use libadwaita::prelude::*;
-use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
+use libadwaita::{Application, TabBar, TabView};
 
 use global_state::{
-    show_settings_window, WindowState, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH,
+    show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH,
 };
 use tmux::attach_tmux;
 use toplevel::create_tab;
+use window::IvyWindow;
 
 mod error;
 mod global_state;
@@ -21,6 +21,7 @@ mod pane;
 mod separator;
 mod tmux;
 mod toplevel;
+mod window;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
 
@@ -39,14 +40,7 @@ fn load_css() {
 
 fn create_window(app: &Application, tmux_session: Option<&str>) {
     // Create a new window
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title(APPLICATION_TITLE)
-        .default_width(INITIAL_WIDTH)
-        .default_height(INITIAL_HEIGHT)
-        .build();
-
-    println!("create_window called");
+    let window = IvyWindow::new(app, APPLICATION_TITLE, INITIAL_WIDTH, INITIAL_HEIGHT);
 
     // Window content box holds title bar and panes
     let window_box = GtkBox::new(Orientation::Vertical, 0);
@@ -63,22 +57,23 @@ fn create_window(app: &Application, tmux_session: Option<&str>) {
         false
     });
 
-    // Create instance of WindowState kept inside Mutex
-    let window_state = WindowState {
-        window: window.clone(),
-        tab_view: tab_view.clone(),
-        tabs: Vec::new(),
-        tmux: false,
-    };
-    let window_state = Rc::new(window_state);
+    // // Create instance of WindowState kept inside Mutex
+    // let window_state = WindowState {
+    //     window: window.clone(),
+    //     tab_view: tab_view.clone(),
+    //     tabs: Vec::new(),
+    //     tmux: None,
+    // };
+    // let window_state = Rc::new(window_state);
 
-    // if let Some(session_name) = tmux_session {
-    //     println!("Starting TMUX");
-    // attach_tmux("terminator", &window_state);
-    // } else {
-    // Create initial Tab
-    create_tab(&tab_view, None, window_state);
-    // }
+    if let Some(session_name) = tmux_session {
+        println!("Starting TMUX");
+        let tmux = attach_tmux(session_name, &window).unwrap();
+        window.init_tmux(tmux);
+    } else {
+        // Create initial Tab
+        create_tab(&tab_view, None, &window);
+    }
 
     // Terminal settings
     let settings_button = Button::with_label("Settings");
@@ -130,6 +125,7 @@ fn main() -> glib::ExitCode {
     application.connect_startup(|_| load_css());
     application.connect_activate(|app| {
         create_window(app, None);
+        // create_window(app, Some("terminator"));
     });
     application.run()
 }

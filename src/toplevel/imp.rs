@@ -1,12 +1,9 @@
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-};
+use std::cell::RefCell;
 
 use gtk4::{Box as Container, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{global_state::WindowState, pane::Pane};
+use crate::{pane::Pane, window::IvyWindow};
 
 pub struct Zoomed {
     pub terminal: Pane,
@@ -19,11 +16,10 @@ pub struct Zoomed {
 // Object holding the state
 #[derive(Default)]
 pub struct TopLevelPriv {
-    pub window_state: RefCell<Option<Rc<WindowState>>>,
+    pub window: RefCell<Option<IvyWindow>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<Pane>>,
     pub zoomed: RefCell<Option<Zoomed>>,
-    pub is_tmux: Cell<bool>,
 }
 
 // The central trait for subclassing a GObject
@@ -44,9 +40,8 @@ impl WidgetImpl for TopLevelPriv {}
 impl BinImpl for TopLevelPriv {}
 
 impl TopLevelPriv {
-    pub fn init_values(&self, tab_view: &TabView, window_state: Rc<WindowState>) {
-        self.is_tmux.replace(window_state.tmux);
-        self.window_state.replace(Some(window_state));
+    pub fn init_values(&self, tab_view: &TabView, window: &IvyWindow) {
+        self.window.replace(Some(window.clone()));
         self.tab_view.replace(Some(tab_view.clone()));
     }
 }

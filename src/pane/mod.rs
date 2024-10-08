@@ -1,6 +1,6 @@
 mod imp;
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
@@ -13,7 +13,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 use crate::{
     global_state::{WindowState, GLOBAL_SETTINGS},
     keyboard::{handle_input, Keybinding},
-    toplevel::TopLevel,
+    toplevel::TopLevel, window::IvyWindow,
 };
 
 glib::wrapper! {
@@ -23,7 +23,7 @@ glib::wrapper! {
 }
 
 impl Pane {
-    pub fn new(top_level: &TopLevel, window_state: Rc<WindowState>) -> Self {
+    pub fn new(top_level: &TopLevel, window: &IvyWindow) -> Self {
         let top_level = top_level.clone();
 
         // Get terminal font
@@ -54,7 +54,7 @@ impl Pane {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().init_values(&vte, window_state);
+        terminal.imp().init_values(&vte, window);
 
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);

@@ -1,16 +1,15 @@
-use std::{cell::{Cell, RefCell}, rc::Rc};
+use std::cell::RefCell;
 
 use libadwaita::{glib, subclass::prelude::*};
 use vte4::{Terminal, WidgetExt};
 
-use crate::global_state::WindowState;
+use crate::window::IvyWindow;
 
 // Object holding the state
 #[derive(Default)]
 pub struct PanePriv {
     terminal: RefCell<Option<Terminal>>,
-    window_state: RefCell<Option<Rc<WindowState>>>,
-    is_tmux: Cell<bool>,
+    window: RefCell<Option<IvyWindow>>,
 }
 
 // The central trait for subclassing a GObject
@@ -37,9 +36,8 @@ impl WidgetImpl for PanePriv {
 impl BinImpl for PanePriv {}
 
 impl PanePriv {
-    pub fn init_values(&self, terminal: &Terminal, window_state: Rc<WindowState>) {
-        self.is_tmux.replace(window_state.tmux);
+    pub fn init_values(&self, terminal: &Terminal, window: &IvyWindow) {
         self.terminal.borrow_mut().replace(terminal.clone());
-        self.window_state.replace(Some(window_state));
+        self.window.borrow_mut().replace(window.clone());
     }
 }

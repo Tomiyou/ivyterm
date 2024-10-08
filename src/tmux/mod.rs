@@ -1,20 +1,33 @@
 use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::process::{ChildStdout, Command, Stdio};
-use std::rc::Rc;
+use std::process::{ChildStdin, ChildStdout, Command, Stdio};
 use std::str::{from_utf8, from_utf8_unchecked};
-use std::thread;
-use std::time::Duration;
 
 use async_channel::{Receiver, Sender};
-use glib::clone;
 use gtk4::gio::spawn_blocking;
 use layout::{parse_tmux_layout, read_first_u32};
 use vte4::GtkWindowExt;
 
 use crate::error::IvyError;
-use crate::global_state::WindowState;
+use crate::window::IvyWindow;
 
 mod layout;
+
+pub struct Tmux {
+    stdin_stream: ChildStdin,
+}
+
+impl Tmux {
+    pub fn send_command(&self, command: TmuxCommand) {
+        let mut stdin_stream = &self.stdin_stream;
+        match command {
+            TmuxCommand::InitialLayout => {
+                stdin_stream
+                    .write_all(b"list-windows -F \"#{window_layout}\"\n")
+                    .unwrap();
+            }
+        }
+    }
+}
 
 enum TmuxEvent {
     Attached,
@@ -22,14 +35,13 @@ enum TmuxEvent {
     Exit,
 }
 
-enum IvyEvent {}
+pub enum TmuxCommand {
+    InitialLayout,
+}
 
-pub fn attach_tmux(
-    session_name: &str,
-    window_state: &Rc<WindowState>,
-) -> Result<(), IvyError> {
+pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
     // Create async channels
-    let (event_sender, event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
+    let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
         async_channel::unbounded();
 
     // Spawn TMUX subprocess
@@ -49,40 +61,31 @@ pub fn attach_tmux(
     // Read from Tmux STDOUT and send events to the channel on a separate thread
     let stdout_stream = process.stdout.take().expect("Failed to open stdout");
     spawn_blocking(move || {
-        tmux_read_stdout(stdout_stream, event_sender);
+        tmux_read_stdout(stdout_stream, tmux_event_sender);
     });
     // Receive events from the channel on main thread
-    let window_state = window_state.clone();
+    let window = window.clone();
     glib::spawn_future_local(async move {
-        while let Ok(event) = event_receiver.recv().await {
-            tmux_event_future(event, &window_state);
+        while let Ok(event) = tmux_event_receiver.recv().await {
+            tmux_event_future(event, &window);
         }
     });
 
-    let wawa = "191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]";
-    parse_tmux_layout(wawa.as_bytes());
-
     // Handle Tmux STDIN
-    // The main loop executes the asynchronous block
+    let stdin_stream = process.stdin.take().expect("Failed to open stdin");
+    let tmux = Tmux { stdin_stream };
 
-    if let Some(stdin) = process.stdin.as_mut() {
-        println!("Writing to STDIN!");
-        stdin.write_all(b"list-panes\n").unwrap();
-        let five_seconds = Duration::from_secs(5);
-        thread::sleep(five_seconds);
-    }
-
-    Ok(())
+    Ok(tmux)
 }
 
 #[inline]
-fn tmux_event_future(event: TmuxEvent, window_state: &Rc<WindowState>) {
+fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     match event {
         TmuxEvent::Attached => {}
         TmuxEvent::OutputLine(line) => {}
         TmuxEvent::Exit => {
             println!("Received EXIT event, closing window!");
-            window_state.window.close();
+            window.close();
         }
     }
 }

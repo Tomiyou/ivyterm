@@ -1,17 +1,13 @@
 mod imp;
 
-use std::{rc::Rc, sync::atomic::Ordering};
+use std::{cell::RefCell, rc::Rc, sync::atomic::Ordering};
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Box as Container, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::{WindowState, SPLIT_HANDLE_WIDTH},
-    keyboard::Direction,
-    pane::Pane,
-    separator::new_separator,
-    GLOBAL_TAB_ID,
+    global_state::{WindowState, SPLIT_HANDLE_WIDTH}, keyboard::Direction, pane::Pane, separator::new_separator, window::IvyWindow, GLOBAL_TAB_ID
 };
 
 use self::imp::Zoomed;
@@ -23,12 +19,12 @@ glib::wrapper! {
 }
 
 impl TopLevel {
-    pub fn new(tab_view: &TabView, window_state: Rc<WindowState>) -> Self {
+    pub fn new(tab_view: &TabView, window: &IvyWindow) -> Self {
         let top_level: TopLevel = Object::builder().build();
 
-        top_level.imp().init_values(tab_view, window_state.clone());
+        top_level.imp().init_values(tab_view, window);
 
-        let terminal = Pane::new(&top_level, window_state);
+        let terminal = Pane::new(&top_level, window);
 
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
@@ -42,9 +38,9 @@ impl TopLevel {
         let imp = self.imp();
         let binding = imp.tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
-        let binding = imp.window_state.borrow();
-        let window_state = binding.as_ref().unwrap();
-        create_tab(tab_view, id, window_state.clone());
+        let binding = imp.window.borrow();
+        let window = binding.as_ref().unwrap();
+        create_tab(tab_view, id, window);
     }
 
     pub fn close_tab(&self) {
@@ -57,9 +53,9 @@ impl TopLevel {
     pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) {
         self.unzoom();
 
-        let binding = self.imp().window_state.borrow();
-        let window_state = binding.as_ref().unwrap().clone();
-        let new_terminal = Pane::new(&self, window_state);
+        let binding = self.imp().window.borrow();
+        let window = binding.as_ref().unwrap();
+        let new_terminal = Pane::new(&self, window);
         let new_separator = new_separator(orientation);
 
         let parent = terminal.parent().unwrap();
@@ -271,13 +267,13 @@ impl TopLevel {
     }
 }
 
-pub fn create_tab(tab_view: &TabView, id: Option<u32>, window_state: Rc<WindowState>) {
+pub fn create_tab(tab_view: &TabView, id: Option<u32>, window: &IvyWindow) {
     let tab_id = if let Some(id) = id {
         id
     } else {
         GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
     };
-    let top_level = TopLevel::new(tab_view, window_state);
+    let top_level = TopLevel::new(tab_view, window);
 
     // Add pane as a page
     let page = tab_view.append(&top_level);

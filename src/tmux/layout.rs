@@ -7,19 +7,19 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> usize {
 
     // Read width
     let (width, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
-    total_bytes_read != bytes_read;
+    total_bytes_read += bytes_read;
 
     // Read height
     let (height, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
-    total_bytes_read != bytes_read;
+    total_bytes_read += bytes_read;
 
     // Read x coordinate
     let (x, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
-    total_bytes_read != bytes_read;
+    total_bytes_read += bytes_read;
 
     // Read y coordinate
     let (y, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
-    total_bytes_read != bytes_read;
+    total_bytes_read += bytes_read;
 
     // let buffer = &buffer[bytes_read..];
 
