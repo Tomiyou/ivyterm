@@ -64,6 +64,10 @@ pub enum TmuxCommand {
 }
 
 pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
+    let lmao = "6a18,191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]\n";
+    parse_tmux_layout(lmao.as_bytes(), window);
+    panic!("This is fine ...");
+
     // Create async channels
     let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
         async_channel::unbounded();
@@ -190,7 +194,7 @@ fn tmux_read_stdout(
 fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sender<TmuxEvent>) {
     match command {
         TmuxCommand::InitialLayout => {
-            let bytes = output.as_bytes();
+            // let bytes = output.as_bytes();
             // parse_tmux_layout(bytes);
         }
         _ => {}
