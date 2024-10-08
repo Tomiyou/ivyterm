@@ -1,3 +1,0 @@
-- no need to couple GTK and Terminal code
-- all GTK input is done directly in TerminalPane
-- 
