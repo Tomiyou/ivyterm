@@ -115,6 +115,18 @@ impl IvyWindow {
         // This future runs on main thread of GTK application
         // It receives Tmux events from separate thread and runs GTK functions
         match event {
+            TmuxEvent::Output(pane_id, output) => {
+                // Ignore Output events until initial output has been captured
+                let tmux = imp.tmux.borrow();
+                if tmux.as_ref().unwrap().initial_output == TmuxTristate::Uninitialized {
+                    return;
+                }
+
+                let terminals = imp.terminals.borrow();
+                if let Some(pane) = terminals.get(&pane_id) {
+                    pane.feed_output(output);
+                }
+            }
             TmuxEvent::InitialLayout(layout) => {
                 println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
                 parse_tmux_layout(&layout[1..], &self);
@@ -143,18 +155,6 @@ impl IvyWindow {
                     for (pane_id, _) in terminals.iter() {
                         tmux.get_initial_output(*pane_id);
                     }
-                }
-            }
-            TmuxEvent::Output(pane_id, output) => {
-                // Ignore Output events until initial output has been captured
-                let tmux = imp.tmux.borrow();
-                if tmux.as_ref().unwrap().initial_output == TmuxTristate::Uninitialized {
-                    return;
-                }
-
-                let terminals = imp.terminals.borrow();
-                if let Some(pane) = terminals.get(&pane_id) {
-                    pane.feed_output(output);
                 }
             }
             TmuxEvent::Exit => {
