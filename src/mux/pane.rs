@@ -9,7 +9,6 @@ pub struct Pane {}
 
 impl Pane {
     pub fn new(
-        nested_level: u32,
         orientation: Orientation,
         start_child: impl IsA<Widget>,
         end_child: impl IsA<Widget>,
@@ -34,18 +33,18 @@ impl Pane {
 
             // Split vertical
             if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(true)) {
-                split_pane(paned, Orientation::Vertical, nested_level);
+                split_pane(paned, Orientation::Vertical);
                 return Propagation::Stop;
             }
             // Split horizontal
             if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(false)) {
-                split_pane(paned, Orientation::Horizontal, nested_level);
+                split_pane(paned, Orientation::Horizontal);
                 return Propagation::Stop;
             }
             // Close pane
             if matches_keybinding(keyval, keycode, state, Keybinding::PaneClose) {
                 println!("Closing pane");
-                close_pane(paned, nested_level);
+                close_pane(paned);
                 return Propagation::Stop;
             }
 
@@ -57,7 +56,7 @@ impl Pane {
     }
 }
 
-fn split_pane(paned: Paned, orientation: Orientation, nested_level: u32) {
+fn split_pane(paned: Paned, orientation: Orientation) {
     let none: Option<&Widget> = None;
 
     let start_child = paned.start_child().unwrap();
@@ -66,7 +65,7 @@ fn split_pane(paned: Paned, orientation: Orientation, nested_level: u32) {
         paned.set_start_child(none);
 
         let terminal = create_terminal();
-        let new_paned = Pane::new(nested_level + 1, orientation, start_child, terminal);
+        let new_paned = Pane::new(orientation, start_child, terminal);
         paned.set_start_child(Some(&new_paned));
 
         // Re-calculate panes divider position
@@ -82,7 +81,7 @@ fn split_pane(paned: Paned, orientation: Orientation, nested_level: u32) {
         paned.set_end_child(none);
 
         let terminal = create_terminal();
-        let new_paned = Pane::new(nested_level + 1, orientation, end_child, terminal);
+        let new_paned = Pane::new(orientation, end_child, terminal);
         paned.set_end_child(Some(&new_paned));
 
         // Re-calculate panes divider position
@@ -93,7 +92,7 @@ fn split_pane(paned: Paned, orientation: Orientation, nested_level: u32) {
     }
 }
 
-fn close_pane(closing_paned: Paned, nested_level: u32) {
+pub fn close_pane(closing_paned: Paned) {
     let none: Option<&Widget> = None;
 
     // Paned always has 2 children present, if not, then it would have been deleted
@@ -115,52 +114,48 @@ fn close_pane(closing_paned: Paned, nested_level: u32) {
     closing_paned.set_start_child(none);
     closing_paned.set_end_child(none);
 
-    println!(
-        "Nested level is {} | {}",
-        nested_level,
-        retained_child.type_()
-    );
-    if nested_level == 0 {
-        // Parent is libadwaita::Bin
-        let parent = closing_paned.parent().unwrap();
-        let parent = parent.downcast::<Bin>().unwrap();
-
-        parent.set_child(Some(&retained_child));
-        return;
-    }
-
-    // Parent is another gtk4::Paned
+    // Determine if parent is type Bin or Paned
     let parent = closing_paned.parent().unwrap();
-    let parent = parent.downcast::<Paned>().unwrap();
-    parent.emit_cycle_child_focus(true);
-
     println!(
-        "Closing pane {:?}, parent pane {:?}",
+        "Closing pane {:?}, parent {:?}",
         closing_paned.as_ptr(),
         parent.as_ptr()
     );
 
-    // Check if closing_pane is start child
-    let start_child = parent.start_child().unwrap();
-    if closing_paned.eq(&start_child) {
-        println!("Setting start child of parent");
-        parent.set_start_child(Some(&retained_child));
-
-        let size = parent.size(parent.orientation());
-        parent.set_position(size / 2);
+    if let Ok(parent) = parent.clone().downcast::<Bin>() {
+        // Parent is libadwaita::Bin
+        println!("Parent is libadwaita::Bin");
+        parent.set_child(Some(&retained_child));
         return;
     }
 
-    // Check if closing_pane is end child
-    let end_child = parent.end_child().unwrap();
-    if closing_paned.eq(&end_child) {
-        println!("Setting end child of parent");
-        parent.set_end_child(Some(&retained_child));
+    if let Ok(parent) = parent.downcast::<Paned>() {
+        // Parent is another gtk4::Paned
+        println!("Parent is gtk4::Paned");
+        parent.emit_cycle_child_focus(true);
 
-        let size = parent.size(parent.orientation());
-        parent.set_position(size / 2);
-        return;
+        // Check if closing_pane is start child
+        let start_child = parent.start_child().unwrap();
+        if closing_paned.eq(&start_child) {
+            println!("Setting start child of parent");
+            parent.set_start_child(Some(&retained_child));
+    
+            let size = parent.size(parent.orientation());
+            parent.set_position(size / 2);
+            return;
+        }
+    
+        // Check if closing_pane is end child
+        let end_child = parent.end_child().unwrap();
+        if closing_paned.eq(&end_child) {
+            println!("Setting end child of parent");
+            parent.set_end_child(Some(&retained_child));
+    
+            let size = parent.size(parent.orientation());
+            parent.set_position(size / 2);
+            return;
+        }
     }
 
-    println!("Oh oh...");
+    panic!("Parent is neither Bin nor Paned");
 }

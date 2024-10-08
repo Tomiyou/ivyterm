@@ -74,8 +74,13 @@ fn split(bin: Bin, orientation: Orientation) {
     let none: Option<&Bin> = None;
 
     bin.set_child(none);
-    let new_paned = Pane::new(0, orientation, old_terminal, new_terminal);
+    let new_paned = Pane::new(orientation, old_terminal, new_terminal);
     bin.set_child(Some(&new_paned));
 
     println!("New PANE {:?}", new_paned.as_ptr())
+}
+
+pub fn close_tab(bin: Bin) {
+    println!("Closing tab!");
+    bin.unrealize();
 }
