@@ -36,11 +36,9 @@ impl TopLevel {
 
     pub fn split(&self, orientation: Orientation) {
         let old_terminal = self.child().unwrap();
-
         let new_terminal = create_terminal();
-        let none: Option<&Self> = None;
 
-        self.set_child(none);
+        self.set_child(None::<&Self>);
         let new_paned = new_paned(orientation, old_terminal, new_terminal);
         self.set_child(Some(&new_paned));
 

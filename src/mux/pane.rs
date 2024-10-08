@@ -22,12 +22,10 @@ pub fn new_paned(
 }
 
 pub fn split_pane(paned: Paned, orientation: Orientation) {
-    let none: Option<&Widget> = None;
-
     let start_child = paned.start_child().unwrap();
     if start_child.has_focus() {
         // Replace first child
-        paned.set_start_child(none);
+        paned.set_start_child(None::<&Widget>);
 
         let terminal = create_terminal();
         let new_paned = new_paned(orientation, start_child, terminal);
@@ -43,7 +41,7 @@ pub fn split_pane(paned: Paned, orientation: Orientation) {
     let end_child = paned.end_child().unwrap();
     if end_child.has_focus() {
         // Replace end child
-        paned.set_end_child(none);
+        paned.set_end_child(None::<&Widget>);
 
         let terminal = create_terminal();
         let new_paned = new_paned(orientation, end_child, terminal);
@@ -58,8 +56,6 @@ pub fn split_pane(paned: Paned, orientation: Orientation) {
 }
 
 pub fn close_pane(closing_paned: Paned) {
-    let none: Option<&Widget> = None;
-
     // Paned always has 2 children present, if not, then it would have been deleted
     let start_child = closing_paned.start_child().unwrap();
     let end_child = closing_paned.end_child().unwrap();
@@ -76,8 +72,8 @@ pub fn close_pane(closing_paned: Paned) {
         panic!("Trying to close pane, but none of the children is focused");
     };
 
-    closing_paned.set_start_child(none);
-    closing_paned.set_end_child(none);
+    closing_paned.set_start_child(None::<&Widget>);
+    closing_paned.set_end_child(None::<&Widget>);
 
     // Determine if parent is type Bin or Paned
     let parent = closing_paned.parent().unwrap();
