@@ -67,6 +67,13 @@ impl TmuxSeparator {
     pub fn set_position(&self, new: i32) {
         self.imp().position.replace(new);
     }
+
+    pub fn adjust_position(&self, factor: f64) {
+        let position = &self.imp().position;
+        let old = position.get() as f64;
+        let new = old * factor;
+        position.replace(new as i32);
+    }
 }
 
 #[inline]

@@ -65,6 +65,33 @@ impl LayoutManagerImpl for TopLevelLayoutPriv {
     }
 
     fn allocate(&self, widget: &Widget, width: i32, height: i32, baseline: i32) {
+        let new_allocated_size = (width, height);
+        let last_allocated_size = self.last_allocated_size.replace(new_allocated_size);
+
+        // If size is different than previous cached size, we need to adjust Separator positions first,
+        // so we don't get any negative sizes during allocation
+        let mut top_level: Option<TmuxTopLevel> = None;
+        if last_allocated_size != new_allocated_size {
+            if let Some(_top_level) = self.obj().widget() {
+                let _top_level: TmuxTopLevel = _top_level.downcast().unwrap();
+
+                // Be careful we don't divide by 0
+                let (x_diff, y_diff) = match last_allocated_size {
+                    (0, 0) => (1f64, 1f64),
+                    _ => {
+                        let x_diff = new_allocated_size.0 as f64 / last_allocated_size.0 as f64;
+                        let y_diff = new_allocated_size.1 as f64 / last_allocated_size.1 as f64;
+                        (x_diff, y_diff)
+                    }
+                };
+                // Go through entire hierarchy and adjust Separator positions
+                _top_level.adjust_separator_positions(x_diff, y_diff);
+
+                top_level = Some(_top_level);
+            }
+        }
+
+        // Do the actual allocation()
         let mut next_child = widget.first_child();
         while let Some(child) = next_child {
             if child.should_layout() {
@@ -74,15 +101,10 @@ impl LayoutManagerImpl for TopLevelLayoutPriv {
             next_child = child.next_sibling();
         }
 
-        let last_allocated_size = self.last_allocated_size.get();
-        let new_allocated_size = (width, height);
-        if last_allocated_size != new_allocated_size {
-            self.last_allocated_size.replace(new_allocated_size);
-
-            if let Some(top_level) = self.obj().widget() {
-                let top_level: TmuxTopLevel = top_level.downcast().unwrap();
-                top_level.layout_alloc_changed();
-            }
+        // If size is different than previous cached size, we also have to resync Tmux session size,
+        // but we can only do this here after allocation has already happened
+        if let Some(top_level) = top_level {
+            top_level.layout_alloc_changed();
         }
     }
 }

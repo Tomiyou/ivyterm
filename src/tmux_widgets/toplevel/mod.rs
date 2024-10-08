@@ -3,7 +3,7 @@ mod layout;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Widget};
+use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
 
@@ -11,7 +11,11 @@ use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
 
 use self::imp::Zoomed;
 
-use super::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow};
+use super::{
+    container::{TmuxContainer, TmuxSeparator},
+    terminal::TmuxTerminal,
+    IvyTmuxWindow,
+};
 
 glib::wrapper! {
     pub struct TmuxTopLevel(ObjectSubclass<imp::TopLevelPriv>)
@@ -270,5 +274,56 @@ impl TmuxTopLevel {
             }
             has_parent
         });
+    }
+
+    pub fn adjust_separator_positions(&self, x_diff: f64, y_diff: f64) {
+        println!(
+            "Temporarily adjusting Separator positions (x: {}, y: {})",
+            x_diff, y_diff
+        );
+
+        if let Some(child) = self.child() {
+            match child.downcast::<TmuxContainer>() {
+                Ok(container) => {
+                    recursive_separator_adjust(&container, x_diff, y_diff);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+fn recursive_separator_adjust(parent: &TmuxContainer, x_diff: f64, y_diff: f64) {
+    let mut next_child = parent.first_child();
+    let orientation = parent.orientation();
+
+    while let Some(child) = next_child {
+        next_child = child.next_sibling();
+
+        // If this child is a Separator, we need to adjust its position
+        let child = match child.downcast::<TmuxSeparator>() {
+            Ok(separator) => {
+                match orientation {
+                    Orientation::Horizontal => {
+                        // Container is like this [  |  |  ]
+                        separator.adjust_position(x_diff);
+                    }
+                    _ => {
+                        // Container is Vertical
+                        separator.adjust_position(y_diff);
+                    }
+                }
+                continue;
+            }
+            Err(child) => child,
+        };
+
+        // We now know this child is not a Separator, it might be a Container
+        match child.downcast::<TmuxContainer>() {
+            Ok(container) => {
+                recursive_separator_adjust(&container, x_diff, y_diff);
+            }
+            Err(_) => {}
+        };
     }
 }
