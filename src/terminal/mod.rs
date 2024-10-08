@@ -9,11 +9,7 @@ use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
-    global_state::GLOBAL_SETTINGS,
-    keyboard::{handle_input, Keybinding},
-    next_unique_pane_id,
-    toplevel::TopLevel,
-    window::IvyWindow,
+    application::IvyApplication, keyboard::{handle_input, Keybinding}, next_unique_pane_id, toplevel::TopLevel, window::IvyWindow
 };
 
 glib::wrapper! {
@@ -32,16 +28,12 @@ impl Terminal {
         let is_tmux = window.is_tmux();
         let top_level = top_level.clone();
 
+        let app = window.application().unwrap();
+        let app: IvyApplication = app.downcast().unwrap();
+
+
         // Get terminal font
-        let (font_desc, [foreground, background], palette, scrollback_lines) = {
-            let reader = GLOBAL_SETTINGS.read().unwrap();
-            (
-                reader.font_desc.clone(),
-                reader.main_colors.clone(),
-                reader.palette_colors.clone(),
-                reader.scrollback_lines,
-            )
-        };
+        let (font_desc, [foreground, background], palette, scrollback_lines) = app.get_terminal_config();
 
         let vte = Vte::builder()
             .vexpand(true)

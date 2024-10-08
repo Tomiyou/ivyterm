@@ -1,3 +1,4 @@
+mod config;
 mod imp;
 
 use glib::Object;
@@ -5,10 +6,15 @@ use gtk4::gdk::{Display, RGBA};
 use gtk4::CssProvider;
 use libadwaita::{gio, glib};
 use libadwaita::subclass::prelude::*;
-use vte4::{ApplicationExt, GtkWindowExt, WidgetExt};
+use vte4::{ApplicationExt, GtkWindowExt};
 
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
+
+pub use config::INITIAL_WIDTH;
+pub use config::INITIAL_HEIGHT;
+pub use config::APPLICATION_TITLE;
+pub use config::SPLIT_HANDLE_WIDTH;
 
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)

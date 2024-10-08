@@ -8,7 +8,6 @@ use libadwaita::prelude::*;
 mod application;
 mod container;
 mod error;
-mod global_state;
 mod keyboard;
 mod terminal;
 mod tmux;

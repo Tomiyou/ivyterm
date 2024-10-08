@@ -6,8 +6,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    container::Container, global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction,
-    terminal::Terminal, window::IvyWindow,
+    application::SPLIT_HANDLE_WIDTH, container::Container, keyboard::Direction, terminal::Terminal, window::IvyWindow
 };
 
 use self::imp::Zoomed;

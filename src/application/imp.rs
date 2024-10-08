@@ -6,11 +6,14 @@ use libadwaita::subclass::prelude::*;
 
 use crate::window::IvyWindow;
 
+use super::config::GlobalConfig;
+
 // Object holding the state
 #[derive(Default)]
 pub struct IvyApplicationPriv {
     pub css_provider: RefCell<Option<CssProvider>>,
     pub windows: RefCell<Vec<IvyWindow>>,
+    pub config: RefCell<GlobalConfig>,
 }
 
 // The central trait for subclassing a GObject

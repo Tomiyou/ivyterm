@@ -7,7 +7,10 @@ use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControl
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
-    application::IvyApplication, global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, next_unique_tab_id, terminal::Terminal, toplevel::TopLevel
+    application::{IvyApplication, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    next_unique_tab_id,
+    terminal::Terminal,
+    toplevel::TopLevel,
 };
 
 glib::wrapper! {
@@ -44,9 +47,9 @@ impl IvyWindow {
 
         // Terminal settings
         let settings_button = Button::with_label("Settings");
-        let _app = app.clone();
+        let app = app.clone();
         settings_button.connect_clicked(move |_button| {
-            show_settings_window(_app.clone());
+            app.show_settings_window();
         });
 
         // View switcher for switching between open tabs
