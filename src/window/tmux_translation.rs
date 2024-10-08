@@ -133,7 +133,8 @@ impl IvyWindow {
                 }
             }
             TmuxEvent::PaneSplit(layout) => {
-                println!("Pane split");
+                println!("Pane split: {}", std::str::from_utf8(&layout).unwrap());
+                parse_tmux_layout(&layout[1..], &self);
             }
             TmuxEvent::FocusChanged(pane_id) => {
                 let terminals = self.imp().terminals.borrow();
@@ -155,6 +156,8 @@ impl IvyWindow {
             }
             TmuxEvent::LayoutChanged(layout) => {
                 // todo!()
+                println!("Layout changed: {}", std::str::from_utf8(&layout).unwrap());
+                parse_tmux_layout(&layout[1..], &self);
             }
             TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();

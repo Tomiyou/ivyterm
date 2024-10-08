@@ -103,19 +103,23 @@ impl IvyWindow {
     }
 
     pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
+        let imp = self.imp();
+
         let tab_id = if let Some(id) = id {
             id
         } else {
             self.unique_tab_id()
         };
 
-        let is_tmux = self.imp().tmux.borrow().is_some();
+        let is_tmux = imp.tmux.borrow().is_some();
 
-        let binding = self.imp().tab_view.borrow();
+        let binding = imp.tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
 
         // Create new TopLevel widget
         let top_level = TopLevel::new(tab_view, self, tab_id, !is_tmux);
+        let mut tabs = imp.tabs.borrow_mut();
+        tabs.push(top_level.clone());
 
         // Add pane as a page
         let page = tab_view.append(&top_level);
@@ -155,6 +159,7 @@ impl IvyWindow {
     pub fn get_top_level(&self, id: u32) -> Option<TopLevel> {
         let tabs = self.imp().tabs.borrow();
         for top_level in tabs.iter() {
+            println!("Top level iter {}", top_level.tab_id());
             if top_level.tab_id() == id {
                 return Some(top_level.clone());
             }

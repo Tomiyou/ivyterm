@@ -71,6 +71,7 @@ impl TmuxLayout {
         let mut separators = self.imp().separators.borrow_mut();
         for separator in separators.iter_mut() {
             if separator.s.eq(target) {
+                println!("Replacing separator position {} -> {}", separator.position, position);
                 separator.position = position;
                 break;
             }

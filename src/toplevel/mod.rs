@@ -348,4 +348,27 @@ impl TopLevel {
         let window = self.imp().window.borrow();
         window.as_ref().unwrap().resync_tmux_size();
     }
+
+    pub fn unregister_unparented_terminals(&self) {
+        let imp = self.imp();
+        let binding = imp.window.borrow();
+        let window = binding.as_ref().unwrap();
+
+        let mut terminals_vec = imp.terminals.borrow_mut();
+        terminals_vec.retain(|terminal| {
+            // Retain only if it has a parent
+            terminal.parent().is_some()
+        });
+
+        let mut lru_terminals = imp.lru_terminals.borrow_mut();
+        lru_terminals.retain(|terminal| {
+            // Retain only if it has a parent
+            let has_parent = terminal.terminal.parent().is_some();
+            if !has_parent {
+                println!("unregister_unparented_terminals: removing pane with ID {}", terminal.id);
+                window.unregister_terminal(terminal.id);
+            }
+            has_parent
+        });
+    }
 }
