@@ -1,4 +1,4 @@
-use std::{fs, io::Write};
+use std::{fs, io::Write, path::PathBuf};
 
 use default::{
     default_background, default_bright_colors, default_font, default_foreground,
@@ -25,6 +25,8 @@ pub const SPLIT_VISUAL_WIDTH: i32 = 3;
 
 #[derive(Deserialize, Serialize)]
 pub struct GlobalConfig {
+    #[serde(default, skip)]
+    path: Option<PathBuf>,
     #[serde(default = "default_font")]
     pub font: IvyFont,
     #[serde(default = "default_scrollback_lines")]
@@ -47,7 +49,7 @@ impl Default for GlobalConfig {
         if let Some(home_dir) = dirs::home_dir() {
             let parent_dir = home_dir.join(".config").join("ivyterm");
             let config_path = parent_dir.join("config.toml");
-            let config = if config_path.exists() {
+            let mut config: GlobalConfig = if config_path.exists() {
                 // Config already exists, simply load it
                 let config = fs::read_to_string(&config_path).unwrap();
                 toml::from_str(&config).unwrap()
@@ -57,12 +59,11 @@ impl Default for GlobalConfig {
                 // Config doesn't yet exist, load default values
                 toml::from_str("").unwrap()
             };
+            // Store the path in config, so we don't have to determine it every time
+            config.path = Some(config_path.clone());
 
             // Write parsed config back to the same path
-            let toml = toml::to_string(&config).unwrap();
-            let mut file = fs::File::create(config_path).expect("Unable to create config file");
-            file.write_all(toml.as_bytes()).unwrap();
-            file.flush().unwrap();
+            config.write_config_to_file();
 
             config
         } else {
@@ -86,6 +87,20 @@ impl GlobalConfig {
         let palette_colors: [RGBA; 16] = palette_colors.try_into().unwrap();
 
         (font, main_colors, palette_colors, scrollback_lines)
+    }
+
+    pub fn write_config_to_file(&self) {
+        // Filesystem is always done async
+        if let Some(path) = &self.path {
+            let path = path.clone();
+            let toml = toml::to_string(self).unwrap();
+
+            glib::spawn_future_local(async move {
+                let mut file = fs::File::create(path).expect("Unable to create config file");
+                file.write_all(toml.as_bytes()).unwrap();
+                file.flush().unwrap();
+            });
+        }
     }
 }
 

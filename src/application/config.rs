@@ -1,7 +1,14 @@
 use glib::subclass::types::ObjectSubclassIsExt;
-use gtk4::{gdk::{Event, RGBA}, pango::FontDescription, ShortcutTrigger};
+use gtk4::{
+    gdk::{Event, RGBA},
+    pango::FontDescription,
+    ShortcutTrigger,
+};
 
-use crate::{keyboard::{check_keybinding_match, Keybinding, KeyboardAction}, settings::{IvyColor, IvyFont}};
+use crate::{
+    keyboard::{check_keybinding_match, Keybinding, KeyboardAction},
+    settings::{IvyColor, IvyFont},
+};
 
 use super::IvyApplication;
 
@@ -22,11 +29,13 @@ impl IvyApplication {
     }
 
     pub fn update_keybinding(&self, old: &Keybinding, new_trigger: &Option<ShortcutTrigger>) {
+        let mut config = self.imp().config.borrow_mut();
         let mut keybindings = self.imp().keybindings.borrow_mut();
         for keybinding in keybindings.iter_mut() {
             // Update the Trigger for the correct Keybinding
             if keybinding.action == old.action {
                 keybinding.trigger = new_trigger.clone();
+                config.keybindings.update_one(keybinding);
                 continue;
             }
             // If another Keybinding has the same Trigger as the new one, unassign it
@@ -34,12 +43,17 @@ impl IvyApplication {
                 keybinding.trigger = None;
             }
         }
+
+        // Write new configuration to file
+        config.write_config_to_file();
     }
 
     pub fn update_foreground_color(&self, rgba: RGBA) {
         let mut config = self.imp().config.borrow_mut();
         let color: IvyColor = rgba.into();
         config.foreground = color;
+        // Write new configuration to file
+        config.write_config_to_file();
         drop(config);
 
         self.reload_css_colors();
@@ -49,6 +63,8 @@ impl IvyApplication {
         let mut config = self.imp().config.borrow_mut();
         let color: IvyColor = rgba.into();
         config.background = color;
+        // Write new configuration to file
+        config.write_config_to_file();
         drop(config);
 
         self.reload_css_colors();
@@ -58,6 +74,8 @@ impl IvyApplication {
         let mut config = self.imp().config.borrow_mut();
         let font: IvyFont = font_desc.into();
         config.font = font;
+        // Write new configuration to file
+        config.write_config_to_file();
         drop(config);
 
         self.refresh_terminals();

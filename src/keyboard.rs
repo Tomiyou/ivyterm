@@ -139,6 +139,29 @@ impl Keybindings {
 
         keybindings
     }
+
+    pub fn update_one(&mut self, keybinding: &Keybinding) {
+        let trigger = if let Some(trigger) = &keybinding.trigger {
+            let trigger = trigger.to_str();
+            trigger.to_string()
+        } else {
+            "".to_string()
+        };
+
+        match keybinding.action {
+            KeyboardAction::SelectPane(Direction::Right) => self.move_right = trigger,
+            KeyboardAction::SelectPane(Direction::Left) => self.move_left = trigger,
+            KeyboardAction::SelectPane(Direction::Up) => self.move_up = trigger,
+            KeyboardAction::SelectPane(Direction::Down) => self.move_down = trigger,
+            KeyboardAction::ToggleZoom => self.toggle_zoom = trigger,
+            KeyboardAction::CopySelected => self.copy_selection = trigger,
+            KeyboardAction::TabNew => self.new_tab = trigger,
+            KeyboardAction::TabClose => self.close_tab = trigger,
+            KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
+            KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
+            KeyboardAction::PaneClose => self.close_pane = trigger,
+        }
+    }
 }
 
 pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
