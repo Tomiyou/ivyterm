@@ -14,16 +14,6 @@ mod tmux;
 mod toplevel;
 mod window;
 
-static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
-pub fn next_unique_tab_id() -> u32 {
-    GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
-}
-
-static GLOBAL_PANE_ID: AtomicU32 = AtomicU32::new(0);
-pub fn next_unique_pane_id() -> u32 {
-    GLOBAL_PANE_ID.fetch_add(1, Ordering::Relaxed)
-}
-
 fn main() -> glib::ExitCode {
     let application = IvyApplication::new();
 

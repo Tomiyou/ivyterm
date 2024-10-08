@@ -2,13 +2,14 @@ mod imp;
 mod layout;
 mod tmux;
 
+use std::sync::atomic::Ordering;
+
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
     application::{IvyApplication, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    next_unique_tab_id,
     terminal::Terminal,
     toplevel::TopLevel,
 };
@@ -87,11 +88,21 @@ impl IvyWindow {
         window
     }
 
+    fn unique_tab_id(&self) -> u32 {
+        let binding = self.imp().next_tab_id.borrow();
+        binding.fetch_add(1, Ordering::Relaxed)
+    }
+
+    pub fn unique_terminal_id(&self) -> u32 {
+        let binding = self.imp().next_terminal_id.borrow();
+        binding.fetch_add(1, Ordering::Relaxed)
+    }
+
     pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
         let tab_id = if let Some(id) = id {
             id
         } else {
-            next_unique_tab_id()
+            self.unique_tab_id()
         };
 
         let is_tmux = self.imp().tmux.borrow().is_some();

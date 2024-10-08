@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicU32;
 
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
@@ -17,6 +18,8 @@ pub struct IvyWindowPriv {
     pub tabs: RefCell<Vec<TopLevel>>,
     pub terminals: RefCell<HashMap<u32, Terminal>>,
     pub css_provider: RefCell<CssProvider>,
+    pub next_tab_id: RefCell<AtomicU32>,
+    pub next_terminal_id: RefCell<AtomicU32>,
 }
 
 // The central trait for subclassing a GObject
