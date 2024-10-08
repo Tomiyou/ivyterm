@@ -6,7 +6,7 @@ use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
-    keyboard::keycode_to_arrow_key,
+    keyboard::{keycode_to_arrow_key, KeyboardAction},
     tmux::{Tmux, TmuxEvent, TmuxTristate},
     toplevel::TopLevel,
     window::tmux_layout_translation::parse_tmux_layout,
@@ -132,6 +132,15 @@ impl IvyWindow {
                     pane.feed_output(output);
                 }
             }
+            TmuxEvent::PaneSplit(layout) => {
+                println!("Pane split");
+            }
+            TmuxEvent::FocusChanged(pane_id) => {
+                let terminals = self.imp().terminals.borrow();
+                if let Some(terminal) = terminals.get(pane_id) {
+                    terminal.grab_focus();
+                }
+            }
             TmuxEvent::InitialLayout(layout) => {
                 println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
                 parse_tmux_layout(&layout[1..], &self, true);
@@ -176,4 +185,10 @@ impl IvyWindow {
     }
 
     pub fn tmux_layout_callback() {}
+
+    #[inline]
+    pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
+        let tmux = self.imp().tmux.borrow();
+        tmux.as_ref().unwrap().send_keybinding(action, pane_id);
+    }
 }

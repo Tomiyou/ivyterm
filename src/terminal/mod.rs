@@ -91,12 +91,18 @@ impl Terminal {
             #[strong]
             vte,
             move |eventctl, keyval, key, state| {
-                if is_tmux {
-                    window.tmux_keypress(pane_id, key, keyval, state);
-                } else {
-                    if let Some(event) = eventctl.current_event() {
-                        let action = app.handle_keyboard_event(event);
-                        return handle_keyboard(action, &terminal, &top_level, &vte);
+                if let Some(event) = eventctl.current_event() {
+                    // Check if pressed keys match a keybinding
+                    if let Some(action) = app.handle_keyboard_event(event) {
+                        match is_tmux {
+                            true => window.tmux_handle_keybinding(action, pane_id),
+                            false => handle_keyboard(action, &terminal, &top_level, &vte),
+                        }
+                        return Propagation::Stop;
+                    }
+                    // Normal button press is handled separately for Tmux
+                    if is_tmux {
+                        window.tmux_keypress(pane_id, key, keyval, state)
                     }
                 }
                 Propagation::Proceed
@@ -198,14 +204,9 @@ impl Terminal {
 }
 
 #[inline]
-fn handle_keyboard(
-    action: Option<KeyboardAction>,
-    terminal: &Terminal,
-    top_level: &TopLevel,
-    vte: &Vte,
-) -> Propagation {
+fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopLevel, vte: &Vte) {
     match action {
-        Some(KeyboardAction::PaneSplit(vertical)) => {
+        KeyboardAction::PaneSplit(vertical) => {
             let orientation = if vertical {
                 Orientation::Vertical
             } else {
@@ -214,29 +215,26 @@ fn handle_keyboard(
 
             top_level.split_pane(terminal, orientation);
         }
-        Some(KeyboardAction::PaneClose) => {
+        KeyboardAction::PaneClose => {
             top_level.close_pane(terminal);
         }
-        Some(KeyboardAction::TabNew) => {
+        KeyboardAction::TabNew => {
             top_level.create_tab(None);
         }
-        Some(KeyboardAction::TabClose) => {
+        KeyboardAction::TabClose => {
             top_level.close_tab();
         }
-        Some(KeyboardAction::SelectPane(direction)) => {
+        KeyboardAction::SelectPane(direction) => {
             let previous_size = top_level.unzoom();
             if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
                 new_focus.grab_focus();
             }
         }
-        Some(KeyboardAction::ToggleZoom) => {
+        KeyboardAction::ToggleZoom => {
             top_level.toggle_zoom(terminal);
         }
-        Some(KeyboardAction::CopySelected) => {
+        KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
         }
-        None => return Propagation::Proceed,
-    };
-
-    Propagation::Stop
+    }
 }

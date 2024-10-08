@@ -7,6 +7,7 @@ use gtk4::gio::spawn_blocking;
 use log::debug;
 
 use crate::helpers::IvyError;
+use crate::keyboard::KeyboardAction;
 use crate::window::IvyWindow;
 
 #[derive(PartialEq)]
@@ -44,7 +45,9 @@ impl Tmux {
 
         debug!("Getting initial output of pane {}", pane_id);
         let cmd = format!("capture-pane -J -p -t %{} -eC -S - -E -\n", pane_id);
-        command_queue.send_blocking(TmuxCommand::InitialOutput(pane_id)).unwrap();
+        command_queue
+            .send_blocking(TmuxCommand::InitialOutput(pane_id))
+            .unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 
@@ -91,8 +94,56 @@ impl Tmux {
             )
         };
 
-        println!("send_keypress: {}", &cmd[..cmd.len() - 1]);
+        debug!("send_keypress: {}", &cmd[..cmd.len() - 1]);
         command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
+    }
+
+    pub fn send_keybinding(&self, action: KeyboardAction, pane_id: u32) {
+        let command_queue = &self.command_queue;
+        let mut stdin_stream = &self.stdin_stream;
+
+        let cmd = match action {
+            KeyboardAction::PaneSplit(horizontal) => {
+                command_queue
+                    .send_blocking(TmuxCommand::PaneSplit(horizontal))
+                    .unwrap();
+                format!(
+                    "split-window {} -t %{} -P -F \"#{{window_id}},#{{window_layout}}\"\n",
+                    if horizontal { "-v" } else { "-h" },
+                    pane_id,
+                )
+            }
+            KeyboardAction::PaneClose => {
+                // top_level.close_pane(terminal);
+                todo!();
+            }
+            KeyboardAction::TabNew => {
+                // top_level.create_tab(None);
+                todo!();
+            }
+            KeyboardAction::TabClose => {
+                // top_level.close_tab();
+                todo!();
+            }
+            KeyboardAction::SelectPane(direction) => {
+                todo!();
+                // let previous_size = top_level.unzoom();
+                // if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size)
+                // {
+                //     new_focus.grab_focus();
+                // }
+            }
+            KeyboardAction::ToggleZoom => {
+                todo!();
+                // top_level.toggle_zoom(terminal);
+            }
+            KeyboardAction::CopySelected => {
+                todo!();
+                // vte.emit_copy_clipboard();
+            }
+        };
+
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 
@@ -109,6 +160,7 @@ pub enum TmuxCommand {
     Init,
     InitialLayout,
     Keypress,
+    PaneSplit(bool),
     ChangeSize(i32, i32),
     InitialOutput(u32),
 }
@@ -120,6 +172,8 @@ pub enum TmuxEvent {
     LayoutChanged(Vec<u8>),
     Output(u32, Vec<u8>),
     SizeChanged(),
+    PaneSplit(Vec<u8>),
+    FocusChanged(u32),
     Exit,
 }
 
@@ -329,6 +383,15 @@ fn tmux_read_stdout(
                 is_error = false;
                 result_line = 0;
                 empty_line_count = 0;
+            } else if buffer_starts_with(&buffer, "%window-pane-changed") {
+                // %window-pane-changed @0 %10
+                let (window_id, chars_read) = read_first_u32(&buffer[22..]);
+                let buffer = &buffer[22 + chars_read + 1..];
+                let (pane_id, _) = read_first_u32(buffer);
+                println!("Window {} focus changed to {}", window_id, pane_id);
+                event_channel
+                    .send_blocking(TmuxEvent::FocusChanged(pane_id))
+                    .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
                 event_channel
@@ -350,7 +413,6 @@ fn tmux_read_stdout(
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
             } else if buffer_starts_with(&buffer, "%client-session-changed") {
-                
             } else {
                 // Unsupported notification
                 let notification = from_utf8(&buffer).unwrap();
@@ -372,6 +434,11 @@ fn tmux_command_result(
     event_channel: &Sender<TmuxEvent>,
 ) {
     match command {
+        TmuxCommand::PaneSplit(_horizontal) => {
+            event_channel
+                .send_blocking(TmuxEvent::PaneSplit(buffer.clone()))
+                .unwrap();
+        }
         TmuxCommand::InitialLayout => {
             event_channel
                 .send_blocking(TmuxEvent::InitialLayout(buffer.clone()))
@@ -407,7 +474,7 @@ pub fn read_first_u32(buffer: &[u8]) -> (u32, usize) {
     let mut number: u32 = 0;
 
     // Read buffer char by char (assuming ASCII) and parse number
-    while buffer[i] > 47 && buffer[i] < 58 {
+    while i < buffer.len() && buffer[i] > 47 && buffer[i] < 58 {
         number *= 10;
         number += (buffer[i] - 48) as u32;
         i += 1;

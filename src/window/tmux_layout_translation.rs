@@ -5,6 +5,7 @@ use libadwaita::prelude::*;
 
 use crate::{container::Container, terminal::Terminal, toplevel::TopLevel, window::IvyWindow};
 
+#[allow(dead_code)]
 struct Rectangle {
     x: i32,
     y: i32,
@@ -14,23 +15,12 @@ struct Rectangle {
 
 // @0,6306,80x5,0,0[80x2,0,0,0,80x2,0,3{40x2,0,3,1,39x2,41,3,2}]
 #[inline]
-fn calculate_percentage(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
+fn calculate_position(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
     let orientation = parent.c.orientation();
-    let position = match orientation {
-        Orientation::Horizontal => {
-            // println!("Position X is {}", bounds.x - parent.bounds.x - 1);
-            bounds.x - parent.bounds.x - 1
-        },
-        _ => {
-            // println!("Position Y is {}", bounds.y - parent.bounds.y - 1);
-            bounds.y - parent.bounds.y - 1
-        },
-    };
-    // let percentage = percentage.max(0.0);
-
-    // println!("Percentage is {}", percentage);
-    // percentage
-    position
+    match orientation {
+        Orientation::Horizontal => bounds.x - parent.bounds.x - 1,
+        _ => bounds.y - parent.bounds.y - 1,
+    }
 }
 
 #[inline]
@@ -46,7 +36,7 @@ fn container_callback(
     if initial {
         let container = Container::new(orientation, window);
         if let Some(parent) = parent {
-            let position = calculate_percentage(&bounds, parent);
+            let position = calculate_position(&bounds, parent);
             parent.c.append(&container, Some(position));
         } else {
             top_level.set_child(Some(&container));
@@ -79,7 +69,7 @@ fn terminal_callback(
         let new_terminal = Terminal::new(top_level, window, Some(pane_id));
 
         if let Some(parent) = parent {
-            let percentage = calculate_percentage(&bounds, parent);
+            let percentage = calculate_position(&bounds, parent);
             parent.c.append(&new_terminal, Some(percentage));
         } else {
             println!("Pane without Container parent");
