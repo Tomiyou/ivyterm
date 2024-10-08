@@ -9,7 +9,9 @@ use libadwaita::{glib, prelude::*, Bin};
 #[derive(Debug, glib::Properties)]
 #[properties(wrapper_type = super::Separator)]
 pub struct SeparatorPriv {
+    // Left/top position of handle
     pub percentage: Cell<f64>,
+    pub current_position: Cell<i32>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
 }
@@ -26,6 +28,7 @@ impl ObjectSubclass for SeparatorPriv {
         // Here we set the default orientation.
         Self {
             percentage: Cell::new(0.0),
+            current_position: Cell::new(0),
             orientation: RefCell::new(Orientation::Horizontal),
         }
     }

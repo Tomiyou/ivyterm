@@ -62,22 +62,28 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
             let children_sizes = self.get_children_sizes(&paned, width);
 
             let mut x = 0;
-            children_sizes.iter().map(|child_width| {
-                let allocation = Allocation::new(x, 0, *child_width, height);
-                x += child_width;
+            children_sizes
+                .iter()
+                .map(|child_width| {
+                    let allocation = Allocation::new(x, 0, *child_width, height);
+                    x += child_width;
 
-                allocation
-            }).collect()
+                    allocation
+                })
+                .collect()
         } else {
             let children_sizes = self.get_children_sizes(&paned, height);
 
             let mut y = 0;
-            children_sizes.iter().map(|child_height| {
-                let allocation = Allocation::new(0, y, width, *child_height);
-                y += child_height;
+            children_sizes
+                .iter()
+                .map(|child_height| {
+                    let allocation = Allocation::new(0, y, width, *child_height);
+                    y += child_height;
 
-                allocation
-            }).collect()
+                    allocation
+                })
+                .collect()
         };
 
         let mut i = 0;
@@ -86,7 +92,21 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
             let allocation = allocations[i];
             child.size_allocate(&allocation, -1);
 
-            next_child = child.next_sibling();
+            // Remember allocation position for Separators
+            if i % 2 == 1 {
+                let separator: Separator = child.downcast().unwrap();
+                let pos = if orientation == Orientation::Horizontal {
+                    allocation.x()
+                } else {
+                    allocation.y()
+                };
+                separator.set_current_position(pos);
+
+                next_child = separator.next_sibling();
+            } else {
+                next_child = child.next_sibling();
+            }
+
             i += 1;
         }
     }
@@ -164,11 +184,7 @@ impl ContainerLayoutPriv {
     }
 
     #[inline]
-    fn get_children_sizes(
-        &self,
-        container: &Container,
-        size: i32,
-    ) -> Vec<i32> {
+    fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
         // Percentages might be floats, but sizes are integer pixels
         let child_count = container.children_count();
         let mut children_sizes = Vec::with_capacity((child_count * 2) - 1);
