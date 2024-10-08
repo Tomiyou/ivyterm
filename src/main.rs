@@ -2,17 +2,22 @@ use std::sync::atomic::AtomicU32;
 
 use gtk4::gdk::Display;
 use gtk4::gio::ApplicationFlags;
-use gtk4::{Align, Box as GtkBox, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{
+    Align, Box as GtkBox, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle,
+};
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
 use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
+use tmux::attach_tmux;
 use toplevel::create_tab;
 
+mod error;
 mod global_state;
 mod keyboard;
 mod paned;
 mod terminal;
+mod tmux;
 mod toplevel;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
@@ -30,7 +35,7 @@ fn load_css() {
     );
 }
 
-fn build_application(app: &Application) {
+fn create_window(app: &Application, tmux_session: Option<&str>) {
     // Create a new window
     let window = ApplicationWindow::builder()
         .application(app)
@@ -39,9 +44,11 @@ fn build_application(app: &Application) {
         .default_height(INITIAL_HEIGHT)
         .build();
 
-    // Initialize global settings
-    // let global_settings = GlobalSettings::new(app);
-    println!("Build_application called");
+    println!("create_window called");
+    if let Some(session_name) = tmux_session {
+        println!("Starting TMUX");
+        attach_tmux(session_name);
+    }
 
     // Window content box holds title bar and panes
     let window_box = GtkBox::new(Orientation::Vertical, 0);
@@ -110,25 +117,29 @@ fn main() -> glib::ExitCode {
         .build();
 
     application.connect_command_line(move |app, cli| {
+        let mut tmux_mode: Option<&str> = None;
+
         let args = cli.arguments();
         let mut iterator = args.iter();
         while let Some(arg) = iterator.next() {
             if arg.eq_ignore_ascii_case("--tmux") {
                 // println!("Launching as tmux");
-                if let Some(ssh) = iterator.next() {
+                tmux_mode = if let Some(ssh) = iterator.next() {
                     println!("Attaching TMUX remote on {:?}", ssh);
+                    ssh.to_str()
                 } else {
                     println!("Attaching TMUX locally");
-                }
+                    Some("")
+                };
             }
         }
 
         // Handle this better
-        app.activate();
+        create_window(app, tmux_mode);
+
         0
     });
 
     application.connect_startup(|_| load_css());
-    application.connect_activate(build_application);
     application.run()
 }
