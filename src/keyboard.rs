@@ -5,7 +5,7 @@ use gtk4::{
 use serde::{Deserialize, Deserializer};
 use vte4::ShortcutTriggerExt;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Direction {
     Left,
     Up,
@@ -13,7 +13,7 @@ pub enum Direction {
     Down,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum KeyboardAction {
     TabNew,
     TabClose,
