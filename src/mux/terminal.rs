@@ -1,8 +1,5 @@
 use glib::{Propagation, SpawnFlags};
-use gtk4::{
-    gdk::{ModifierType, RGBA},
-    EventControllerKey, Orientation,
-};
+use gtk4::{gdk::{ModifierType, RGBA}, EventControllerKey, Orientation};
 use libadwaita::prelude::*;
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
@@ -12,20 +9,13 @@ use crate::{
     mux::toplevel::TopLevel,
 };
 
-fn default_colors() -> (RGBA, RGBA) {
-    let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
-    let background = RGBA::new(0.0, 0.0, 0.0, 1.0);
-
-    (foreground, background)
-}
-
 pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     let top_level = top_level.clone();
 
     // Get terminal font
-    let font_desc = {
+    let (font_desc, [foreground, background], palette) = {
         let reader = GLOBAL_SETTINGS.read().unwrap();
-        reader.font_desc.clone()
+        (reader.font_desc.clone(), reader.main_colors.clone(), reader.palette_colors.clone())
     };
 
     let terminal = Terminal::builder()
@@ -48,8 +38,8 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     });
 
     // Set terminal colors
-    let (foreground, background) = default_colors();
-    terminal.set_colors(Some(&foreground), Some(&background), &[]);
+    let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
+    terminal.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
     let eventctl = EventControllerKey::new();
     let _terminal = terminal.clone();
