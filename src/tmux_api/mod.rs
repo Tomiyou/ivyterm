@@ -93,7 +93,7 @@ impl TmuxAPI {
         // Spawn TMUX subprocess
         let mut process = if let Some(ssh_target) = ssh_target {
             println!("Attaching to Tmux session {} on host {}", session_name, ssh_target);
-            let remote_command = format!("/usr/bin/tmux -2 -C attach-session -t {}", session_name);
+            let remote_command = format!("/usr/bin/tmux -2 -C new-session -A -s {}", session_name);
             Command::new("ssh")
                 .arg(ssh_target)
                 .arg(remote_command)
@@ -107,8 +107,9 @@ impl TmuxAPI {
             Command::new("tmux")
                 .arg("-2")
                 .arg("-C")
-                .arg("attach-session")
-                .arg("-t")
+                .arg("new-session")
+                .arg("-A")
+                .arg("-s")
                 .arg(session_name)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
