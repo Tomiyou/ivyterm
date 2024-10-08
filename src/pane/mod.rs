@@ -87,7 +87,7 @@ impl Pane {
         let _window = window.clone();
         eventctl.connect_key_pressed(move |_eventctl, keyval, key, state| {
             if is_tmux {
-                _window.tmux_keypress(pane_id, key, keyval);
+                _window.tmux_keypress(pane_id, key, keyval, state);
                 Propagation::Proceed
             } else {
                 handle_keyboard(key, state, &_terminal, &top_level)

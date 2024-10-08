@@ -17,6 +17,16 @@ pub enum Keybinding {
     ToggleZoom,
 }
 
+pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
+    match keycode {
+        111 => Some(Direction::Up),
+        113 => Some(Direction::Left),
+        114 => Some(Direction::Right),
+        116 => Some(Direction::Down),
+        _ => None
+    }
+}
+
 pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
     if state.contains(ModifierType::CONTROL_MASK) && state.contains(ModifierType::SHIFT_MASK) {
         match keycode {
@@ -31,12 +41,8 @@ pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
     }
 
     if state.contains(ModifierType::ALT_MASK) {
-        match keycode {
-            111 => return Some(Keybinding::SelectPane(Direction::Up)),
-            113 => return Some(Keybinding::SelectPane(Direction::Left)),
-            114 => return Some(Keybinding::SelectPane(Direction::Right)),
-            116 => return Some(Keybinding::SelectPane(Direction::Down)),
-            _ => {}
+        if let Some(direction) = keycode_to_arrow_key(keycode) {
+            return Some(Keybinding::SelectPane(direction))
         }
     }
 

@@ -48,13 +48,32 @@ impl Tmux {
         }
     }
 
-    pub fn send_keypress(&self, pane_id: u32, c: char) {
+    pub fn send_keypress(&self, pane_id: u32, c: char, prefix: String, control: Option<&str>) {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
-        let quote = if c == '\'' { '"' } else { '\'' };
-        let cmd = format!("send-keys -t {} -l -- {}{}{}\n", pane_id, quote, c, quote);
+        let cmd = if let Some(control) = control {
+            // Navigation keys (left, right, page up, ...)
+            format!("send-keys -t {} {}{}\n", pane_id, prefix, control)
+        } else if c.is_ascii_control() {
+            // A control character was just pressed
+            let ascii = c as u8;
+            format!("send-keys -t {} -- {}\\{:03o}\n", pane_id, prefix, ascii)
+        } else {
+            // We send single-quoted keys, but what if we want to send a single quote?
+            let quote = if c == '\'' { '"' } else { '\'' };
 
+            // If Ctrl/Shift/Alt was pressed, prefix will not be empty and we need to
+            // remove Tmux's -l flag
+            let flags = if prefix.is_empty() { "-l" } else { "" };
+
+            format!(
+                "send-keys -t {} {} -- {}{}{}{}\n",
+                pane_id, flags, quote, prefix, c, quote
+            )
+        };
+
+        debug!("send_keypress: {}", &cmd[..cmd.len() - 1]);
         command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
@@ -164,6 +183,8 @@ fn parse_escaped_output(input: &[u8], prepend_newline: bool) -> Vec<u8> {
             }
 
             // This is an escape sequence
+            // TODO: This crashes when output is:
+            // tomi:~/plume/opensync/sdk/device-sdk-qca (master) $ danes je pa tako M-\M-\
             let mut ascii = 0;
             for j in i + 1..i + 4 {
                 let num = input[j] - 48;

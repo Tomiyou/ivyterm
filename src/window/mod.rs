@@ -1,11 +1,11 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{gdk::Key, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{gdk::{Key, ModifierType}, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
 use crate::{
-    global_state::show_settings_window, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel
+    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel
 };
 
 glib::wrapper! {
@@ -140,12 +140,43 @@ impl IvyWindow {
         println!("Terminal with ID {} unregistered", pane_id);
     }
 
-    pub fn tmux_keypress(&self, pane_id: u32, key: u32, keyval: Key) {
+    pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
         let binding = self.imp().tmux.borrow();
         let tmux = binding.as_ref().unwrap();
 
+        let mut prefix = String::new();
+        let mut shift_relevant = false;
+        if state.contains(ModifierType::ALT_MASK) {
+            prefix.push_str("M-");
+            shift_relevant = true;
+
+            // Hacky workaround for Alt+Backspace
+            if keycode == 22 {
+                tmux.send_keypress(pane_id, '\x7f', prefix, None);
+                return;
+            }
+        }
+        if state.contains(ModifierType::CONTROL_MASK) {
+            prefix.push_str("C-");
+            shift_relevant = true;
+        }
+        // Uppercase characters work without S-, so this case is only
+        // relevant when Ctrl/Alt is also pressed
+        if state.contains(ModifierType::SHIFT_MASK) && shift_relevant {
+            prefix.push_str("S-");
+        }
+
         if let Some(c) = keyval.to_unicode() {
-            tmux.send_keypress(pane_id, c);
+            println!("HAHAHA");
+            tmux.send_keypress(pane_id, c, prefix, None);
+        } else if let Some(direction) = keycode_to_arrow_key(keycode) {
+            let direction = match direction {
+                crate::keyboard::Direction::Left => "Left",
+                crate::keyboard::Direction::Right => "Right",
+                crate::keyboard::Direction::Up => "Up",
+                crate::keyboard::Direction::Down => "Down",
+            };
+            tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
         }
     }
 
