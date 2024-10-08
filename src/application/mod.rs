@@ -41,14 +41,14 @@ impl IvyApplication {
         keybindings.append(&mut parsed_keybindings)
     }
 
-    pub fn new_window(&self, tmux_session: Option<&str>) {
+    pub fn new_window(&self, tmux_session: Option<&str>, ssh_target: Option<&str>) {
         let imp = self.imp();
         let binding = imp.css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
 
         if let Some(session_name) = tmux_session {
             println!("Attaching to TMUX session {}", session_name);
-            let window = IvyTmuxWindow::new(self, css_provider, session_name, Some("localhost"));
+            let window = IvyTmuxWindow::new(self, css_provider, session_name, ssh_target);
             window.present();
         } else {
             // Create initial Tab

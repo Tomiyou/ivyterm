@@ -10,7 +10,7 @@ pub struct TopLevelLayoutPriv {}
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for TopLevelLayoutPriv {
-    const NAME: &'static str = "IvyTerminalTopLevelLayout";
+    const NAME: &'static str = "ivytermTabPageLayout";
     type Type = super::TopLevelLayout;
     type ParentType = LayoutManager;
 }

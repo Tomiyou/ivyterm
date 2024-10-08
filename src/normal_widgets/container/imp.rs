@@ -21,7 +21,7 @@ pub struct ContainerPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for ContainerPriv {
-    const NAME: &'static str = "IvyTerminalContainer";
+    const NAME: &'static str = "ivytermContainer";
     type Type = super::Container;
     type ParentType = Widget;
     type Interfaces = (gtk4::Orientable,);

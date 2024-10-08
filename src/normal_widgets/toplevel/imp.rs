@@ -29,7 +29,7 @@ pub struct TopLevelPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for TopLevelPriv {
-    const NAME: &'static str = "ivyTerminalPage";
+    const NAME: &'static str = "ivytermTabPage";
     type Type = super::TopLevel;
     type ParentType = libadwaita::Bin;
 

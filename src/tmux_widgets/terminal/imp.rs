@@ -16,7 +16,7 @@ pub struct TerminalPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for TerminalPriv {
-    const NAME: &'static str = "IvyTerminalCustomTerminal";
+    const NAME: &'static str = "ivytermTmuxTerminal";
     type Type = super::TmuxTerminal;
     type ParentType = libadwaita::Bin;
 }

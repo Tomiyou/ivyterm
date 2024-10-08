@@ -18,7 +18,7 @@ pub struct IvyApplicationPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for IvyApplicationPriv {
-    const NAME: &'static str = "IvyTerminalCustomApplication";
+    const NAME: &'static str = "ivytermApplication";
     type Type = super::IvyApplication;
     type ParentType = libadwaita::Application;
 }

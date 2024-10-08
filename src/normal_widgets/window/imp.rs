@@ -23,7 +23,7 @@ pub struct IvyWindowPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for IvyWindowPriv {
-    const NAME: &'static str = "IvyApplicationWindow";
+    const NAME: &'static str = "ivytermWindow";
     type Type = super::IvyNormalWindow;
     type ParentType = ApplicationWindow;
 }

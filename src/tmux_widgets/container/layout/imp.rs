@@ -12,7 +12,7 @@ pub struct TmuxLayoutPriv {}
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for TmuxLayoutPriv {
-    const NAME: &'static str = "IvyTerminalTmuxLayout";
+    const NAME: &'static str = "ivytermTmuxContainerLayout";
     type Type = super::TmuxLayout;
     type ParentType = LayoutManager;
 }

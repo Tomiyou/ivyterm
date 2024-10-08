@@ -17,7 +17,7 @@ pub struct ContainerLayoutPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for ContainerLayoutPriv {
-    const NAME: &'static str = "IvyTerminalContainerLayout";
+    const NAME: &'static str = "ivytermContainerLayout";
     type Type = super::ContainerLayout;
     type ParentType = LayoutManager;
 }
