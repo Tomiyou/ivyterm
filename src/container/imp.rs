@@ -108,9 +108,6 @@ impl ContainerPriv {
         });
 
         removed.unparent();
-        for s in separators.iter() {
-            println!("Remaining percentage: {}", s.get_percentage());
-        }
     }
 
     pub fn set_orientation(&self, orientation: Orientation) {
