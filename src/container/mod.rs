@@ -67,13 +67,10 @@ impl Container {
     }
 
     pub fn remove(&self, child: &impl IsA<Widget>) -> usize {
-        // We also need to remove a Separator, if it exists
-        let separator = child.next_sibling();
-
         let layout = self.imp().layout.borrow();
         let len = match layout.as_ref().unwrap() {
-            Layout::Default(layout) => layout.remove_separator(separator),
-            Layout::Tmux(layout) => layout.remove_separator(separator),
+            Layout::Default(layout) => layout.remove_separator(child),
+            Layout::Tmux(layout) => layout.remove_separator(),
         };
 
         // Now remove the child

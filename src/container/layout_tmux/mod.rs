@@ -25,7 +25,7 @@ impl TmuxLayout {
         todo!()
     }
 
-    pub fn remove_separator(&self, removed: Option<Widget>) -> usize {
+    pub fn remove_separator(&self) -> usize {
         todo!()
     }
 }

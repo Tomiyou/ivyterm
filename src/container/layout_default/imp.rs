@@ -157,49 +157,42 @@ impl ContainerLayoutPriv {
     }
 
     #[inline]
-    fn get_children_sizes(&self, container: &Container, given_size: i32) -> Vec<i32> {
+    fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
         let separators = self.separators.borrow();
-        let separator_count = separators.len();
-        let child_count = separator_count * 2 + 1;
+        let child_count = (separators.len() * 2) + 1;
         let mut children_sizes = Vec::with_capacity(child_count);
 
         // Handle being given size less than 0 (usually when not initialized yet or error)
-        if given_size < 0 {
+        if size < 0 {
             for _ in 0..child_count {
                 children_sizes.push(-1);
             }
             return children_sizes;
         }
 
-        // We can assume that all Separators have the same handle width
-        let handle_size = match separators.first() {
-            Some(separator) => separator.get_handle_width(),
-            None => 0
-        };
-        // From this point on, sizes of all Separator's handles have been removed from given_size
-        let mut remaining_size = given_size;
-        let given_size = given_size - (handle_size * separator_count as i32);
-        let given_size = given_size as f64;
+        let mut already_used_size = 0;
 
         let mut next_child = container.first_child();
         while let Some(child) = next_child {
             if let Some(separator) = child.next_sibling() {
                 let separator: Separator = separator.downcast().unwrap();
+                // Percentage is the position of the Separator in % of the total size
                 let percentage = separator.get_percentage();
+                let separator_position = size as f64 * percentage;
 
-                if handle_size != separator.get_handle_width() {
-                    eprintln!("Separator's have different handle sizes!");
-                }
+                let handle_size = separator.get_handle_width();
+                let half_handle = handle_size / 2;
 
-                let child_size = (given_size * percentage).round() as i32;
+                let child_size =
+                    separator_position.floor() as i32 - already_used_size - half_handle;
                 children_sizes.push(child_size);
                 children_sizes.push(handle_size);
 
-                remaining_size -= child_size + handle_size;
+                already_used_size += child_size + handle_size;
                 next_child = separator.next_sibling();
             } else {
                 // No siblings left, we take all of the remaining size
-                children_sizes.push(remaining_size);
+                children_sizes.push(size - already_used_size);
                 break;
             };
         }
