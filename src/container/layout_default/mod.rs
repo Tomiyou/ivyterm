@@ -33,7 +33,7 @@ impl ContainerLayout {
 
         // Create a new Separator
         let orientation = container.orientation();
-        let separator = Separator::new(container, &orientation, new_percentage, None);
+        let separator = Separator::new(&orientation, new_percentage, None);
         separators.push(separator.clone());
 
         // Add ability to drag

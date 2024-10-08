@@ -1,10 +1,8 @@
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{gdk::Cursor, GestureDrag, Orientation, Separator as GtkSeparator};
+use gtk4::{gdk::Cursor, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
 use crate::settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH};
-
-use super::Container;
 
 mod imp;
 
@@ -16,7 +14,6 @@ glib::wrapper! {
 
 impl Separator {
     pub fn new(
-        container: &Container,
         orientation: &Orientation,
         percentage: f64,
         handle_size: Option<i32>,
