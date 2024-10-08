@@ -48,9 +48,7 @@ impl IvyApplication {
 
         if let Some(session_name) = tmux_session {
             println!("Attaching to TMUX session {}", session_name);
-            // let tmux = attach_tmux(session_name, &window).unwrap();
-            // window.init_tmux(tmux);
-            let window = IvyTmuxWindow::new(self, css_provider, session_name);
+            let window = IvyTmuxWindow::new(self, css_provider, session_name, Some("localhost"));
             window.present();
         } else {
             // Create initial Tab

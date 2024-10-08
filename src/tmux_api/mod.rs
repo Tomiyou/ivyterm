@@ -75,7 +75,11 @@ pub enum TmuxPane {
 }
 
 impl TmuxAPI {
-    pub fn new(session_name: &str, window: &IvyTmuxWindow) -> Result<TmuxAPI, IvyError> {
+    pub fn new(
+        session_name: &str,
+        ssh_target: Option<&str>,
+        window: &IvyTmuxWindow,
+    ) -> Result<TmuxAPI, IvyError> {
         // Create async channels
         let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
             async_channel::unbounded();
@@ -87,18 +91,31 @@ impl TmuxAPI {
         cmd_queue_sender.send_blocking(TmuxCommand::Init).unwrap();
 
         // Spawn TMUX subprocess
-        println!("Attaching to tmux session {}", session_name);
-        let mut process = Command::new("tmux")
-            .arg("-2")
-            .arg("-C")
-            .arg("attach-session")
-            .arg("-t")
-            .arg(session_name)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
+        let mut process = if let Some(ssh_target) = ssh_target {
+            println!("Attaching to Tmux session {} on host {}", session_name, ssh_target);
+            let remote_command = format!("/usr/bin/tmux -2 -C attach-session -t {}", session_name);
+            Command::new("ssh")
+                .arg(ssh_target)
+                .arg(remote_command)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap()
+        } else {
+            println!("Attaching to Tmux session {}", session_name);
+            Command::new("tmux")
+                .arg("-2")
+                .arg("-C")
+                .arg("attach-session")
+                .arg("-t")
+                .arg(session_name)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap()
+        };
 
         // Read from Tmux STDOUT and send events to the channel on a separate thread
         let stdout_stream = process.stdout.take().expect("Failed to open stdout");

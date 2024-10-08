@@ -25,7 +25,7 @@ glib::wrapper! {
 }
 
 impl IvyTmuxWindow {
-    pub fn new(app: &IvyApplication, css_provider: &CssProvider, tmux_session: &str) -> Self {
+    pub fn new(app: &IvyApplication, css_provider: &CssProvider, tmux_session: &str, ssh_target: Option<&str>) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));
         window.set_title(Some(APPLICATION_TITLE));
@@ -90,7 +90,7 @@ impl IvyTmuxWindow {
         window.set_content(Some(&window_box));
 
         // Initialize Tmux API
-        let tmux = TmuxAPI::new(tmux_session, &window).unwrap();
+        let tmux = TmuxAPI::new(tmux_session, ssh_target, &window).unwrap();
         window.imp().tmux.replace(Some(tmux));
 
         // Get initial Tmux layout
