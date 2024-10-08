@@ -191,7 +191,7 @@ fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sen
     match command {
         TmuxCommand::InitialLayout => {
             let bytes = output.as_bytes();
-            parse_tmux_layout(bytes);
+            // parse_tmux_layout(bytes);
         }
         _ => {}
     }

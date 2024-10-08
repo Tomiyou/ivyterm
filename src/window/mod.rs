@@ -5,10 +5,7 @@ use gtk4::{gdk::Key, Align, Box, Button, Orientation, PackType, WindowControls, 
 use libadwaita::{glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
 use crate::{
-    global_state::show_settings_window,
-    next_unique_tab_id,
-    tmux::{Tmux, TmuxCommand},
-    toplevel::TopLevel,
+    global_state::show_settings_window, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel
 };
 
 glib::wrapper! {
@@ -129,6 +126,18 @@ impl IvyWindow {
         binding.is_some()
     }
 
+    pub fn register_terminal(&self, pane_id: u32, terminal: &Pane) {
+        let mut terminals = self.imp().terminals.borrow_mut();
+        terminals.insert(pane_id, terminal.clone());
+        println!("Terminal with ID {} registered", pane_id);
+    }
+
+    pub fn unregister_terminal(&self, pane_id: u32) {
+        let mut terminals = self.imp().terminals.borrow_mut();
+        terminals.remove(&pane_id);
+        println!("Terminal with ID {} unregistered", pane_id);
+    }
+
     pub fn tmux_keypress(&self, pane_id: u32, key: u32, keyval: Key) {
         let binding = self.imp().tmux.borrow();
         let tmux = binding.as_ref().unwrap();
@@ -143,7 +152,7 @@ impl IvyWindow {
             // Handle the rest
             c => {
                 if let Some(c) = keyval.to_unicode() {
-                    tmux.send_keypress(0, c);
+                    tmux.send_keypress(pane_id, c);
                 }
             }
         }

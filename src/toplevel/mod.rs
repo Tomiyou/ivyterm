@@ -200,13 +200,23 @@ impl TopLevel {
     }
 
     pub fn register_terminal(&self, terminal: &Pane) {
-        let mut binding = self.imp().terminals.borrow_mut();
-        binding.push(terminal.clone());
+        let mut terminals_vec = self.imp().terminals.borrow_mut();
+        terminals_vec.push(terminal.clone());
+
+        // Also update global terminal hashmap
+        let pane_id = terminal.pane_id();
+        let window = self.imp().window.borrow();
+        window.as_ref().unwrap().register_terminal(pane_id, terminal);
     }
 
     pub fn unregister_terminal(&self, terminal: &Pane) {
-        let mut binding = self.imp().terminals.borrow_mut();
-        binding.retain(|t| t != terminal);
+        let mut terminals_vec = self.imp().terminals.borrow_mut();
+        terminals_vec.retain(|t| t != terminal);
+
+        // Also update global terminal hashmap
+        let pane_id = terminal.pane_id();
+        let window = self.imp().window.borrow();
+        window.as_ref().unwrap().unregister_terminal(pane_id);
     }
 
     pub fn find_neighbor(

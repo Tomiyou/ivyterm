@@ -65,7 +65,7 @@ fn parse_layout_recursive(
         // This is a Container
         // recursively call parse_tmux_layout
         println!("Found container: {}x{} | {},{}", width, height, x, y);
-        total_bytes_read += parse_layout_recursive(&buffer[total_bytes_read..], top_level);
+        // total_bytes_read += parse_layout_recursive(&buffer[total_bytes_read..], top_level);
     }
 
     total_bytes_read

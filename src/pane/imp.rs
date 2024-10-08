@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use libadwaita::{glib, subclass::prelude::*};
 use vte4::{Terminal, WidgetExt};
@@ -10,6 +10,7 @@ use crate::window::IvyWindow;
 pub struct PanePriv {
     terminal: RefCell<Option<Terminal>>,
     window: RefCell<Option<IvyWindow>>,
+    pub id: Cell<u32>,
 }
 
 // The central trait for subclassing a GObject
@@ -36,7 +37,8 @@ impl WidgetImpl for PanePriv {
 impl BinImpl for PanePriv {}
 
 impl PanePriv {
-    pub fn init_values(&self, terminal: &Terminal, window: &IvyWindow) {
+    pub fn init_values(&self, id: u32, terminal: &Terminal, window: &IvyWindow) {
+        self.id.replace(id);
         self.terminal.borrow_mut().replace(terminal.clone());
         self.window.borrow_mut().replace(window.clone());
     }

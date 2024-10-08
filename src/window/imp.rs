@@ -1,8 +1,10 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
+use crate::pane::Pane;
 use crate::tmux::Tmux;
 use crate::toplevel::TopLevel;
 
@@ -12,6 +14,7 @@ pub struct IvyWindowPriv {
     pub tmux: RefCell<Option<Tmux>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub tabs: RefCell<Vec<TopLevel>>,
+    pub terminals: RefCell<HashMap<u32, Pane>>,
 }
 
 // The central trait for subclassing a GObject

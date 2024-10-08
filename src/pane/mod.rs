@@ -60,7 +60,7 @@ impl Pane {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().init_values(&vte, window);
+        terminal.imp().init_values(pane_id, &vte, window);
 
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);
@@ -115,6 +115,10 @@ impl Pane {
         );
 
         terminal
+    }
+
+    pub fn pane_id(&self) -> u32 {
+        self.imp().id.get()
     }
 }
 
