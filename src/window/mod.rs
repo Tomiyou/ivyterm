@@ -2,7 +2,7 @@ mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Key, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
-use libadwaita::{glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
+use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
 use crate::{
     global_state::show_settings_window, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel
@@ -10,7 +10,8 @@ use crate::{
 
 glib::wrapper! {
     pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
-        @extends ApplicationWindow, gtk4::Window;
+        @extends ApplicationWindow, gtk4::Window, gtk4::Widget,
+        @implements gio::ActionGroup, gio::ActionMap;
         // @extends gtk::Button, gtk::Widget;
 }
 
@@ -81,6 +82,7 @@ impl IvyWindow {
         window_box.append(&tab_view);
 
         window.set_content(Some(&window_box));
+        // window.connect_realize();
 
         window
     }
@@ -156,5 +158,34 @@ impl IvyWindow {
                 }
             }
         }
+    }
+
+    // pub fn get_pane(&self, pane_id: u32) -> Option<&Pane> {
+    //     let binding = self.imp().terminals;
+    //     let pane = binding.borrow().get(&pane_id);
+    // }
+
+    pub fn output_on_pane(&self, pane_id: u32, output: Vec<u8>) {
+        let binding = &self.imp().terminals;
+        if let Some(pane) = binding.borrow().get(&pane_id) {
+            pane.feed_output(output)
+            
+        }
+    }
+
+    // pub fn get_tmux_cols_rows(&self) -> (i32, i32) {
+    //     let imp = self.imp();
+    //     let binding = imp.tabs.borrow();
+    //     let top_level = binding.first().unwrap();
+    //     let width = top_level.size(Orientation::Horizontal);
+    //     let height = top_level.size(Orientation::Vertical);
+    //     let binding = imp.terminals.borrow();
+    //     // let terminal = binding.iter
+    // }
+
+    pub fn todo_resize_tmux(&self) {
+        let binding = self.imp().tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+        tmux.send_command(TmuxCommand::ChangeSize(80, 24));
     }
 }

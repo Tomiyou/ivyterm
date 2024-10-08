@@ -50,6 +50,7 @@ fn create_window(app: &Application, tmux_session: Option<&str>) {
         println!("Starting TMUX");
         let tmux = attach_tmux(session_name, &window).unwrap();
         window.init_tmux(tmux);
+        window.new_tab(Some(0));
     } else {
         // Create initial Tab
         window.new_tab(None);

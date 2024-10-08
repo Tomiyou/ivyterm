@@ -26,10 +26,17 @@ impl Tmux {
         match command {
             TmuxCommand::InitialLayout => {
                 println!("Getting initial layout");
-                command_queue.send_blocking(TmuxCommand::InitialLayout).unwrap();
+                command_queue
+                    .send_blocking(TmuxCommand::InitialLayout)
+                    .unwrap();
                 stdin_stream
                     .write_all(b"list-windows -F \"#{window_layout}\"\n")
                     .unwrap();
+            }
+            TmuxCommand::ChangeSize(cols, rows) => {
+                let cmd = format!("refresh-client -C {},{}\n", cols, rows);
+                command_queue.send_blocking(command).unwrap();
+                stdin_stream.write_all(cmd.as_bytes()).unwrap();
             }
             _ => {}
         }
@@ -52,7 +59,8 @@ impl Tmux {
 
 enum TmuxEvent {
     Attached,
-    OutputLine(String),
+    LayoutChanged(String),
+    Output(u32, Vec<u8>),
     Exit,
 }
 
@@ -61,13 +69,10 @@ pub enum TmuxCommand {
     Init,
     InitialLayout,
     Keypress,
+    ChangeSize(i64, i64),
 }
 
 pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
-    let lmao = "6a18,191x47,0,0[191x23,0,0,0,191x23,0,24{95x23,0,24,1,95x23,96,24,2}]\n";
-    parse_tmux_layout(lmao.as_bytes(), window);
-    panic!("This is fine ...");
-
     // Create async channels
     let (tmux_event_sender, tmux_event_receiver): (Sender<TmuxEvent>, Receiver<TmuxEvent>) =
         async_channel::unbounded();
@@ -119,12 +124,53 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
 fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     match event {
         TmuxEvent::Attached => {}
-        TmuxEvent::OutputLine(line) => {}
+        TmuxEvent::LayoutChanged(layout) => {
+            println!("Resizing TMUX");
+            window.todo_resize_tmux();
+        }
+        TmuxEvent::Output(pane_id, output) => {
+            println!("EMITTING OUTPUT ON PANE {}", pane_id);
+            window.output_on_pane(pane_id, output);
+        }
         TmuxEvent::Exit => {
             println!("Received EXIT event, closing window!");
             window.close();
         }
     }
+}
+
+#[inline]
+fn parse_escaped_output(input: &[u8]) -> Vec<u8> {
+    let input_len = input.len();
+    let mut output = Vec::with_capacity(input_len);
+
+    let mut i = 0;
+    while i < input_len {
+        let char = input[i];
+        if char == b'\\' {
+            // Maybe an escape sequence?
+            if i + 3 >= input_len {
+                panic!("Found escape character but string too short");
+            }
+
+            // This is an escape sequence
+            let mut ascii = 0;
+            for j in i + 1..i + 4 {
+                let num = input[j] - 48;
+                ascii *= 8;
+                ascii += num;
+            }
+            output.push(ascii);
+
+            // We also read 3 extra characters after \
+            i += 4;
+        } else {
+            output.push(char);
+            i += 1;
+        }
+    }
+
+    output
 }
 
 #[inline]
@@ -146,6 +192,7 @@ fn tmux_read_stdout(
         }
 
         // All output from Tmux is acutally ASCII, except %output which we handle separately
+        // TODO: Replace starts_with() with a custom method, this is shit
         let line = unsafe { from_utf8_unchecked(&buffer) };
 
         if buffer[0] == b'%' {
@@ -153,8 +200,11 @@ fn tmux_read_stdout(
             if line.starts_with("%output") {
                 // We were given output, we can assume that up until pane_id, output is ASCII
                 let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
-                let output = from_utf8(&buffer[chars_read..]).unwrap();
-                println!("Output on Pane {}: {}", pane_id, output);
+                let output = parse_escaped_output(&buffer[9 + chars_read..bytes_read - 1]);
+
+                event_channel
+                    .send_blocking(TmuxEvent::Output(pane_id, output))
+                    .expect("Event channel closed!");
             } else if line.starts_with("%begin") {
                 current_command = Some(command_queue.recv_blocking().unwrap());
             } else if line.starts_with("%layout-change") {
@@ -196,6 +246,7 @@ fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sen
         TmuxCommand::InitialLayout => {
             // let bytes = output.as_bytes();
             // parse_tmux_layout(bytes);
+            event_channel.send_blocking(TmuxEvent::LayoutChanged(output.clone())).unwrap();
         }
         _ => {}
     }

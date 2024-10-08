@@ -8,7 +8,7 @@ use crate::window::IvyWindow;
 // Object holding the state
 #[derive(Default)]
 pub struct PanePriv {
-    terminal: RefCell<Option<Terminal>>,
+    pub vte: RefCell<Option<Terminal>>,
     window: RefCell<Option<IvyWindow>>,
     pub id: Cell<u32>,
 }
@@ -29,7 +29,7 @@ impl WidgetImpl for PanePriv {
     fn grab_focus(&self) -> bool {
         self.parent_grab_focus();
 
-        self.terminal.borrow().as_ref().unwrap().grab_focus()
+        self.vte.borrow().as_ref().unwrap().grab_focus()
     }
 }
 
@@ -39,7 +39,7 @@ impl BinImpl for PanePriv {}
 impl PanePriv {
     pub fn init_values(&self, id: u32, terminal: &Terminal, window: &IvyWindow) {
         self.id.replace(id);
-        self.terminal.borrow_mut().replace(terminal.clone());
+        self.vte.borrow_mut().replace(terminal.clone());
         self.window.borrow_mut().replace(window.clone());
     }
 }

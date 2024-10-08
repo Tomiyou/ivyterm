@@ -1,5 +1,7 @@
 mod imp;
 
+use std::str::from_utf8;
+
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
     gdk::{ModifierType, RGBA},
@@ -99,26 +101,46 @@ impl Pane {
         let envv = [];
         let spawn_flags = SpawnFlags::DEFAULT;
 
-        let _terminal = vte.clone();
-        vte.spawn_async(
-            pty_flags,
-            None,
-            &argv,
-            &envv,
-            spawn_flags,
-            || {},
-            -1,
-            gtk4::gio::Cancellable::NONE,
-            move |_result| {
-                _terminal.grab_focus();
-            },
-        );
+        if !is_tmux {
+            let _terminal = vte.clone();
+            vte.spawn_async(
+                pty_flags,
+                None,
+                &argv,
+                &envv,
+                spawn_flags,
+                || {},
+                -1,
+                gtk4::gio::Cancellable::NONE,
+                move |_result| {
+                    _terminal.grab_focus();
+                },
+            );
+        }
 
         terminal
     }
 
     pub fn pane_id(&self) -> u32 {
         self.imp().id.get()
+    }
+
+    pub fn feed_output(&self, output: Vec<u8>) {
+        let binding = self.imp().vte.borrow();
+        let vte = binding.as_ref().unwrap();
+        vte.feed(&output);
+    }
+
+    pub fn get_rows_cols_for_size(&self, width: i32, height: i32) -> (i32, i32) {
+        let binding = self.imp().vte.borrow();
+        let vte = binding.as_ref().unwrap();
+
+        let char_width = vte.char_width();
+        let char_height = vte.char_height();
+
+        let cols = (width as i64) / char_width;
+        let rows = (height as i64) / char_height;
+        (cols as i32, rows as i32)
     }
 }
 
