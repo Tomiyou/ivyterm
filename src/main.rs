@@ -18,6 +18,7 @@ mod global_state;
 mod keyboard;
 mod container;
 mod pane;
+mod separator;
 mod tmux;
 mod toplevel;
 
