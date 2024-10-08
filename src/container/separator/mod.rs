@@ -2,10 +2,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Cursor, GestureDrag, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
-use crate::{
-    container::get_opposite_orientation,
-    settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH},
-};
+use crate::settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH};
 
 use super::{layout::ContainerLayout, Container};
 
@@ -86,5 +83,14 @@ impl Separator {
 
     pub fn set_current_position(&self, pos: i32) {
         self.imp().current_position.replace(pos);
+    }
+}
+
+#[inline]
+fn get_opposite_orientation(orientation: Orientation) -> Orientation {
+    match orientation {
+        Orientation::Horizontal => Orientation::Vertical,
+        Orientation::Vertical => Orientation::Horizontal,
+        _ => panic!("What the fuck is this orientation"),
     }
 }

@@ -99,13 +99,3 @@ impl Container {
         (total_cols, total_rows)
     }
 }
-
-// TODO: Move this to separator?
-#[inline]
-fn get_opposite_orientation(orientation: Orientation) -> Orientation {
-    match orientation {
-        Orientation::Horizontal => Orientation::Vertical,
-        Orientation::Vertical => Orientation::Horizontal,
-        _ => panic!("What the fuck is this orientation"),
-    }
-}

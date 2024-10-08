@@ -16,7 +16,6 @@ fn set_text_from_trigger(label: &Label, trigger: &Option<ShortcutTrigger>) {
     }
 }
 
-// TODO: Remove text from Keybinding (use to_label() instead)
 struct LearningKeybinding {
     keybinding: Rc<RefCell<Keybinding>>,
     input_ctrl: EventControllerKey,
