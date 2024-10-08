@@ -1,12 +1,11 @@
 use std::cell::RefCell;
 
-use libadwaita::subclass::prelude::*;
-use libadwaita::{glib, TabPage, TabView};
+use libadwaita::{glib, subclass::prelude::*, TabView};
 
 // Object holding the state
 #[derive(Default)]
 pub struct TopLevel {
-    pub tab_view: RefCell<Option<(TabView, TabPage)>>,
+    pub tab_view: RefCell<Option<TabView>>,
 }
 
 // The central trait for subclassing a GObject
@@ -21,15 +20,7 @@ impl ObjectSubclass for TopLevel {
 impl ObjectImpl for TopLevel {}
 
 // Trait shared by all widgets
-impl WidgetImpl for TopLevel {
-    fn unrealize(&self) {
-        self.parent_unrealize();
-
-        let binding = self.tab_view.borrow();
-        let (view, page) = binding.as_ref().unwrap();
-        view.close_page(&page);
-    }
-}
+impl WidgetImpl for TopLevel {}
 
 // Trait shared by all Bins
 impl BinImpl for TopLevel {}

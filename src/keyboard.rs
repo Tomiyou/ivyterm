@@ -45,21 +45,3 @@ pub fn matches_keybinding(
 
     false
 }
-
-// {
-//     if keycode == 28 {
-//         create_tab(&tab_view);
-//         return Propagation::Stop;
-//     } else if keycode == 25 {
-//         let tab_count = TAB_COUNT.fetch_sub(1, Ordering::Relaxed);
-//         if tab_count == 1 {
-//             key_ctl_window.close();
-//             println!("EXITING");
-//             return Propagation::Stop;
-//         }
-
-//         let page = tab_view.selected_page().unwrap();
-//         tab_view.close_page(&page);
-//         return Propagation::Stop;
-//     }
-// }

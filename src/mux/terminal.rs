@@ -1,10 +1,8 @@
-// use glib::{Propagation, SpawnFlags};
-// use gtk4::{gdk::RGBA, EventControllerKey, Orientation, Paned};
-// use vte4::{Cast, PtyFlags, Terminal, TerminalExt, TerminalExtManual, WidgetExt};
-// use crate::{global_state::GLOBAL_SETTINGS, keyboard::{matches_keybinding, Keybinding}, mux::{pane::close_pane, toplevel::TopLevel}};
-
 use glib::{Propagation, SpawnFlags};
-use gtk4::{gdk::RGBA, EventControllerKey, Orientation, Paned, Widget};
+use gtk4::{
+    gdk::{Key, ModifierType, RGBA},
+    EventControllerKey, Orientation, Paned, Widget,
+};
 use libadwaita::prelude::*;
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
@@ -25,7 +23,7 @@ fn default_colors() -> (RGBA, RGBA) {
 
 enum ParentType {
     ParentPaned(Paned),
-    ParentTopLevel(TopLevel)
+    ParentTopLevel(TopLevel),
 }
 
 fn cast_parent(parent: Widget) -> ParentType {
@@ -38,7 +36,7 @@ fn cast_parent(parent: Widget) -> ParentType {
     panic!("Parent is neither Bin nor Paned")
 }
 
-pub fn create_terminal() -> Terminal {
+pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     // Get terminal font
     let font_desc = {
         let reader = GLOBAL_SETTINGS.read().unwrap();
@@ -68,38 +66,9 @@ pub fn create_terminal() -> Terminal {
     terminal.set_colors(Some(&foreground), Some(&background), &[]);
 
     let eventctl = EventControllerKey::new();
-    eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
-        // Handle terminal splits
-        println!("Terminal has keycode {}", keycode);
-
-        // Split vertical
-        if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(true)) {
-            match cast_parent(eventctl.widget().parent().unwrap()) {
-                ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Vertical),
-                ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Vertical),
-            }
-            return Propagation::Stop;
-        }
-
-        // Split horizontal
-        if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(false)) {
-            match cast_parent(eventctl.widget().parent().unwrap()) {
-                ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Horizontal),
-                ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Horizontal),
-            }
-            return Propagation::Stop;
-        }
-
-        // Close pane
-        if matches_keybinding(keyval, keycode, state, Keybinding::PaneClose) {
-            match cast_parent(eventctl.widget().parent().unwrap()) {
-                ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-                ParentType::ParentPaned(paned) => close_pane(paned),
-            }
-            return Propagation::Stop;
-        }
-
-        Propagation::Proceed
+    let top_level = top_level.clone();
+    eventctl.connect_key_pressed(move |eventctl, keyval, key, state| {
+        handle_keyboard(eventctl, keyval, key, state, &top_level)
     });
     terminal.add_controller(eventctl);
 
@@ -116,16 +85,70 @@ pub fn create_terminal() -> Terminal {
         &argv,
         &envv,
         spawn_flags,
-        || {
-            println!("Lmao its me Mario");
-        },
+        || {},
         -1,
         gtk4::gio::Cancellable::NONE,
         move |_result| {
-            println!("Some callback?");
             _terminal.grab_focus();
         },
     );
 
     terminal
+}
+
+#[inline]
+fn handle_keyboard(
+    eventctl: &EventControllerKey,
+    keyval: Key,
+    keycode: u32,
+    state: ModifierType,
+    top_level: &TopLevel,
+) -> Propagation {
+    // Handle terminal splits
+    if !state.contains(ModifierType::CONTROL_MASK) || !state.contains(ModifierType::SHIFT_MASK) {
+        return Propagation::Proceed;
+    }
+
+    println!("Terminal has keycode {}", keycode);
+
+    // Split vertical
+    if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(true)) {
+        match cast_parent(eventctl.widget().parent().unwrap()) {
+            ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Vertical),
+            ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Vertical, top_level),
+        }
+        return Propagation::Stop;
+    }
+
+    // Split horizontal
+    if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(false)) {
+        match cast_parent(eventctl.widget().parent().unwrap()) {
+            ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Horizontal),
+            ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Horizontal, top_level),
+        }
+        return Propagation::Stop;
+    }
+
+    // Close pane
+    if matches_keybinding(keyval, keycode, state, Keybinding::PaneClose) {
+        match cast_parent(eventctl.widget().parent().unwrap()) {
+            ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
+            ParentType::ParentPaned(paned) => close_pane(paned),
+        }
+        return Propagation::Stop;
+    }
+
+    // Create tab
+    if matches_keybinding(keyval, keycode, state, Keybinding::TabNew) {
+        top_level.create_tab();
+        return Propagation::Stop;
+    }
+
+    // Close tab
+    if matches_keybinding(keyval, keycode, state, Keybinding::TabClose) {
+        top_level.close_tab();
+        return Propagation::Stop;
+    }
+
+    Propagation::Proceed
 }

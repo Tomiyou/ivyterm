@@ -3,6 +3,8 @@ use libadwaita::{prelude::*, Bin};
 
 use crate::mux::terminal::create_terminal;
 
+use super::toplevel::TopLevel;
+
 pub fn new_paned(
     orientation: Orientation,
     start_child: impl IsA<Widget>,
@@ -21,13 +23,13 @@ pub fn new_paned(
     paned
 }
 
-pub fn split_pane(paned: Paned, orientation: Orientation) {
+pub fn split_pane(paned: Paned, orientation: Orientation, top_level: &TopLevel) {
     let start_child = paned.start_child().unwrap();
     if start_child.has_focus() {
         // Replace first child
         paned.set_start_child(None::<&Widget>);
 
-        let terminal = create_terminal();
+        let terminal = create_terminal(top_level);
         let new_paned = new_paned(orientation, start_child, terminal);
         paned.set_start_child(Some(&new_paned));
 
@@ -43,7 +45,7 @@ pub fn split_pane(paned: Paned, orientation: Orientation) {
         // Replace end child
         paned.set_end_child(None::<&Widget>);
 
-        let terminal = create_terminal();
+        let terminal = create_terminal(top_level);
         let new_paned = new_paned(orientation, end_child, terminal);
         paned.set_end_child(Some(&new_paned));
 

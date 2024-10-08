@@ -107,49 +107,6 @@ fn main() -> glib::ExitCode {
         window_box.append(&window_handle);
         window_box.append(&tab_view);
 
-        // Keyboard handling
-        let _window = window.clone();
-        let eventctl = {
-            let eventctl = EventControllerKey::new();
-            eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
-                // let frame_time = Duration::new(0, 1_000_000_000 / 1);
-
-                // if let Some(char) = keyval.to_unicode() {
-                //     println!("Pressed button {}", char);
-                //     let name = format!("Page {}", char);
-                //     // stack.set_visible_child_name(&name);
-                // } else {
-                // }
-
-                // let modifier = ModifierType::CONTROL_MASK;
-                // let modifier = modifier.union(ModifierType::SHIFT_MASK);
-                if state.contains(ModifierType::CONTROL_MASK)
-                    && state.contains(ModifierType::SHIFT_MASK)
-                {
-                    if keycode == 28 {
-                        create_tab(&tab_view);
-                        return Propagation::Stop;
-                    } else if keycode == 25 {
-                        let tab_count = TAB_COUNT.fetch_sub(1, Ordering::Relaxed);
-                        if tab_count == 1 {
-                            _window.close();
-                            println!("EXITING");
-                            return Propagation::Stop;
-                        }
-
-                        let page = tab_view.selected_page().unwrap();
-                        tab_view.close_page(&page);
-                        return Propagation::Stop;
-                    }
-                }
-
-                // println!("No match");
-                Propagation::Proceed
-            });
-            eventctl
-        };
-        window.add_controller(eventctl);
-
         window.set_content(Some(&window_box));
         window.present();
     });
