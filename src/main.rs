@@ -15,9 +15,10 @@ mod window;
 fn main() -> glib::ExitCode {
     let application = IvyApplication::new();
 
-    // Initialize CSS and load provider for later use
+    // Initialize IvyApplication
     application.connect_startup(|app| {
         app.init_css_provider();
+        app.init_keybindings();
     });
 
     application.connect_activate(move |app| {

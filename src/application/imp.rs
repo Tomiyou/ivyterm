@@ -4,6 +4,7 @@ use gtk4::CssProvider;
 use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 
+use crate::keyboard::KeyboardAction;
 use crate::settings::GlobalConfig;
 
 // Object holding the state
@@ -11,6 +12,7 @@ use crate::settings::GlobalConfig;
 pub struct IvyApplicationPriv {
     pub css_provider: RefCell<Option<CssProvider>>,
     pub config: RefCell<GlobalConfig>,
+    pub keybindings: RefCell<Vec<KeyboardAction>>,
 }
 
 // The central trait for subclassing a GObject

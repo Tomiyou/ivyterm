@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer};
 use general::create_general_page;
 // use keybindings::create_keybinding_page;
 
-use crate::application::IvyApplication;
+use crate::{application::IvyApplication, keyboard::Keybindings};
 
 mod general;
 mod keybindings;
@@ -24,7 +24,7 @@ pub struct GlobalConfig {
     pub background: IvyColor,
     pub standard_colors: [IvyColor; 8],
     pub bright_colors: [IvyColor; 8],
-    keybindings: Keybindings,
+    pub keybindings: Keybindings,
 }
 
 #[derive(Clone)]
@@ -81,17 +81,6 @@ impl Into<FontDescription> for IvyFont {
     fn into(self) -> FontDescription {
         self.0
     }
-}
-
-#[derive(Deserialize)]
-struct Keybindings {
-    new_tab: String,
-    close_tab: String,
-    split_horizontal: String,
-    split_vertical: String,
-    close_pane: String,
-    toggle_zoom: String,
-    copy_selection: String,
 }
 
 impl Default for GlobalConfig {

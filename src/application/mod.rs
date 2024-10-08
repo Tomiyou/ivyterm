@@ -2,13 +2,14 @@ mod config;
 mod imp;
 
 use glib::Object;
-use gtk4::gdk::{Display, RGBA};
+use gtk4::gdk::{Display, Event, RGBA};
 use gtk4::pango::FontDescription;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
+use crate::keyboard::KeyboardAction;
 use crate::settings::show_preferences_window;
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
@@ -30,6 +31,11 @@ impl IvyApplication {
         let css_provider = load_css();
         self.imp().css_provider.replace(Some(css_provider));
         println!("Css provider set!");
+    }
+
+    pub fn init_keybindings(&self) {
+        let mut config = self.imp().config.borrow_mut();
+        config.keybindings.init();
     }
 
     pub fn new_window(&self, tmux_session: Option<&str>) {
@@ -88,6 +94,11 @@ impl IvyApplication {
     pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
         let config = self.imp().config.borrow();
         config.get_terminal_config()
+    }
+
+    pub fn handle_keyboard_event(&self, event: Event) -> Option<KeyboardAction> {
+        let config = self.imp().config.borrow();
+        config.keybindings.handle_event(event)
     }
 }
 

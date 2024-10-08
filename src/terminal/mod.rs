@@ -1,19 +1,12 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
-use gtk4::{
-    gdk::{ModifierType, RGBA},
-    pango::FontDescription,
-    EventControllerKey, Orientation, ScrolledWindow,
-};
+use gtk4::{gdk::RGBA, pango::FontDescription, EventControllerKey, Orientation, ScrolledWindow};
 use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
-    application::IvyApplication,
-    keyboard::{handle_input, Keybinding},
-    toplevel::TopLevel,
-    window::IvyWindow,
+    application::IvyApplication, keyboard::KeyboardAction, toplevel::TopLevel, window::IvyWindow,
 };
 
 glib::wrapper! {
@@ -88,13 +81,16 @@ impl Terminal {
             terminal,
             #[strong]
             vte,
-            move |_eventctl, keyval, key, state| {
+            move |eventctl, keyval, key, state| {
                 if is_tmux {
                     window.tmux_keypress(pane_id, key, keyval, state);
-                    Propagation::Proceed
                 } else {
-                    handle_keyboard(key, state, &terminal, &top_level, &vte)
+                    if let Some(event) = eventctl.current_event() {
+                        let action = app.handle_keyboard_event(event);
+                        return handle_keyboard(action, &terminal, &top_level, &vte);
+                    }
                 }
+                Propagation::Proceed
             }
         ));
         vte.add_controller(eventctl);
@@ -188,23 +184,13 @@ impl Terminal {
 
 #[inline]
 fn handle_keyboard(
-    keycode: u32,
-    state: ModifierType,
+    action: Option<KeyboardAction>,
     terminal: &Terminal,
     top_level: &TopLevel,
     vte: &Vte,
 ) -> Propagation {
-    // Handle terminal splits
-    if !state.contains(ModifierType::CONTROL_MASK)
-        && !state.contains(ModifierType::SHIFT_MASK)
-        && !state.contains(ModifierType::ALT_MASK)
-    {
-        return Propagation::Proceed;
-    }
-
-    let keyboard_action = handle_input(keycode, state);
-    match keyboard_action {
-        Some(Keybinding::PaneSplit(vertical)) => {
+    match action {
+        Some(KeyboardAction::PaneSplit(vertical)) => {
             let orientation = if vertical {
                 Orientation::Vertical
             } else {
@@ -213,25 +199,25 @@ fn handle_keyboard(
 
             top_level.split_pane(terminal, orientation);
         }
-        Some(Keybinding::PaneClose) => {
+        Some(KeyboardAction::PaneClose) => {
             top_level.close_pane(terminal);
         }
-        Some(Keybinding::TabNew) => {
+        Some(KeyboardAction::TabNew) => {
             top_level.create_tab(None);
         }
-        Some(Keybinding::TabClose) => {
+        Some(KeyboardAction::TabClose) => {
             top_level.close_tab();
         }
-        Some(Keybinding::SelectPane(direction)) => {
+        Some(KeyboardAction::SelectPane(direction)) => {
             let previous_size = top_level.unzoom();
             if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
                 new_focus.grab_focus();
             }
         }
-        Some(Keybinding::ToggleZoom) => {
+        Some(KeyboardAction::ToggleZoom) => {
             top_level.toggle_zoom(terminal);
         }
-        Some(Keybinding::CopySelected) => {
+        Some(KeyboardAction::CopySelected) => {
             vte.emit_copy_clipboard();
         }
         None => return Propagation::Proceed,
