@@ -5,7 +5,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal,
 };
 
 use self::imp::Zoomed;
@@ -202,7 +202,7 @@ impl TopLevel {
         // Zoom the terminal
 
         // We need to remember the current width and height for the unzoom portion
-        let (_, _, width, height) = terminal.bounds().unwrap();
+        let (x, y, width, height) = terminal.bounds().unwrap();
 
         // Remove Terminal from its parent Paned
         let terminal_paned: IvyPaned = terminal.parent().unwrap().downcast().unwrap();
@@ -224,12 +224,12 @@ impl TopLevel {
             root_paned,
             terminal_paned,
             is_start_child,
-            previous_size: (width, height),
+            previous_bounds: (x, y, width, height),
         };
         binding.replace(zoomed);
     }
 
-    pub fn unzoom(&self) -> Option<(i32, i32)> {
+    pub fn unzoom(&self) -> Option<(i32, i32, i32, i32)> {
         let mut binding = self.imp().zoomed.borrow_mut();
         if let Some(zoomed) = binding.take() {
             self.set_child(None::<&Widget>);
@@ -244,7 +244,7 @@ impl TopLevel {
             self.set_child(Some(&zoomed.root_paned));
             zoomed.terminal.grab_focus();
 
-            return Some(zoomed.previous_size)
+            return Some(zoomed.previous_bounds);
         }
 
         None
@@ -264,7 +264,7 @@ impl TopLevel {
         &self,
         terminal: &IvyTerminal,
         direction: Direction,
-        use_size: Option<(i32, i32)>,
+        use_size: Option<(i32, i32, i32, i32)>,
     ) -> Option<IvyTerminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
@@ -276,17 +276,17 @@ impl TopLevel {
         // We will use Rect intersection to find a matching neighbor. For this to work, the Rect
         // used for calculating the intersection must be slightly larger in the direction we
         // wish to find a neighbor.
-        let (width, height) = if let Some((width, height)) = use_size {
-            (width, height)
+        let (x, y, width, height) = if let Some((x, y, width, height)) = use_size {
+            (x as f32, y as f32, width as f32, height as f32)
         } else {
             let (_, _, width, height) = terminal.bounds().unwrap();
-            (width, height)
+            (0.0, 0.0, width as f32, height as f32)
         };
         let terminal_rect = match direction {
-            Direction::Up => Rect::new(0.0, -PAD, width as f32, height as f32 + PAD),
-            Direction::Down => Rect::new(0.0, 0.0, width as f32, height as f32 + PAD),
-            Direction::Left => Rect::new(-PAD, 0.0, width as f32 + PAD, height as f32),
-            Direction::Right => Rect::new(0.0, 0.0, width as f32 + PAD, height as f32),
+            Direction::Up => Rect::new(0.0, -PAD, width, height + PAD),
+            Direction::Down => Rect::new(0.0, 0.0, width, height + PAD),
+            Direction::Left => Rect::new(-PAD, 0.0, width + PAD, height),
+            Direction::Right => Rect::new(0.0, 0.0, width + PAD, height),
         };
 
         // TODO: it can be NULL when widget is being unzoomed
@@ -300,7 +300,10 @@ impl TopLevel {
             // terminal.compute_bounds(&target_terminal) calculates the distance between terminals
             // and returns a Rect graphene struct which contains x and y distance from the target
             // terminal, and width and height of the neighbor
-            let bounds = neighbor.compute_bounds(terminal).unwrap();
+            let mut bounds = neighbor.compute_bounds(terminal).unwrap();
+            // If the terminal was just unzoomed, GTK is not yet aware of this when we call
+            // compute_bounds(), which means we have to use the provided x and y coordinates now
+            bounds.offset(-x, -y);
             // println!("Bounds are {:?}", bounds);
             let intersection = terminal_rect.intersection(&bounds);
             if intersection.is_some() {
