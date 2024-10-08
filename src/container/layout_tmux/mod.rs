@@ -17,10 +17,6 @@ impl TmuxLayout {
         Object::builder().build()
     }
 
-    fn get_terminal_count(&self) -> usize {
-        self.imp().separators.borrow().len() + 1
-    }
-
     pub fn add_separator(&self, container: &Container) -> Separator {
         todo!()
     }

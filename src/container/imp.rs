@@ -6,7 +6,12 @@ use libadwaita::{glib, prelude::*};
 
 use crate::window::IvyWindow;
 
-use super::{layout_default::ContainerLayout, Layout};
+use super::{layout_default::ContainerLayout, layout_tmux::TmuxLayout};
+
+pub enum Layout {
+    Default(ContainerLayout),
+    Tmux(TmuxLayout),
+}
 
 // Object holding the state
 #[derive(glib::Properties)]

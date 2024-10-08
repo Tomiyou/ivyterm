@@ -5,16 +5,12 @@ mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
+use imp::Layout;
 use layout_default::ContainerLayout;
 use layout_tmux::TmuxLayout;
 use libadwaita::{glib, prelude::*};
 
 use crate::{terminal::Terminal, window::IvyWindow};
-
-enum Layout {
-    Default(ContainerLayout),
-    Tmux(TmuxLayout),
-}
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
