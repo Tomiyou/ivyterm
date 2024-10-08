@@ -1,60 +1,27 @@
-use libadwaita::glib::signal::Propagation;
+use gtk4::{Orientation, Paned, Widget};
 use libadwaita::{prelude::*, Bin};
-use gtk4::{EventControllerKey, Orientation, Paned, ScrolledWindow, Widget};
 
-use crate::keyboard::{matches_keybinding, Keybinding};
 use crate::mux::terminal::create_terminal;
 
-pub struct Pane {}
+pub fn new_paned(
+    orientation: Orientation,
+    start_child: impl IsA<Widget>,
+    end_child: impl IsA<Widget>,
+) -> Paned {
+    let paned = Paned::builder()
+        .focusable(true)
+        .vexpand(true)
+        .hexpand(true)
+        .css_classes(vec!["terminal-pane"])
+        .orientation(orientation)
+        .start_child(&start_child)
+        .end_child(&end_child)
+        .build();
 
-    pub fn new_paned(
-        orientation: Orientation,
-        start_child: impl IsA<Widget>,
-        end_child: impl IsA<Widget>,
-    ) -> Paned {
-        let paned = Paned::builder()
-            .focusable(true)
-            .vexpand(true)
-            .hexpand(true)
-            .css_classes(vec!["terminal-pane"])
-            .orientation(orientation)
-            .start_child(&start_child)
-            .end_child(&end_child)
-            .build();
+    paned
+}
 
-        let eventctl = EventControllerKey::new();
-        eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
-            // Handle terminal splits
-            let paned = eventctl.widget();
-            let paned = paned.downcast::<Paned>().unwrap();
-
-            // println!("Paned keycode {}", keycode);
-
-            // Split vertical
-            if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(true)) {
-                split_pane(paned, Orientation::Vertical);
-                return Propagation::Stop;
-            }
-            // Split horizontal
-            if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(false)) {
-                split_pane(paned, Orientation::Horizontal);
-                return Propagation::Stop;
-            }
-            // Close pane
-            if matches_keybinding(keyval, keycode, state, Keybinding::PaneClose) {
-                println!("Closing pane");
-                close_pane(paned);
-                return Propagation::Stop;
-            }
-
-            Propagation::Proceed
-        });
-        paned.add_controller(eventctl);
-
-        paned
-    }
-
-fn split_pane(paned: Paned, orientation: Orientation) {
+pub fn split_pane(paned: Paned, orientation: Orientation) {
     let none: Option<&Widget> = None;
 
     let start_child = paned.start_child().unwrap();
@@ -137,18 +104,18 @@ pub fn close_pane(closing_paned: Paned) {
         if closing_paned.eq(&start_child) {
             println!("Setting start child of parent");
             parent.set_start_child(Some(&retained_child));
-    
+
             let size = parent.size(parent.orientation());
             parent.set_position(size / 2);
             return;
         }
-    
+
         // Check if closing_pane is end child
         let end_child = parent.end_child().unwrap();
         if closing_paned.eq(&end_child) {
             println!("Setting end child of parent");
             parent.set_end_child(Some(&retained_child));
-    
+
             let size = parent.size(parent.orientation());
             parent.set_position(size / 2);
             return;
