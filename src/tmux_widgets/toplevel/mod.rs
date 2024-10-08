@@ -161,60 +161,6 @@ impl TmuxTopLevel {
         }
     }
 
-    pub fn find_neighbor(
-        &self,
-        terminal: &TmuxTerminal,
-        direction: Direction,
-        use_size: Option<(i32, i32, i32, i32)>,
-    ) -> Option<TmuxTerminal> {
-        let binding = self.imp().terminals.borrow();
-        if binding.len() < 2 {
-            return None;
-        }
-
-        const PAD: f32 = SPLIT_HANDLE_WIDTH as f32 + 5.0;
-
-        // We will use Rect intersection to find a matching neighbor. For this to work, the Rect
-        // used for calculating the intersection must be slightly larger in the direction we
-        // wish to find a neighbor.
-        let (x, y, width, height) = if let Some((x, y, width, height)) = use_size {
-            (x as f32, y as f32, width as f32, height as f32)
-        } else {
-            let (_, _, width, height) = terminal.bounds().unwrap();
-            (0.0, 0.0, width as f32, height as f32)
-        };
-        let terminal_rect = match direction {
-            Direction::Up => Rect::new(0.0, -PAD, width, height + PAD),
-            Direction::Down => Rect::new(0.0, 0.0, width, height + PAD),
-            Direction::Left => Rect::new(-PAD, 0.0, width + PAD, height),
-            Direction::Right => Rect::new(0.0, 0.0, width + PAD, height),
-        };
-
-        // TODO: it can be NULL when widget is being unzoomed
-        // println!("Terminal rect {:?}", terminal_rect);
-        // Loop through all the terminals in the window and find a suitable neighbor
-        for neighbor in binding.iter() {
-            if neighbor == terminal {
-                continue;
-            }
-
-            // terminal.compute_bounds(&target_terminal) calculates the distance between terminals
-            // and returns a Rect graphene struct which contains x and y distance from the target
-            // terminal, and width and height of the neighbor
-            let mut bounds = neighbor.compute_bounds(terminal).unwrap();
-            // If the terminal was just unzoomed, GTK is not yet aware of this when we call
-            // compute_bounds(), which means we have to use the provided x and y coordinates now
-            bounds.offset(-x, -y);
-            // println!("Bounds are {:?}", bounds);
-            let intersection = terminal_rect.intersection(&bounds);
-            if intersection.is_some() {
-                return Some(neighbor.clone());
-            }
-        }
-
-        None
-    }
-
     pub fn get_cols_rows(&self) -> (i32, i32) {
         let terminals = self.imp().terminals.borrow();
         if let Some(terminal) = terminals.first() {
@@ -244,32 +190,6 @@ impl TmuxTopLevel {
     pub fn layout_alloc_changed(&self) {
         let window = self.imp().window.borrow();
         window.as_ref().unwrap().resync_tmux_size();
-    }
-
-    pub fn unregister_unparented_terminals(&self) {
-        let imp = self.imp();
-        let binding = imp.window.borrow();
-        let window = binding.as_ref().unwrap();
-
-        let mut terminals_vec = imp.terminals.borrow_mut();
-        terminals_vec.retain(|terminal| {
-            // Retain only if it has a parent
-            terminal.parent().is_some()
-        });
-
-        let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        lru_terminals.retain(|terminal| {
-            // Retain only if it has a parent
-            let has_parent = terminal.terminal.parent().is_some();
-            if !has_parent {
-                println!(
-                    "unregister_unparented_terminals: removing pane with ID {}",
-                    terminal.id
-                );
-                window.unregister_terminal(terminal.id);
-            }
-            has_parent
-        });
     }
 
     pub fn adjust_separator_positions(&self, x_diff: f64, y_diff: f64) {

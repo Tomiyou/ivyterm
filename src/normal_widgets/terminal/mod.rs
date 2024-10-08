@@ -151,48 +151,6 @@ impl Terminal {
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
         vte.set_scrollback_lines(scrollback_lines as i64);
     }
-
-    pub fn feed_output(&self, output: Vec<u8>) {
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
-        vte.feed(&output);
-    }
-
-    pub fn scroll_view(&self, empty_lines: usize) {
-        if empty_lines < 1 {
-            return;
-        }
-
-        let mut output = Vec::with_capacity(empty_lines + 16);
-        // Scroll down 'empty_lines' lines
-        for _ in 0..empty_lines {
-            output.push(b'\n');
-        }
-        // Scroll back up '# = empty_lines' lines using ESC[#A
-        output.push(b'\x1b');
-        output.push(b'[');
-        for d in empty_lines.to_string().as_bytes() {
-            output.push(*d);
-        }
-        output.push(b'A');
-
-        self.feed_output(output);
-    }
-
-    pub fn get_cols_or_rows(&self) -> (i64, i64) {
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
-
-        let cols = vte.column_count();
-        let rows = vte.row_count();
-        (cols, rows)
-    }
-
-    pub fn get_char_width_height(&self) -> (i32, i32) {
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
-        (vte.char_width() as i32, vte.char_height() as i32)
-    }
 }
 
 #[inline]
