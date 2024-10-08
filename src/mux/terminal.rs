@@ -54,9 +54,17 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         .font_desc(&font_desc)
         .build();
 
+    // Add terminal to top level terminal list
+    top_level.new_terminal(&terminal);
+
     // Close terminal + pane/tab when the child (shell) exits
+    let _top_level = top_level.clone();
     terminal.connect_child_exited(move |terminal, _exit_code| {
         println!("Terminal {} exited!", terminal_id);
+
+        // First find the terminal that will be focused since this one has exited
+        let new_focus = _top_level.find_neighbor(terminal);
+
         terminal.unrealize();
 
         let parent = terminal.parent().unwrap();
@@ -64,6 +72,9 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
             ParentType::ParentPaned(paned) => close_pane(paned),
         }
+
+        // Remove terminal from top level terminal list
+        _top_level.close_terminal(terminal);
     });
 
     // Set terminal colors

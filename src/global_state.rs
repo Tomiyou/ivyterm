@@ -9,6 +9,7 @@ use gtk4::{Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Or
 pub const INITIAL_WIDTH: i32 = 800;
 pub const INITIAL_HEIGHT: i32 = 640;
 pub const APPLICATION_TITLE: &str = "ivyTerm";
+pub const SPLIT_HANDLE_WIDTH: u8 = 1;
 
 pub struct GlobalSettings {
     pub font_desc: FontDescription,

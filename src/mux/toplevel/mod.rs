@@ -3,7 +3,7 @@ mod imp;
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::Orientation;
 use libadwaita::{glib, prelude::*, TabView};
-use vte4::WidgetExt;
+use vte4::{Terminal, WidgetExt};
 
 use crate::mux::{pane::new_paned, terminal::create_terminal};
 
@@ -19,7 +19,11 @@ impl TopLevel {
     pub fn new(tab_view: &TabView) -> Self {
         let top_level: TopLevel = Object::builder().build();
 
-        top_level.imp().tab_view.borrow_mut().replace(tab_view.clone());
+        top_level
+            .imp()
+            .tab_view
+            .borrow_mut()
+            .replace(tab_view.clone());
 
         let terminal = create_terminal(&top_level);
 
@@ -53,5 +57,29 @@ impl TopLevel {
         self.set_child(Some(&new_paned));
 
         println!("New PANE {:?}", new_paned.as_ptr())
+    }
+
+    pub fn new_terminal(&self, terminal: &Terminal) {
+        let mut binding = self.imp().terminals.borrow_mut();
+        binding.push(terminal.clone());
+        println!("Added terminal, number of terminals in vec {}", binding.len());
+    }
+
+    pub fn close_terminal(&self, terminal: &Terminal) {
+        let mut binding = self.imp().terminals.borrow_mut();
+        binding.retain(|t| t != terminal);
+        println!("Removed terminal, number of terminals in vec {}", binding.len());
+    }
+
+    pub fn find_neighbor(&self, terminal: &Terminal) -> Option<Terminal> {
+        let binding = self.imp().terminals.borrow();
+        for terminal in binding.iter() {
+            let bounds = terminal.bounds();
+            if let Some((x, y, width, height)) = bounds {
+                println!("Bounds: {}:{}:{}:{}", x, y, width, height);
+            }
+        }
+
+        None
     }
 }

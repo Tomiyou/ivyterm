@@ -1,11 +1,13 @@
 use std::cell::RefCell;
 
 use libadwaita::{glib, subclass::prelude::*, TabView};
+use vte4::Terminal;
 
 // Object holding the state
 #[derive(Default)]
 pub struct TopLevel {
     pub tab_view: RefCell<Option<TabView>>,
+    pub terminals: RefCell<Vec<Terminal>>
 }
 
 // The central trait for subclassing a GObject

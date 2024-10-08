@@ -55,11 +55,13 @@ pub fn split_pane(paned: Paned, orientation: Orientation, top_level: &TopLevel) 
     }
 }
 
+// TODO: Move all of this into top_level, since it can check top_level directly using pointers
 pub fn close_pane(closing_paned: Paned) {
     // Paned always has 2 children present, if not, then it would have been deleted
     let start_child = closing_paned.start_child().unwrap();
     let end_child = closing_paned.end_child().unwrap();
 
+    // TODO: Do this using pointer comparison not using focus
     let retained_child = if start_child.has_focus() {
         // Remove start child, keep last child
         end_child
