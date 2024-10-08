@@ -168,12 +168,21 @@ pub fn tmux_read_stdout(
                 empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%window-pane-changed") {
                 // %window-pane-changed @0 %10
-                let (window_id, chars_read) = read_first_u32(&buffer[22..]);
+                let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
                 let buffer = &buffer[22 + chars_read + 1..];
                 let (pane_id, _) = read_first_u32(buffer);
-                println!("Window {} focus changed to {}", window_id, pane_id);
+                println!("Window {} focus changed to pane {}", tab_id, pane_id);
                 event_channel
-                    .send_blocking(TmuxEvent::FocusChanged(pane_id))
+                    .send_blocking(TmuxEvent::PaneFocusChanged(tab_id, pane_id))
+                    .unwrap();
+            } else if buffer_starts_with(&buffer, "%session-window-changed") {
+                // %session-window-changed $1 @1
+                let (session_id, chars_read) = read_first_u32(&buffer[25..]);
+                let buffer = &buffer[25 + chars_read + 1..];
+                let (tab_id, _) = read_first_u32(buffer);
+                println!("Session {} focus changed to window {}", session_id, tab_id);
+                event_channel
+                    .send_blocking(TmuxEvent::TabFocusChanged(tab_id))
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed

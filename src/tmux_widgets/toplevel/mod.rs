@@ -3,7 +3,7 @@ mod layout;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation, Widget};
+use gtk4::{graphene::Rect, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
@@ -138,32 +138,18 @@ impl TmuxTopLevel {
         window.as_ref().unwrap().unregister_terminal(pane_id);
     }
 
-    pub fn focus_changed(&self, id: u32, terminal: &TmuxTerminal) {
-        let mut lru_terminals = self.imp().lru_terminals.borrow_mut();
+    pub fn focus_changed(&self, term_id: u32) {
+        // TODO: Maybe our implementation of focus tracking is better than Tmux?
+        let imp = self.imp();
+        imp.focused_terminal.replace(term_id);
 
-        if let Some(id_terminal) = lru_terminals.first() {
-            if id_terminal.id == id {
-                // The LRU already has this terminal as latest, no need for any work
-                return;
-            }
-        }
-
-        // Remove the previous position in the vector
-        for (index, sorted) in lru_terminals.iter_mut().enumerate() {
-            if sorted.id == id {
-                lru_terminals.remove(index);
+        // Grab focus on the correct Terminal
+        for terminal in imp.terminals.borrow().iter() {
+            if terminal.pane_id() == term_id {
+                terminal.grab_focus();
                 break;
             }
         }
-
-        // Insert at the beginning
-        lru_terminals.insert(
-            0,
-            WithId {
-                id: id,
-                terminal: terminal.clone(),
-            },
-        );
     }
 
     pub fn lru_terminal(&self) -> Option<TmuxTerminal> {

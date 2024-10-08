@@ -133,13 +133,16 @@ impl IvyTmuxWindow {
                 println!("\n---------- Pane split ----------");
                 self.sync_tmux_layout(tab_id, hierarchy);
             }
-            TmuxEvent::FocusChanged(pane_id) => {
-                let imp = self.imp();
-                imp.focused_pane.replace(pane_id);
+            TmuxEvent::PaneFocusChanged(tab_id, term_id) => {
+                if let Some(top_level) = self.get_top_level(tab_id) {
+                    top_level.focus_changed(term_id);
+                }
+            }
+            TmuxEvent::TabFocusChanged(tab_id) => {
+                self.imp().focused_tab.replace(tab_id);
 
-                let terminals = imp.terminals.borrow();
-                if let Some(terminal) = terminals.get(pane_id) {
-                    terminal.grab_focus();
+                if let Some(top_level) = self.get_top_level(tab_id) {
+                    top_level.grab_focus();
                 }
             }
             TmuxEvent::InitialLayout(tab_id, hierarchy) => {

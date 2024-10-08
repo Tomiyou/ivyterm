@@ -65,16 +65,16 @@ impl TmuxTerminal {
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
-        vte.connect_has_focus_notify(glib::clone!(
-            #[strong]
-            terminal,
-            move |vte| {
-                if vte.has_focus() {
-                    // Notify TopLevel that the focused terminal changed
-                    top_level.focus_changed(pane_id, &terminal);
-                }
-            }
-        ));
+        // vte.connect_has_focus_notify(glib::clone!(
+        //     #[strong]
+        //     terminal,
+        //     move |vte| {
+        //         if vte.has_focus() {
+        //             // Notify TopLevel that the focused terminal changed
+        //             top_level.focus_changed(pane_id, &terminal);
+        //         }
+        //     }
+        // ));
 
         let eventctl = EventControllerKey::new();
         eventctl.connect_key_pressed(glib::clone!(

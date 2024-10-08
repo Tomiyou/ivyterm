@@ -18,7 +18,7 @@ pub struct IvyWindowPriv {
     pub terminals: RefCell<SortedVec<TmuxTerminal>>,
     pub css_provider: RefCell<CssProvider>,
     pub char_size: Cell<(i32, i32)>,
-    pub focused_pane: Cell<u32>,
+    pub focused_tab: Cell<u32>,
 }
 
 // The central trait for subclassing a GObject
