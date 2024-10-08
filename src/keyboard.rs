@@ -56,6 +56,24 @@ pub struct Keybindings {
     move_down: String,
 }
 
+impl Default for Keybindings {
+    fn default() -> Self {
+        Self {
+            new_tab: "<Ctrl><Shift>t".to_string(),
+            close_tab: "<Ctrl><Shift>w".to_string(),
+            split_horizontal: "<Ctrl><Shift>o".to_string(),
+            split_vertical: "<Ctrl><Shift>l".to_string(),
+            close_pane: "<Ctrl><Shift>d".to_string(),
+            toggle_zoom: "<Ctrl><Shift>x".to_string(),
+            copy_selection: "<Ctrl><Shift>c".to_string(),
+            move_right: "<Alt>Right".to_string(),
+            move_left: "<Alt>Left".to_string(),
+            move_up: "<Alt>Up".to_string(),
+            move_down: "<Alt>Down".to_string(),
+        }
+    }
+}
+
 impl Keybindings {
     pub fn init(&mut self) -> Vec<Keybinding> {
         let mut keybindings = Vec::new();
@@ -134,7 +152,10 @@ pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
 }
 
 #[inline]
-pub fn check_keybinding_match(keybindings: &Vec<Keybinding>, event: Event) -> Option<KeyboardAction> {
+pub fn check_keybinding_match(
+    keybindings: &Vec<Keybinding>,
+    event: Event,
+) -> Option<KeyboardAction> {
     let state = event.modifier_state();
     if !state.contains(ModifierType::CONTROL_MASK)
         && !state.contains(ModifierType::SHIFT_MASK)
