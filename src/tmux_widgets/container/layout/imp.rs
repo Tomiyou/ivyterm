@@ -191,41 +191,4 @@ impl TmuxLayoutPriv {
 
         children_sizes
     }
-
-    // #[inline]
-    // fn get_children_sizesXXX(&self, container: &TmuxContainer, size: i32) -> Vec<i32> {
-    // let separators = self.separators.borrow();
-    // let child_count = (separators.len() * 2) + 1;
-    // let mut children_sizes = Vec::with_capacity(child_count);
-
-    // // Handle being given size less than 0 (usually when not initialized yet or error)
-    // if size < 0 {
-    //     for _ in 0..child_count {
-    //         children_sizes.push(-1);
-    //     }
-    //     return children_sizes;
-    // }
-
-    // // All Separators are the same size
-    // let handle_size = separators.first().unwrap().get_handle_width();
-    // // Cell size is 2px larger than handle_size, since we must account for VTE widget
-    // // fixed padding of 1px on each side
-    // let cell_size = handle_size + 2;
-    // let mut already_used_size = 0;
-
-    // for separator in separators.iter() {
-    //     // Each child size is calculated like this: position of the Separator
-    //     // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
-    //     //  We then subtract how much size we used up to this point
-    //     let separator_position = (separator.get_position() * cell_size) + 2;
-    //     let child_size = separator_position - already_used_size;
-    //     children_sizes.push(child_size);
-    //     children_sizes.push(handle_size);
-
-    //     already_used_size += child_size + handle_size;
-    // }
-    // children_sizes.push(size - already_used_size);
-
-    // children_sizes
-    // }
 }
