@@ -63,17 +63,30 @@ impl Terminal {
             #[weak]
             terminal,
             move |_, _| {
-                // Now close the pane/tab
-                top_level.close_pane(&terminal);
-
                 // Remove terminal from top level terminal list
                 top_level.unregister_terminal(&terminal);
+
+                // Now close the pane/tab
+                top_level.close_pane(&terminal);
             }
         ));
 
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
+
+        vte.connect_has_focus_notify(glib::clone!(
+            #[weak]
+            top_level,
+            #[weak]
+            terminal,
+            move |vte| {
+                if vte.has_focus() {
+                    // Notify TopLevel that the focused terminal changed
+                    top_level.focus_changed(pane_id, &terminal);
+                }
+            }
+        ));
 
         let eventctl = EventControllerKey::new();
         eventctl.connect_key_pressed(glib::clone!(

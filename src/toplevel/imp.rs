@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use gtk4::Widget;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{container::Container, terminal::Terminal, window::IvyWindow};
+use crate::{container::Container, helpers::IdTerminal, terminal::Terminal, window::IvyWindow};
 
 use super::layout::TopLevelLayout;
 
@@ -21,6 +21,7 @@ pub struct TopLevelPriv {
     pub window: RefCell<Option<IvyWindow>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<Terminal>>,
+    pub lru_terminals: RefCell<Vec<IdTerminal>>,
     pub zoomed: RefCell<Option<Zoomed>>,
     pub tab_id: Cell<u32>,
 }

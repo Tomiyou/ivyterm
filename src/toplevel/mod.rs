@@ -6,8 +6,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    container::Container, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH, terminal::Terminal,
-    window::IvyWindow,
+    container::Container, helpers::IdTerminal, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH, terminal::Terminal, window::IvyWindow
 };
 
 use self::imp::Zoomed;
@@ -110,6 +109,9 @@ impl TopLevel {
         // If the conatiner has more than 1 child left, we are done. Otherwise remove the container
         // and leave the 1 child in its place.
         if container.children_count() > 1 {
+            if let Some(terminal) = self.lru_terminal() {
+                terminal.grab_focus();
+            }
             return;
         }
 
@@ -123,12 +125,18 @@ impl TopLevel {
         if let Ok(parent) = parent.clone().downcast::<TopLevel>() {
             // Parent is TopLevel
             parent.set_child(Some(&retained_child));
+            // Since retained_child is the only terminal remaining, focus it
+            retained_child.grab_focus();
             return;
         }
 
         if let Ok(parent) = parent.downcast::<Container>() {
             // Parent is another Container
             parent.replace(&container, &retained_child);
+            // Grab focus on the least recently used terminal
+            if let Some(terminal) = self.lru_terminal() {
+                terminal.grab_focus();
+            }
             return;
         }
 
@@ -196,12 +204,20 @@ impl TopLevel {
     }
 
     pub fn register_terminal(&self, terminal: &Terminal) {
-        let mut terminals_vec = self.imp().terminals.borrow_mut();
+        let pane_id = terminal.pane_id();
+        let imp = self.imp();
+
+        let mut terminals_vec = imp.terminals.borrow_mut();
         terminals_vec.push(terminal.clone());
 
+        let mut lru_terminals = imp.lru_terminals.borrow_mut();
+        lru_terminals.insert(0, IdTerminal {
+            id: pane_id,
+            terminal: terminal.clone(),
+        });
+
         // Also update global terminal hashmap
-        let pane_id = terminal.pane_id();
-        let window = self.imp().window.borrow();
+        let window = imp.window.borrow();
         window
             .as_ref()
             .unwrap()
@@ -209,13 +225,53 @@ impl TopLevel {
     }
 
     pub fn unregister_terminal(&self, terminal: &Terminal) {
-        let mut terminals_vec = self.imp().terminals.borrow_mut();
+        let pane_id = terminal.pane_id();
+        let imp = self.imp();
+
+        let mut terminals_vec = imp.terminals.borrow_mut();
         terminals_vec.retain(|t| t != terminal);
 
+        let mut lru_terminals = imp.lru_terminals.borrow_mut();
+        for (index, sorted) in lru_terminals.iter_mut().enumerate() {
+            if sorted.id == pane_id {
+                lru_terminals.remove(index);
+                break;
+            }
+        }
+
         // Also update global terminal hashmap
-        let pane_id = terminal.pane_id();
-        let window = self.imp().window.borrow();
+        let window = imp.window.borrow();
         window.as_ref().unwrap().unregister_terminal(pane_id);
+    }
+
+    pub fn focus_changed(&self, id: u32, terminal: &Terminal) {
+        let mut lru_terminals = self.imp().lru_terminals.borrow_mut();
+
+        if let Some(id_terminal) = lru_terminals.first() {
+            if id_terminal.id == id {
+                // The LRU already has this terminal as latest, no need for any work
+                return;
+            }
+        }
+
+        // Remove the previous position in the vector
+        for (index, sorted) in lru_terminals.iter_mut().enumerate() {
+            if sorted.id == id {
+                lru_terminals.remove(index);
+                break;
+            }
+        }
+
+        // Insert at the beginning
+        lru_terminals.insert(0, IdTerminal { id: id, terminal: terminal.clone() });
+    }
+
+    pub fn lru_terminal(&self) -> Option<Terminal> {
+        let lru_terminals = self.imp().lru_terminals.borrow();
+        match lru_terminals.first() {
+            Some(id_terminal) => Some(id_terminal.terminal.clone()),
+            None => None,
+        }
     }
 
     pub fn find_neighbor(
