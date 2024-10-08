@@ -1,9 +1,12 @@
 use std::str::from_utf8;
 
-use gtk4::{Box as Container, Orientation};
+use gtk4::Orientation;
 use libadwaita::prelude::*;
 
-use crate::{terminal::Terminal, separator::new_separator, toplevel::TopLevel, window::IvyWindow};
+use crate::{
+    container::Container, terminal::Terminal, toplevel::TopLevel,
+    window::IvyWindow,
+};
 
 pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
     // Read tab ID
@@ -57,9 +60,10 @@ fn parse_layout_recursive(
         // TODO: What if already exists
         if !is_first_child {
             if let Some(parent) = parent {
-                let orientation = parent.orientation();
-                let new_separator = new_separator(orientation);
-                parent.append(&new_separator);
+                todo!();
+                // let orientation = parent.orientation();
+                // let new_separator = new_separator(orientation);
+                // parent.append(&new_separator);
             }
         }
 
@@ -119,7 +123,13 @@ fn parse_layout_recursive(
 
             // recursively call parse_tmux_layout
             let bytes_read = find_closing_bracket(buffer, open, close);
-            parse_layout_recursive(&buffer[1..bytes_read], window, top_level, Some(&new_container), nested + 1);
+            parse_layout_recursive(
+                &buffer[1..bytes_read],
+                window,
+                top_level,
+                Some(&new_container),
+                nested + 1,
+            );
 
             buffer = &buffer[bytes_read + 1..];
         }

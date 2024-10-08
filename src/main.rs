@@ -10,10 +10,10 @@ use global_state::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
 use tmux::attach_tmux;
 use window::IvyWindow;
 
+mod container;
 mod error;
 mod global_state;
 mod keyboard;
-mod separator;
 mod terminal;
 mod tmux;
 mod toplevel;
@@ -65,8 +65,8 @@ fn main() -> glib::ExitCode {
 
     application.connect_startup(|_| load_css());
     application.connect_activate(|app| {
-        // create_window(app, None);
-        create_window(app, Some("blabla"));
+        create_window(app, None);
+        // create_window(app, Some("blabla"));
     });
     application.run()
 }

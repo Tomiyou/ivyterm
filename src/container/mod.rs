@@ -1,9 +1,10 @@
 mod imp;
 mod layout;
+mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{Orientation, Widget};
-use libadwaita::{glib, prelude::*, Bin};
+use libadwaita::{glib, prelude::*};
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -14,66 +15,51 @@ glib::wrapper! {
 impl Container {
     pub fn new(
         orientation: Orientation,
-        start_child: impl IsA<Widget>,
-        end_child: impl IsA<Widget>,
+        _spacing: u32,
     ) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);
         container.set_hexpand(true);
 
-        // Add the given children as panes
-        container.set_start_child(Some(&start_child));
-        container.set_end_child(Some(&end_child));
-
         container
     }
 
-    pub fn set_start_child(&self, new_child: Option<&impl IsA<Widget>>) {
-        let imp = self.imp();
-        let mut start_child = imp.start_child.borrow_mut();
-
-        // TODO: Check if old_child and new_child are the same
-        if let Some(old_child) = start_child.take() {
-            old_child.unparent();
-        }
-
-        if let Some(new_child) = new_child {
-            start_child.replace(new_child.clone().into());
-
-            let separator = imp.separator.borrow();
-            new_child.insert_before(self, Some(separator.as_ref().unwrap()));
+    pub fn append(&self, child: &impl IsA<Widget>) {
+        if let Some(last_child) = self.last_child() {
+            let new_separator = self.imp().add_separator();
+            new_separator.insert_after(self, Some(&last_child));
+            child.insert_after(self, Some(&new_separator));
+        } else {
+            child.insert_after(self, None::<&Widget>);
         }
     }
 
-    pub fn set_end_child(&self, new_child: Option<&impl IsA<Widget>>) {
-        let imp = self.imp();
-        let mut end_child = imp.end_child.borrow_mut();
-
-        // TODO: Check if old_child and new_child are the same
-        if let Some(old_child) = end_child.take() {
-            old_child.unparent();
-        }
-
-        if let Some(new_child) = new_child {
-            end_child.replace(new_child.clone().into());
-
-            let separator = imp.separator.borrow();
-            new_child.insert_after(self, Some(separator.as_ref().unwrap()));
-        }
+    pub fn replace(&self, old: &impl IsA<Widget>, new: &impl IsA<Widget>) {
+        new.insert_after(self, Some(old));
+        old.unparent();
     }
 
-    pub fn start_child(&self) -> Option<Widget> {
-        self.imp().start_child.borrow().clone()
+    pub fn remove(&self, child: &impl IsA<Widget>) {
+        // We also need to remove a Separator, if it exists
+        let separator = child.next_sibling();
+        self.imp().remove_separator(separator);
+
+        // Now remove the child
+        child.unparent();
     }
 
-    pub fn end_child(&self) -> Option<Widget> {
-        self.imp().end_child.borrow().clone()
+    pub fn children_count(&self) -> usize {
+        self.imp().get_children_count()
     }
+}
 
-    pub fn get_separator(&self) -> Bin {
-        let imp = self.imp();
-        let bin = imp.separator.borrow().as_ref().unwrap().clone();
-        bin
+// TODO: Move this to separator?
+#[inline]
+fn get_opposite_orientation(orientation: Orientation) -> Orientation {
+    match orientation {
+        Orientation::Horizontal => Orientation::Vertical,
+        Orientation::Vertical => Orientation::Horizontal,
+        _ => panic!("What the fuck is this orientation"),
     }
 }

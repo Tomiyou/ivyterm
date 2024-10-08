@@ -1,12 +1,12 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Box as Container, Orientation, Widget};
+use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, terminal::Terminal, separator::new_separator,
-    window::IvyWindow,
+    container::Container, global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction,
+    terminal::Terminal, window::IvyWindow,
 };
 
 use self::imp::Zoomed;
@@ -50,13 +50,16 @@ impl TopLevel {
         self.imp().tab_id.get()
     }
 
-    pub fn split_pane(&self, terminal: &Terminal, orientation: Orientation) -> (Terminal, Option<Container>) {
+    pub fn split_pane(
+        &self,
+        terminal: &Terminal,
+        orientation: Orientation,
+    ) -> (Terminal, Option<Container>) {
         self.unzoom();
 
         let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
         let new_terminal = Terminal::new(&self, window, None);
-        let new_separator = new_separator(orientation);
 
         let parent = terminal.parent().unwrap();
         if parent.eq(self) {
@@ -66,7 +69,6 @@ impl TopLevel {
             self.set_child(None::<&Self>);
             let container = Container::new(orientation, 0);
             container.append(&old_terminal);
-            container.append(&new_separator);
             container.append(&new_terminal);
             self.set_child(Some(&container));
             return (new_terminal, Some(container));
@@ -77,17 +79,14 @@ impl TopLevel {
 
         // If the split orientation is the same as Container's orientation, we can simply insert a new Pane
         if container.orientation() == orientation {
-            container.insert_child_after(&new_separator, Some(terminal));
-            container.insert_child_after(&new_terminal, Some(&new_separator));
+            container.append(&new_terminal);
             return (new_terminal, None);
         }
 
         // The split orientation is different from Container's, meaning we have to insert a new Container
         let new_container = Container::new(orientation, 0);
-        container.insert_child_after(&new_container, Some(terminal));
-        terminal.unparent();
+        container.replace(terminal, &new_container);
         new_container.append(terminal);
-        new_container.append(&new_separator);
         new_container.append(&new_terminal);
 
         return (new_terminal, Some(new_container));
@@ -105,24 +104,16 @@ impl TopLevel {
 
         // Parent of the closing terminal is a Container widget
         let container: Container = parent.downcast().unwrap();
+        container.remove(closing_terminal);
 
-        // Check if there is a next sibling (Separator) and remove it, otherwise remove previous sibling
-        if let Some(separator) = closing_terminal.next_sibling() {
-            separator.unparent();
-        } else if let Some(separator) = closing_terminal.prev_sibling() {
-            separator.unparent();
-        } else {
-            panic!("Closing terminal has no next/previous sibling!");
-        }
-        closing_terminal.unparent();
-
-        // If container only has 1 child left, we need to remove it and leave the 1 child in its place
-        let retained_child = container.first_child().unwrap();
-        if retained_child.next_sibling().is_some() {
+        // If the conatiner has more than 1 child left, we are done. Otherwise remove the container
+        // and leave the 1 child in its place.
+        if container.children_count() > 1 {
             return;
         }
 
         // Remove the last child from Container, which will be deleted
+        let retained_child = container.first_child().unwrap();
         retained_child.unparent();
 
         // Determine if parent is type Bin or Container
@@ -136,8 +127,7 @@ impl TopLevel {
 
         if let Ok(parent) = parent.downcast::<Container>() {
             // Parent is another Container
-            parent.insert_child_after(&retained_child, Some(&container));
-            container.unparent();
+            parent.replace(&container, &retained_child);
             return;
         }
 
@@ -156,8 +146,8 @@ impl TopLevel {
         if let Some(z) = binding.take() {
             // Unzoom the terminal
             self.set_child(None::<&Widget>);
-            z.terminal_container
-                .insert_child_after(&z.terminal, z.previous_sibling.as_ref());
+            z.terminal
+                .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
 
             self.set_child(Some(&z.root_container));
             z.terminal.grab_focus();
@@ -169,7 +159,7 @@ impl TopLevel {
         let (x, y, width, height) = terminal.bounds().unwrap();
 
         // Remove Terminal from its parent Container
-        let terminal_paned: Container = terminal.parent().unwrap().downcast().unwrap();
+        let container: Container = terminal.parent().unwrap().downcast().unwrap();
         let previous_sibling = terminal.prev_sibling();
         terminal.unparent();
 
@@ -181,7 +171,7 @@ impl TopLevel {
         let zoomed = Zoomed {
             terminal: terminal.clone(),
             root_container: root_paned,
-            terminal_container: terminal_paned,
+            terminal_container: container,
             previous_sibling,
             previous_bounds: (x, y, width, height),
         };
@@ -192,8 +182,8 @@ impl TopLevel {
         let mut binding = self.imp().zoomed.borrow_mut();
         if let Some(z) = binding.take() {
             self.set_child(None::<&Widget>);
-            z.terminal_container
-                .insert_child_after(&z.terminal, z.previous_sibling.as_ref());
+            z.terminal
+                .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
 
             self.set_child(Some(&z.root_container));
             z.terminal.grab_focus();
@@ -211,7 +201,10 @@ impl TopLevel {
         // Also update global terminal hashmap
         let pane_id = terminal.pane_id();
         let window = self.imp().window.borrow();
-        window.as_ref().unwrap().register_terminal(pane_id, terminal);
+        window
+            .as_ref()
+            .unwrap()
+            .register_terminal(pane_id, terminal);
     }
 
     pub fn unregister_terminal(&self, terminal: &Terminal) {

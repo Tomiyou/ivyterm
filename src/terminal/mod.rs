@@ -188,7 +188,7 @@ fn handle_keyboard(
             top_level.split_pane(terminal, orientation);
         }
         Some(Keybinding::PaneClose) => {
-            top_level.close_pane(terminal);
+            // top_level.close_pane(terminal);
         }
         Some(Keybinding::TabNew) => {
             top_level.create_tab(None);
@@ -197,13 +197,13 @@ fn handle_keyboard(
             top_level.close_tab();
         }
         Some(Keybinding::SelectPane(direction)) => {
-            let previous_size = top_level.unzoom();
-            if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
-                new_focus.grab_focus();
-            }
+            // let previous_size = top_level.unzoom();
+            // if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
+            //     new_focus.grab_focus();
+            // }
         }
         Some(Keybinding::ToggleZoom) => {
-            top_level.toggle_zoom(terminal);
+            // top_level.toggle_zoom(terminal);
         }
         Some(Keybinding::CopySelected) => {
             vte.emit_copy_clipboard();

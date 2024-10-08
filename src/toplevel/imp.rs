@@ -1,9 +1,9 @@
 use std::cell::{Cell, RefCell};
 
-use gtk4::{Box as Container, Widget};
+use gtk4::Widget;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{terminal::Terminal, window::IvyWindow};
+use crate::{container::Container, terminal::Terminal, window::IvyWindow};
 
 pub struct Zoomed {
     pub terminal: Terminal,
