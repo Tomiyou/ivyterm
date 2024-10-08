@@ -204,7 +204,7 @@ fn parse_escaped_output(input: &[u8], prepend_linebreak: bool, empty_lines: usiz
 
             // This is an escape sequence
             // TODO: This crashes when output is:
-            // tomi:~/plume/opensync/sdk/device-sdk-qca (master) $ danes je pa tako M-\M-\
+            // tomc:~/dev/ivyterm/target/release (master) $ danes je pa tako M-\M-\
             let mut ascii = 0;
             for j in i + 1..i + 4 {
                 let num = input[j] - 48;
