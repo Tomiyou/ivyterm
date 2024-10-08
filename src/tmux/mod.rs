@@ -177,6 +177,14 @@ fn parse_escaped_output(input: &[u8], prepend_newline: bool) -> Vec<u8> {
     while i < input_len {
         let char = input[i];
         if char == b'\\' {
+            // First \ is an escape, meaning there is 100% another char after it
+            if input[i + 1] == b'\\' {
+                // First \ is followed by another \
+                output.push(b'\\');
+                i += 2;
+                continue;
+            }
+
             // Maybe an escape sequence?
             if i + 3 >= input_len {
                 panic!("Found escape character but string too short");
