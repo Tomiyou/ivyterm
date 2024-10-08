@@ -4,12 +4,6 @@ use gtk4::Orientation;
 
 use super::{Rectangle, TmuxPane};
 
-fn print_tab(nested: u32) {
-    for i in 0..nested {
-        print!("    ");
-    }
-}
-
 pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
     println!("Given layout {}", from_utf8(buffer).unwrap());
 
