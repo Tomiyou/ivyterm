@@ -1,9 +1,7 @@
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::{gdk::RGBA, pango::FontDescription};
 
-use crate::{
-    settings::{IvyColor, IvyFont},
-};
+use crate::settings::{IvyColor, IvyFont};
 
 use super::IvyApplication;
 

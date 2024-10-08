@@ -1,4 +1,7 @@
-use gtk4::{gdk::{Event, KeyMatch, ModifierType}, ShortcutTrigger};
+use gtk4::{
+    gdk::{Event, KeyMatch, ModifierType},
+    ShortcutTrigger,
+};
 use serde::{Deserialize, Deserializer};
 use vte4::ShortcutTriggerExt;
 
@@ -23,9 +26,10 @@ pub enum KeyboardAction {
 
 #[derive(Clone)]
 pub struct Keybinding {
-    text: String,
-    trigger: Option<ShortcutTrigger>,
-    action: KeyboardAction,
+    pub text: String,
+    pub trigger: Option<ShortcutTrigger>,
+    pub action: KeyboardAction,
+    pub description: &'static str,
 }
 
 impl<'de> serde::Deserialize<'de> for Keybinding {
@@ -35,14 +39,16 @@ impl<'de> serde::Deserialize<'de> for Keybinding {
             text: text,
             trigger: None,
             action: KeyboardAction::TabClose,
+            description: "",
         })
     }
 }
 
 impl Keybinding {
-    fn parse(&mut self, action: KeyboardAction) -> Self {
+    fn parse(&mut self, action: KeyboardAction, description: &'static str) -> Self {
         self.trigger = ShortcutTrigger::parse_string(&self.text);
         self.action = action;
+        self.description = description;
         self.clone()
     }
 }
@@ -64,17 +70,43 @@ pub struct Keybindings {
 
 impl Keybindings {
     pub fn init(&mut self) {
-        self.new_tab.parse(KeyboardAction::TabNew);
-        self.close_tab.parse(KeyboardAction::TabClose);
-        self.split_horizontal.parse(KeyboardAction::PaneSplit(true));
-        self.split_vertical.parse(KeyboardAction::PaneSplit(false));
-        self.close_pane.parse(KeyboardAction::PaneClose);
-        self.toggle_zoom.parse(KeyboardAction::ToggleZoom);
-        self.copy_selection.parse(KeyboardAction::CopySelected);
-        self.move_right.parse(KeyboardAction::SelectPane(Direction::Right));
-        self.move_left.parse(KeyboardAction::SelectPane(Direction::Left));
-        self.move_up.parse(KeyboardAction::SelectPane(Direction::Up));
-        self.move_down.parse(KeyboardAction::SelectPane(Direction::Down));
+        self.new_tab.parse(KeyboardAction::TabNew, "Open a new Tab");
+        self.close_tab
+            .parse(KeyboardAction::TabClose, "Close the current Tab");
+        self.split_horizontal.parse(
+            KeyboardAction::PaneSplit(true),
+            "Split the current Tab horizontally",
+        );
+        self.split_vertical.parse(
+            KeyboardAction::PaneSplit(false),
+            "Split the current Tab vertically",
+        );
+        self.close_pane
+            .parse(KeyboardAction::PaneClose, "Close the current Pane");
+        self.toggle_zoom.parse(
+            KeyboardAction::ToggleZoom,
+            "Toggle zoom for the current Pane",
+        );
+        self.copy_selection.parse(
+            KeyboardAction::CopySelected,
+            "Copy selected text on the current Pane",
+        );
+        self.move_right.parse(
+            KeyboardAction::SelectPane(Direction::Right),
+            "Move focus to the Pane on the right",
+        );
+        self.move_left.parse(
+            KeyboardAction::SelectPane(Direction::Left),
+            "Move focus to the Pane on the left",
+        );
+        self.move_up.parse(
+            KeyboardAction::SelectPane(Direction::Up),
+            "Move focus to the Pane on the up",
+        );
+        self.move_down.parse(
+            KeyboardAction::SelectPane(Direction::Down),
+            "Move focus to the Pane on the down",
+        );
     }
 
     pub fn handle_event(&self, event: Event) -> Option<KeyboardAction> {
@@ -148,6 +180,23 @@ impl Keybindings {
         }
 
         None
+    }
+
+    pub fn to_vec(&self) -> Vec<Keybinding> {
+        let mut ret = Vec::new();
+
+        ret.push(self.new_tab.clone());
+        ret.push(self.close_tab.clone());
+        ret.push(self.split_horizontal.clone());
+        ret.push(self.split_vertical.clone());
+        ret.push(self.close_pane.clone());
+        ret.push(self.toggle_zoom.clone());
+        ret.push(self.copy_selection.clone());
+        ret.push(self.move_right.clone());
+        ret.push(self.move_left.clone());
+        ret.push(self.move_up.clone());
+        ret.push(self.move_down.clone());
+        ret
     }
 }
 

@@ -9,7 +9,7 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
-use crate::keyboard::KeyboardAction;
+use crate::keyboard::{Keybinding, KeyboardAction};
 use crate::settings::show_preferences_window;
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
@@ -99,6 +99,11 @@ impl IvyApplication {
     pub fn handle_keyboard_event(&self, event: Event) -> Option<KeyboardAction> {
         let config = self.imp().config.borrow();
         config.keybindings.handle_event(event)
+    }
+
+    pub fn get_keybindings(&self) -> Vec<Keybinding> {
+        let config = self.imp().config.borrow();
+        config.keybindings.to_vec()
     }
 }
 
