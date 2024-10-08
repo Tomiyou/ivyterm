@@ -1,13 +1,12 @@
 mod imp;
 
-use std::{cell::RefCell, rc::Rc, sync::atomic::Ordering};
-
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Box as Container, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::{WindowState, SPLIT_HANDLE_WIDTH}, keyboard::Direction, pane::Pane, separator::new_separator, window::IvyWindow, GLOBAL_TAB_ID
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, pane::Pane, separator::new_separator,
+    window::IvyWindow,
 };
 
 use self::imp::Zoomed;
@@ -35,19 +34,15 @@ impl TopLevel {
     }
 
     pub fn create_tab(&self, id: Option<u32>) {
-        let imp = self.imp();
-        let binding = imp.tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        let binding = imp.window.borrow();
+        let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
-        create_tab(tab_view, id, window);
+        window.new_tab(id);
     }
 
     pub fn close_tab(&self) {
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        let page = tab_view.page(self);
-        tab_view.close_page(&page);
+        let binding = self.imp().window.borrow();
+        let window = binding.as_ref().unwrap();
+        window.close_tab(self);
     }
 
     pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) {
@@ -265,20 +260,4 @@ impl TopLevel {
 
         None
     }
-}
-
-pub fn create_tab(tab_view: &TabView, id: Option<u32>, window: &IvyWindow) {
-    let tab_id = if let Some(id) = id {
-        id
-    } else {
-        GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
-    };
-    let top_level = TopLevel::new(tab_view, window);
-
-    // Add pane as a page
-    let page = tab_view.append(&top_level);
-
-    let text = format!("Terminal {}", tab_id);
-    page.set_title(&text);
-    tab_view.set_selected_page(&page);
 }

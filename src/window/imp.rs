@@ -1,14 +1,17 @@
 use std::cell::RefCell;
 
 use libadwaita::subclass::prelude::*;
-use libadwaita::{glib, prelude::*, ApplicationWindow};
+use libadwaita::{glib, ApplicationWindow, TabView};
 
 use crate::tmux::Tmux;
+use crate::toplevel::TopLevel;
 
 // Object holding the state
 #[derive(Default)]
 pub struct IvyWindowPriv {
     pub tmux: RefCell<Option<Tmux>>,
+    pub tab_view: RefCell<Option<TabView>>,
+    pub tabs: RefCell<Vec<TopLevel>>,
 }
 
 // The central trait for subclassing a GObject
