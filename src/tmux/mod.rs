@@ -43,7 +43,7 @@ impl Tmux {
         let mut stdin_stream = &self.stdin_stream;
 
         debug!("Getting initial output of pane {}", pane_id);
-        let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
+        let cmd = format!("capture-pane -J -p -t %{} -eC -S - -E -\n", pane_id);
         command_queue.send_blocking(TmuxCommand::InitialOutput(pane_id)).unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
