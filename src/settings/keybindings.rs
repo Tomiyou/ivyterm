@@ -43,7 +43,6 @@ impl LearningKeybinding {
 
         if let Some(trigger) = update {
             let trigger = ShortcutTrigger::parse_string(&trigger);
-            println!("Parsed trigger {:?}", trigger);
 
             // Update the global Keybinding array for Application
             if let Some(root) = self.row.root() {
@@ -57,7 +56,6 @@ impl LearningKeybinding {
         set_text_from_trigger(&self.display_widget, &keybinding.trigger);
 
         // Remove keyboard controller if any
-        println!("Removed controller");
         self.row.remove_controller(&self.input_ctrl);
     }
 }
@@ -109,7 +107,6 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
         move |row| {
             if row.has_focus() == false {
                 if let Some(learning) = learning.borrow_mut().take() {
-                    println!("Some learning is some");
                     learning.update_and_remove(None);
                 }
             }
@@ -185,7 +182,6 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
         ));
 
         row.add_controller(keyboard_ctrl);
-        println!("Added controller");
     });
     row.add_controller(gesture_ctrl);
 
