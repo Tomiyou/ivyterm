@@ -1,6 +1,5 @@
 mod imp;
 mod tmux;
-mod tmux_layout_sync;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
@@ -148,7 +147,7 @@ impl IvyTmuxWindow {
         println!("Terminal with ID {} unregistered", pane_id);
     }
 
-    pub fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
+    fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
         let tabs = self.imp().tabs.borrow();
         for top_level in tabs.iter() {
             if top_level.tab_id() == id {

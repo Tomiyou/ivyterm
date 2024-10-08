@@ -1,5 +1,6 @@
 mod imp;
 mod layout;
+mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
@@ -28,18 +29,6 @@ impl TmuxTopLevel {
 
         top_level
     }
-
-    // pub fn create_tab(&self, id: Option<u32>) {
-    //     let binding = self.imp().window.borrow();
-    //     let window = binding.as_ref().unwrap();
-    //     window.new_tab(id);
-    // }
-
-    // pub fn close_tab(&self) {
-    //     let binding = self.imp().window.borrow();
-    //     let window = binding.as_ref().unwrap();
-    //     window.close_tab(self);
-    // }
 
     pub fn tab_id(&self) -> u32 {
         self.imp().tab_id.get()
@@ -247,8 +236,18 @@ impl TmuxTopLevel {
             // VTE widget has a fixed padding of 1px on each side
             let cols = (allocation.width() - 2) / char_width;
             let rows = (allocation.height() - 2) / char_height;
-            println!("Cols: {} | total width {} char width {}", cols, allocation.width(), char_width);
-            println!("Rows: {} | total width {} char width {}", rows, allocation.height(), char_height);
+            println!(
+                "Cols: {} | total width {} char width {}",
+                cols,
+                allocation.width(),
+                char_width
+            );
+            println!(
+                "Rows: {} | total width {} char width {}",
+                rows,
+                allocation.height(),
+                char_height
+            );
             return (cols, rows);
         }
 

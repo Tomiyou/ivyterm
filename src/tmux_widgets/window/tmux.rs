@@ -6,8 +6,8 @@ use libadwaita::{glib, prelude::*};
 
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
-    tmux_api::{TmuxEvent, TmuxTristate},
-    tmux_widgets::{toplevel::TmuxTopLevel, window::tmux_layout_sync::sync_tmux_layout},
+    tmux_api::{TmuxEvent, TmuxPane, TmuxTristate},
+    tmux_widgets::toplevel::TmuxTopLevel,
 };
 
 use super::IvyTmuxWindow;
@@ -99,6 +99,18 @@ impl IvyTmuxWindow {
         }
     }
 
+    fn sync_tmux_layout(&self, tab_id: u32, layout: Vec<TmuxPane>) {
+        let top_level = if let Some(top_level) = self.get_top_level(tab_id) {
+            println!("Reusing top Level {}", top_level.tab_id());
+            top_level
+        } else {
+            println!("Creating new Tab (with new top_level)");
+            self.new_tab(tab_id)
+        };
+
+        top_level.sync_tmux_layout(self, layout);
+    }
+
     pub fn tmux_event_callback(&self, event: TmuxEvent) {
         let imp = self.imp();
 
@@ -119,7 +131,7 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::PaneSplit(tab_id, hierarchy) => {
                 println!("\n---------- Pane split ----------");
-                sync_tmux_layout(&self, tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, hierarchy);
             }
             TmuxEvent::FocusChanged(pane_id) => {
                 let imp = self.imp();
@@ -132,7 +144,7 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::InitialLayout(tab_id, hierarchy) => {
                 println!("\n---------- Initial layout ----------");
-                sync_tmux_layout(&self, tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, hierarchy);
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
@@ -144,7 +156,7 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::LayoutChanged(tab_id, hierarchy) => {
                 println!("\n---------- Layout changed ----------");
-                sync_tmux_layout(&self, tab_id, hierarchy);
+                self.sync_tmux_layout(tab_id, hierarchy);
             }
             TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();

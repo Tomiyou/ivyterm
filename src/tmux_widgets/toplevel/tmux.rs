@@ -1,3 +1,5 @@
+use super::TmuxTopLevel;
+
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::{Orientation, Widget};
 use libadwaita::prelude::*;
@@ -7,7 +9,6 @@ use crate::{
     tmux_widgets::{
         container::{TmuxContainer, TmuxSeparator},
         terminal::TmuxTerminal,
-        toplevel::TmuxTopLevel,
     },
 };
 
@@ -24,170 +25,170 @@ fn print_tab(nested: u32) {
     }
 }
 
-pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPane>) {
-    let window_imp = window.imp();
+impl TmuxTopLevel {
+    pub fn sync_tmux_layout(&self, window: &IvyTmuxWindow, layout: Vec<TmuxPane>) {
+        let imp = self.imp();
 
-    {
-        let mut nested = 0;
-        for pane in layout.iter() {
-            match pane {
-                TmuxPane::Container(_, _) => {
-                    print_tab(nested);
-                    println!("- {:?}", pane);
-                    nested += 1
-                }
-                TmuxPane::Return => nested -= 1,
-                _ => {
-                    print_tab(nested);
-                    println!("- {:?}", pane);
-                }
-            }
-        }
-    }
-
-    let top_level = if let Some(top_level) = window.get_top_level(tab_id) {
-        println!("Reusing top Level {}", top_level.tab_id());
-        top_level
-    } else {
-        println!("Creating new Tab (with new top_level)");
-        window.new_tab(tab_id)
-    };
-
-    // Print hierarchy for debug purposes
-    if log::log_enabled!(log::Level::Debug) {
-        print_hierarchy(&top_level, 0);
-    }
-
-    // First we remove any Terminals which do not exist in Tmux anymore
-    // TODO: Make this less brute force
-    {
-        let mut registered_terminals = window_imp.terminals.borrow_mut();
-        let original_len = registered_terminals.len();
-
-        registered_terminals.retain(|t| {
-            let mut still_exists = false;
-            // Check if our registered terminal has NOT been closed
+        {
+            let mut nested = 0;
             for pane in layout.iter() {
                 match pane {
-                    TmuxPane::Terminal(pane_id, _) => {
-                        if t.id == *pane_id {
-                            still_exists = true;
-                            break;
-                        }
+                    TmuxPane::Container(_, _) => {
+                        print_tab(nested);
+                        println!("- {:?}", pane);
+                        nested += 1
                     }
-                    _ => {}
-                }
-            }
-            if still_exists {
-                return true;
-            }
-
-            // Terminal has been closed by Tmux, we have to do the same
-            println!("Terminal {} closed by Tmux", t.id);
-
-            let parent = t.terminal.parent();
-            remove_pane(&t.terminal);
-
-            if original_len > 1 {
-                // We know that there is at least 1 TmuxContainer, so Parent must be Container
-                if let Some(container) = parent {
-                    // If Container has only 1 child left at this point, we should remove it
-                    let first_child = container.first_child().unwrap();
-                    let last_child = container.last_child().unwrap();
-                    if first_child.eq(&last_child) {
-                        // First child is also the last child (only 1 child left)
-                        println!("Leftover child replacing closing Container");
-                        first_child.unparent();
-                        replace_pane(&container, &first_child);
+                    TmuxPane::Return => nested -= 1,
+                    _ => {
+                        print_tab(nested);
+                        println!("- {:?}", pane);
                     }
                 }
-            }
-
-            false
-        });
-    }
-
-    // All closed Terminals are gone at this point
-    // Now we have to determine if the first child is a Pane or a Container
-    let mut iter = layout.iter();
-    if let Some(first) = iter.next() {
-        match first {
-            TmuxPane::Terminal(term_id, _) => {
-                let term_id = *term_id;
-                // terminal_callback(pane_id, window, top_level, parent, allocation, &mut current_sibling);
-                if let Some(existing) = window.get_terminal_by_id(term_id) {
-                    // Pane already exists
-                    if let Some(child) = top_level.child() {
-                        if existing.eq(&child) {
-                            // Pane is already in the correct place, nothing to do
-                            println!("Pane already correctly placed {}", term_id);
-                        } else {
-                            // Replace the current child with ourselves
-                            top_level.set_child(Some(&existing));
-                            println!("Pane {} replaced the only child", term_id);
-                        }
-                    } else {
-                        // This is a very strange case, Terminal already exists, but top_level has
-                        // not children???
-                        eprintln!(
-                            "Terminal {} already exists, but top_level has not children??",
-                            term_id
-                        );
-                        top_level.set_child(Some(&existing));
-                    }
-                } else {
-                    // Terminal doesn't exist yet, we need to create it
-                    // Terminal does not exist yet, simply append it after previous_sibling
-                    let new_terminal = TmuxTerminal::new(&top_level, window, term_id);
-                    top_level.set_child(Some(&new_terminal));
-                    println!("Created pane {} as only child", term_id);
-                }
-            }
-            TmuxPane::Container(orientation, allocation) => {
-                let container = if let Some(child) = top_level.child() {
-                    if let Ok(container) = child.downcast::<TmuxContainer>() {
-                        // The first child is already a Container
-                        println!("The first child is already a Container");
-                        container
-                    } else {
-                        // The first child is a Terminal, replace with a new Container
-                        println!("The first child is a Terminal, replace with a new Container");
-                        let container = TmuxContainer::new(orientation, window);
-                        top_level.set_child(Some(&container));
-                        container
-                    }
-                } else {
-                    // top_level doesn't have any children yet
-                    println!("top_level doesn't have any children yet");
-                    let container = TmuxContainer::new(orientation, window);
-                    top_level.set_child(Some(&container));
-                    container
-                };
-
-                let container = ParentContainer {
-                    c: container,
-                    bounds: *allocation,
-                };
-
-                sync_layout_recursive(&mut iter, window, &top_level, &container, 1);
-            }
-            _ => {
-                panic!("Parsed Layout has no Terminals")
             }
         }
-    } else {
-        panic!("Parsed Layout empty")
-    }
 
-    // TODO: Fix this, Tmux currently does not report active Pane
-    // Ensure the correct Pane is focused
-    let focused_pane = window_imp.focused_pane.get();
-    let registered_terminals = window_imp.terminals.borrow();
-    if let Some(terminal) = registered_terminals.get(focused_pane) {
-        println!("Grabbing focus for pane {}", focused_pane);
-        terminal.grab_focus();
-    } else {
-        println!("Unable to grab focus for pane {}", focused_pane);
+        // Print hierarchy for debug purposes
+        if log::log_enabled!(log::Level::Debug) {
+            print_hierarchy(self, 0);
+        }
+
+        // First we remove any Terminals which do not exist in Tmux anymore
+        // TODO: Make this less brute force
+        {
+            let mut registered_terminals = imp.terminals.borrow_mut();
+            let original_len = registered_terminals.len();
+
+            registered_terminals.retain(|terminal| {
+                let term_id = terminal.pane_id();
+
+                let mut still_exists = false;
+                // Check if our registered terminal has NOT been closed
+                for pane in layout.iter() {
+                    match pane {
+                        TmuxPane::Terminal(pane_id, _) => {
+                            if term_id == *pane_id {
+                                still_exists = true;
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if still_exists {
+                    return true;
+                }
+
+                // Terminal has been closed by Tmux, we have to do the same
+                println!("Terminal {} closed by Tmux", term_id);
+
+                let parent = terminal.parent();
+                remove_pane(terminal);
+
+                if original_len > 1 {
+                    // We know that there is at least 1 TmuxContainer, so Parent must be Container
+                    if let Some(container) = parent {
+                        // If Container has only 1 child left at this point, we should remove it
+                        let first_child = container.first_child().unwrap();
+                        let last_child = container.last_child().unwrap();
+                        if first_child.eq(&last_child) {
+                            // First child is also the last child (only 1 child left)
+                            println!("Leftover child replacing closing Container");
+                            first_child.unparent();
+                            replace_pane(&container, &first_child);
+                        }
+                    }
+                }
+
+                false
+            });
+        }
+
+        // All closed Terminals are gone at this point
+        // Now we have to determine if the first child is a Pane or a Container
+        let mut iter = layout.iter();
+        if let Some(first) = iter.next() {
+            match first {
+                TmuxPane::Terminal(term_id, _) => {
+                    let term_id = *term_id;
+                    // terminal_callback(pane_id, window, self, parent, allocation, &mut current_sibling);
+                    if let Some(existing) = window.get_terminal_by_id(term_id) {
+                        // Pane already exists
+                        if let Some(child) = self.child() {
+                            if existing.eq(&child) {
+                                // Pane is already in the correct place, nothing to do
+                                println!("Pane already correctly placed {}", term_id);
+                            } else {
+                                // Replace the current child with ourselves
+                                self.set_child(Some(&existing));
+                                println!("Pane {} replaced the only child", term_id);
+                            }
+                        } else {
+                            // This is a very strange case, Terminal already exists, but top_level has
+                            // not children???
+                            eprintln!(
+                                "Terminal {} already exists, but top_level has not children??",
+                                term_id
+                            );
+                            self.set_child(Some(&existing));
+                        }
+                    } else {
+                        // Terminal doesn't exist yet, we need to create it
+                        // Terminal does not exist yet, simply append it after previous_sibling
+                        let new_terminal = TmuxTerminal::new(self, window, term_id);
+                        self.set_child(Some(&new_terminal));
+                        println!("Created pane {} as only child", term_id);
+                    }
+                }
+                TmuxPane::Container(orientation, allocation) => {
+                    let container = if let Some(child) = self.child() {
+                        if let Ok(container) = child.downcast::<TmuxContainer>() {
+                            // The first child is already a Container
+                            println!("The first child is already a Container");
+                            container
+                        } else {
+                            // The first child is a Terminal, replace with a new Container
+                            println!("The first child is a Terminal, replace with a new Container");
+                            let container = TmuxContainer::new(orientation, window);
+                            self.set_child(Some(&container));
+                            container
+                        }
+                    } else {
+                        // top_level doesn't have any children yet
+                        println!("top_level doesn't have any children yet");
+                        let container = TmuxContainer::new(orientation, window);
+                        self.set_child(Some(&container));
+                        container
+                    };
+
+                    let container = ParentContainer {
+                        c: container,
+                        bounds: *allocation,
+                    };
+
+                    sync_layout_recursive(&mut iter, window, self, &container, 1);
+                }
+                _ => {
+                    panic!("Parsed Layout has no Terminals")
+                }
+            }
+        } else {
+            panic!("Parsed Layout empty")
+        }
+
+        // // TODO: Fix this, Tmux currently does not report active Pane
+        // // Ensure the correct Pane is focused
+        // let focused_pane = imp.focused_pane.get();
+        // let registered_terminals = imp.terminals.borrow();
+        // if let Some(terminal) = registered_terminals.get(focused_pane) {
+        //     println!("Grabbing focus for pane {}", focused_pane);
+        //     terminal.grab_focus();
+        // } else {
+        //     println!("Unable to grab focus for pane {}", focused_pane);
+        //     let mut iter = registered_terminals.iter();
+        //     if let Some(terminal) = iter.next() {
+        //         terminal.terminal.grab_focus();
+        //     }
+        // }
     }
 }
 
