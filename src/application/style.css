@@ -2,19 +2,7 @@
     padding-right: 7px;
 }
 
-paned separator {
-    background-color: white;
-    min-width: 2px;
-    min-height: 2px;
-}
-
-.separator_cont_vertical {
-    padding: 0px 3px;
-    background-color: #000000;
-}
-
-.separator_cont_horizontal {
-    padding: 3px 0px;
+.separator_container {
     background-color: #000000;
 }
 

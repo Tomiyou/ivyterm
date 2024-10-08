@@ -15,6 +15,7 @@ pub use config::APPLICATION_TITLE;
 pub use config::INITIAL_HEIGHT;
 pub use config::INITIAL_WIDTH;
 pub use config::SPLIT_HANDLE_WIDTH;
+pub use config::SPLIT_VISUAL_WIDTH;
 
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)

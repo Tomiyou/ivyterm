@@ -2,7 +2,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Cursor, GestureDrag, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
-use crate::container::get_opposite_orientation;
+use crate::{application::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH}, container::get_opposite_orientation};
 
 use super::{layout::ContainerLayout, Container};
 
@@ -16,17 +16,9 @@ glib::wrapper! {
 
 impl Separator {
     pub fn new(container: &Container, orientation: &Orientation, percentage: f64) -> Self {
-        let (separator_orientation, css_class, cursor) = match orientation {
-            Orientation::Horizontal => (
-                Orientation::Vertical,
-                "separator_cont_vertical",
-                "col-resize",
-            ),
-            Orientation::Vertical => (
-                Orientation::Horizontal,
-                "separator_cont_horizontal",
-                "row-resize",
-            ),
+        let (separator_orientation, cursor) = match orientation {
+            Orientation::Horizontal => (Orientation::Vertical, "col-resize"),
+            Orientation::Vertical => (Orientation::Horizontal, "row-resize"),
             _ => panic!("Unable to invert orientation to create separator"),
         };
 
@@ -36,8 +28,20 @@ impl Separator {
         let bin: Self = Object::builder().build();
         bin.set_orientation(separator_orientation);
         bin.set_child(Some(&separator));
-        bin.set_css_classes(&[css_class]);
+        bin.set_css_classes(&["separator_container"]);
         bin.set_percentage(percentage);
+
+        // Calculate Handle size and apply margins
+        let margin_size = SPLIT_HANDLE_WIDTH - SPLIT_VISUAL_WIDTH;
+        let first_half = margin_size / 2;
+        let second_half = margin_size - first_half;
+        if separator_orientation == Orientation::Horizontal {
+            separator.set_margin_top(first_half);
+            separator.set_margin_bottom(second_half);
+        } else {
+            separator.set_margin_start(first_half);
+            separator.set_margin_end(second_half);
+        }
 
         // Change the cursor when hovering separator and container
         let cursor = Cursor::from_name(cursor, None);

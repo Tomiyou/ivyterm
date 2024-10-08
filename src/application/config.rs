@@ -10,7 +10,8 @@ use super::IvyApplication;
 pub const INITIAL_WIDTH: i32 = 802;
 pub const INITIAL_HEIGHT: i32 = 648;
 pub const APPLICATION_TITLE: &str = "ivyTerm";
-pub const SPLIT_HANDLE_WIDTH: i32 = 9;
+pub const SPLIT_HANDLE_WIDTH: i32 = 10;
+pub const SPLIT_VISUAL_WIDTH: i32 = 3;
 
 pub struct GlobalConfig {
     pub font_desc: FontDescription,
