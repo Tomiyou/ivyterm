@@ -2,7 +2,8 @@ use gtk4::{Allocation, LayoutManager, Orientation, Widget};
 use libadwaita::{glib, Bin};
 use libadwaita::{prelude::*, subclass::prelude::*};
 
-use crate::tmux_widgets::container::{TmuxContainer, TmuxSeparator};
+use crate::tmux_widgets::container::TmuxContainer;
+use crate::tmux_widgets::separator::TmuxSeparator;
 
 // Object holding the state
 #[derive(Default)]

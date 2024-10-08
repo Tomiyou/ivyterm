@@ -7,10 +7,7 @@ use log::debug;
 
 use crate::{
     tmux_api::{Rectangle, TmuxPane},
-    tmux_widgets::{
-        container::{TmuxContainer, TmuxSeparator},
-        terminal::TmuxTerminal,
-    },
+    tmux_widgets::{container::TmuxContainer, separator::TmuxSeparator, terminal::TmuxTerminal},
 };
 
 use super::IvyTmuxWindow;
