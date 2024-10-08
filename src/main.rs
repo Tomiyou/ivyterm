@@ -1,10 +1,7 @@
-use std::ptr;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use libadwaita::prelude::*;
 use libadwaita::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
-use glib::property::PropertyGet;
 use gtk4::gdk::{Display, ModifierType};
 use gtk4::{
     Align, Box, Button, CssProvider, EventControllerKey, Orientation, PackType, WindowControls,
@@ -47,13 +44,11 @@ fn create_tab(tab_view: &TabView) {
 
 fn main() -> glib::ExitCode {
     let application = Application::builder()
-        .application_id("com.tomiyou.Windbreeze")
+        .application_id("com.tomiyou.ivyTerm")
         .build();
-    let application = Rc::new(application);
 
     application.connect_startup(|_| load_css());
 
-    let application_rc = application.clone();
     application.connect_activate(move |app| {
         // Create a new window
         let window = ApplicationWindow::builder()
@@ -62,10 +57,9 @@ fn main() -> glib::ExitCode {
             .default_width(INITIAL_WIDTH)
             .default_height(INITIAL_HEIGHT)
             .build();
-        let window = Rc::new(window);
 
         // Initialize global settings
-        let global_settings = GlobalSettings::new(application_rc.clone());
+        let global_settings = GlobalSettings::new(app);
 
         // Window content box holds title bar and panes
         let window_box = Box::new(Orientation::Vertical, 0);
@@ -112,7 +106,7 @@ fn main() -> glib::ExitCode {
         window_box.append(&tab_view);
 
         // Keyboard handling
-        let key_ctl_window = window.clone();
+        let _window = window.clone();
         let eventctl = {
             let eventctl = EventControllerKey::new();
             eventctl.connect_key_pressed(move |eventctl, keyval, keycode, state| {
@@ -136,7 +130,7 @@ fn main() -> glib::ExitCode {
                     } else if keycode == 25 {
                         let tab_count = TAB_COUNT.fetch_sub(1, Ordering::Relaxed);
                         if tab_count == 1 {
-                            key_ctl_window.close();
+                            _window.close();
                             println!("EXITING");
                             return Propagation::Stop;
                         }

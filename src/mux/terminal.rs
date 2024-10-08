@@ -1,15 +1,16 @@
 use glib::SpawnFlags;
-use vte4::{PtyFlags, Terminal, TerminalExtManual};
+use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual, WidgetExt};
 
 pub fn create_terminal() -> Terminal {
-    let vte = Terminal::builder().vexpand(true).hexpand(true).build();
+    let terminal = Terminal::builder().vexpand(true).hexpand(true).build();
 
     let pty_flags = PtyFlags::DEFAULT;
     let argv = ["/bin/bash"];
     let envv = [];
     let spawn_flags = SpawnFlags::DEFAULT;
 
-    vte.spawn_async(
+    let _terminal = terminal.clone();
+    terminal.spawn_async(
         pty_flags,
         None,
         &argv,
@@ -20,8 +21,18 @@ pub fn create_terminal() -> Terminal {
         },
         -1,
         gtk4::gio::Cancellable::NONE,
-        |_| println!("Some callback?"),
+        move |_result| {
+            println!("Some callback?");
+            _terminal.grab_focus();
+        },
     );
 
-    vte
+    terminal.connect_child_exited(|terminal, exit_code| {
+        println!("Exited!");
+    });
+
+    // Change terminal font
+    // terminal.set_font_desc(font_desc)
+
+    terminal
 }
