@@ -8,7 +8,7 @@ use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, 
 use tmux::parse_tmux_layout;
 
 use crate::{
-    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand, TmuxEvent}, toplevel::TopLevel
+    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, terminal::Terminal, tmux::{Tmux, TmuxCommand, TmuxEvent}, toplevel::TopLevel
 };
 
 glib::wrapper! {
@@ -138,7 +138,7 @@ impl IvyWindow {
         binding.is_some()
     }
 
-    pub fn register_terminal(&self, pane_id: u32, terminal: &Pane) {
+    pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.insert(pane_id, terminal.clone());
         println!("Terminal with ID {} registered", pane_id);
@@ -200,7 +200,7 @@ impl IvyWindow {
         None
     }
 
-    pub fn get_pane(&self, id: u32) -> Option<Pane> {
+    pub fn get_pane(&self, id: u32) -> Option<Terminal> {
         let terminals = self.imp().terminals.borrow();
         let pane = terminals.get(&id);
         if let Some(pane) = pane {

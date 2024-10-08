@@ -3,7 +3,7 @@ use std::str::from_utf8;
 use gtk4::{Box as Container, Orientation};
 use libadwaita::prelude::*;
 
-use crate::{pane::Pane, separator::new_separator, toplevel::TopLevel, window::IvyWindow};
+use crate::{terminal::Terminal, separator::new_separator, toplevel::TopLevel, window::IvyWindow};
 
 pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
     // Read tab ID
@@ -90,7 +90,7 @@ fn parse_layout_recursive(
             if let Some(pane) = window.get_pane(pane_id) {
                 // Pane exists already
             } else {
-                let new_terminal = Pane::new(top_level, window, Some(pane_id));
+                let new_terminal = Terminal::new(top_level, window, Some(pane_id));
 
                 if let Some(parent) = parent {
                     parent.append(&new_terminal);

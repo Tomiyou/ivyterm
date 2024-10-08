@@ -6,7 +6,7 @@ use gtk4::{
     EventControllerKey, Orientation, ScrolledWindow,
 };
 use libadwaita::{glib, prelude::*};
-use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
+use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
     global_state::GLOBAL_SETTINGS,
@@ -17,12 +17,12 @@ use crate::{
 };
 
 glib::wrapper! {
-    pub struct Pane(ObjectSubclass<imp::PanePriv>)
+    pub struct Terminal(ObjectSubclass<imp::TerminalPriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Actionable, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
-impl Pane {
+impl Terminal {
     pub fn new(top_level: &TopLevel, window: &IvyWindow, pane_id: Option<u32>) -> Self {
         let pane_id = match pane_id {
             Some(pane_id) => pane_id,
@@ -43,7 +43,7 @@ impl Pane {
             )
         };
 
-        let vte = Terminal::builder()
+        let vte = Vte::builder()
             .vexpand(true)
             .hexpand(true)
             .font_desc(&font_desc)
@@ -163,7 +163,7 @@ impl Pane {
 fn handle_keyboard(
     keycode: u32,
     state: ModifierType,
-    terminal: &Pane,
+    terminal: &Terminal,
     top_level: &TopLevel,
 ) -> Propagation {
     // Handle terminal splits

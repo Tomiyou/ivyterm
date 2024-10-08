@@ -3,10 +3,10 @@ use std::cell::{Cell, RefCell};
 use gtk4::{Box as Container, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{pane::Pane, window::IvyWindow};
+use crate::{terminal::Terminal, window::IvyWindow};
 
 pub struct Zoomed {
-    pub terminal: Pane,
+    pub terminal: Terminal,
     pub root_container: Container,
     pub terminal_container: Container,
     pub previous_sibling: Option<Widget>,
@@ -18,7 +18,7 @@ pub struct Zoomed {
 pub struct TopLevelPriv {
     pub window: RefCell<Option<IvyWindow>>,
     pub tab_view: RefCell<Option<TabView>>,
-    pub terminals: RefCell<Vec<Pane>>,
+    pub terminals: RefCell<Vec<Terminal>>,
     pub zoomed: RefCell<Option<Zoomed>>,
     pub tab_id: Cell<u32>,
 }

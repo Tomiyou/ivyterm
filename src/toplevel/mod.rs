@@ -5,7 +5,7 @@ use gtk4::{graphene::Rect, Box as Container, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, pane::Pane, separator::new_separator,
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, terminal::Terminal, separator::new_separator,
     window::IvyWindow,
 };
 
@@ -27,7 +27,7 @@ impl TopLevel {
         top_level.imp().init_values(tab_view, window, tab_id);
 
         if spawn_terminal {
-            let terminal = Pane::new(&top_level, window, None);
+            let terminal = Terminal::new(&top_level, window, None);
             top_level.set_child(Some(&terminal));
         }
 
@@ -50,12 +50,12 @@ impl TopLevel {
         self.imp().tab_id.get()
     }
 
-    pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) -> (Pane, Option<Container>) {
+    pub fn split_pane(&self, terminal: &Terminal, orientation: Orientation) -> (Terminal, Option<Container>) {
         self.unzoom();
 
         let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
-        let new_terminal = Pane::new(&self, window, None);
+        let new_terminal = Terminal::new(&self, window, None);
         let new_separator = new_separator(orientation);
 
         let parent = terminal.parent().unwrap();
@@ -93,7 +93,7 @@ impl TopLevel {
         return (new_terminal, Some(new_container));
     }
 
-    pub fn close_pane(&self, closing_terminal: &Pane) {
+    pub fn close_pane(&self, closing_terminal: &Terminal) {
         self.unzoom();
 
         let parent = closing_terminal.parent().unwrap();
@@ -144,7 +144,7 @@ impl TopLevel {
         panic!("Parent is neither Bin nor Paned");
     }
 
-    pub fn toggle_zoom(&self, terminal: &Pane) {
+    pub fn toggle_zoom(&self, terminal: &Terminal) {
         let imp = self.imp();
         let binding = imp.terminals.borrow();
         if binding.len() < 2 {
@@ -204,7 +204,7 @@ impl TopLevel {
         None
     }
 
-    pub fn register_terminal(&self, terminal: &Pane) {
+    pub fn register_terminal(&self, terminal: &Terminal) {
         let mut terminals_vec = self.imp().terminals.borrow_mut();
         terminals_vec.push(terminal.clone());
 
@@ -214,7 +214,7 @@ impl TopLevel {
         window.as_ref().unwrap().register_terminal(pane_id, terminal);
     }
 
-    pub fn unregister_terminal(&self, terminal: &Pane) {
+    pub fn unregister_terminal(&self, terminal: &Terminal) {
         let mut terminals_vec = self.imp().terminals.borrow_mut();
         terminals_vec.retain(|t| t != terminal);
 
@@ -226,10 +226,10 @@ impl TopLevel {
 
     pub fn find_neighbor(
         &self,
-        terminal: &Pane,
+        terminal: &Terminal,
         direction: Direction,
         use_size: Option<(i32, i32, i32, i32)>,
-    ) -> Option<Pane> {
+    ) -> Option<Terminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
             return None;
