@@ -48,11 +48,11 @@ impl Tmux {
         }
     }
 
-    pub fn send_keypress(&self, pane_id: u32, c: char, prefix: String, control: Option<&str>) {
+    pub fn send_keypress(&self, pane_id: u32, c: char, prefix: String, movement: Option<&str>) {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
-        let cmd = if let Some(control) = control {
+        let cmd = if let Some(control) = movement {
             // Navigation keys (left, right, page up, ...)
             format!("send-keys -t {} {}{}\n", pane_id, prefix, control)
         } else if c.is_ascii_control() {

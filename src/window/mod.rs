@@ -167,7 +167,6 @@ impl IvyWindow {
         }
 
         if let Some(c) = keyval.to_unicode() {
-            println!("HAHAHA");
             tmux.send_keypress(pane_id, c, prefix, None);
         } else if let Some(direction) = keycode_to_arrow_key(keycode) {
             let direction = match direction {
