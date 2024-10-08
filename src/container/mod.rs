@@ -42,7 +42,7 @@ impl Container {
         container
     }
 
-    pub fn append(&self, child: &impl IsA<Widget>, percentage: Option<f64>) {
+    pub fn append(&self, child: &impl IsA<Widget>, tmux_position: Option<i32>) {
         let imp = self.imp();
         if let Some(last_child) = self.last_child() {
             // let last_child: Terminal = last_child.downcast().unwrap();
@@ -53,7 +53,7 @@ impl Container {
                     let binding = imp.window.borrow();
                     let window = binding.as_ref().unwrap();
                     let char_size = window.get_char_size();
-                    layout.add_separator(self, percentage.unwrap(), char_size)
+                    layout.add_separator(self, tmux_position.unwrap(), char_size)
                 },
             };
 

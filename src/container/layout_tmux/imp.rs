@@ -9,8 +9,8 @@ use crate::container::separator::Separator;
 use crate::container::Container;
 
 pub struct TmuxSeparator {
-    s: Separator,
-    position: u32,
+    pub s: Separator,
+    pub position: i32,
 }
 
 // Object holding the state
@@ -98,7 +98,6 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
         let mut allocation_iter = allocations.iter();
         while let Some(child) = children_iter {
             let allocation = allocation_iter.next().unwrap();
-            println!("Allocation {:?}", allocation);
             child.size_allocate(&allocation, -1);
             children_iter = child.next_sibling();
         }
@@ -116,7 +115,6 @@ impl TmuxLayoutPriv {
         // entire container and need to calculate height.
         // But since we need to measure height of each child, we need to calculate width of each
         // child, which depends on percentage of each split.
-        println!("get_preferred_size_for_opposite_orientation {}", size);
         let children_sizes = self.get_children_sizes(container, size);
 
         let mut minimum = 0;
@@ -170,46 +168,38 @@ impl TmuxLayoutPriv {
 
     #[inline]
     fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
-        todo!();
-        // let separators = self.separators.borrow();
-        // let child_count = (separators.len() * 2) + 1;
-        // let mut children_sizes = Vec::with_capacity(child_count);
+        let separators = self.separators.borrow();
+        let child_count = (separators.len() * 2) + 1;
+        let mut children_sizes = Vec::with_capacity(child_count);
 
-        // // Handle being given size less than 0 (usually when not initialized yet or error)
-        // if size < 0 {
-        //     for _ in 0..child_count {
-        //         children_sizes.push(-1);
-        //     }
-        //     return children_sizes;
-        // }
+        // Handle being given size less than 0 (usually when not initialized yet or error)
+        if size < 0 {
+            for _ in 0..child_count {
+                children_sizes.push(-1);
+            }
+            return children_sizes;
+        }
 
-        // let mut already_used_size = 0;
+        // All Separators are the same size
+        let handle_size = separators.first().unwrap().s.get_handle_width();
+        // Cell size is 2px larger than handle_size, since we must account for VTE widget
+        // fixed padding of 1px on each side
+        let cell_size = handle_size + 2;
+        let mut already_used_size = 0;
 
-        // let mut next_child = container.first_child();
-        // while let Some(child) = next_child {
-        //     if let Some(separator) = child.next_sibling() {
-        //         let separator: Separator = separator.downcast().unwrap();
-        //         // Percentage is the position of the Separator in % of the total size
-        //         let percentage = separator.get_percentage();
-        //         let separator_position = size as f64 * percentage;
+        for separator in separators.iter() {
+            // Each child size is calculated like this: position of the Separator
+            // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
+            //  We then subtract how much size we used up to this point
+            let separator_position = (separator.position * cell_size) + 2;
+            let child_size = separator_position - already_used_size;
+            children_sizes.push(child_size);
+            children_sizes.push(handle_size);
 
-        //         let handle_size = separator.get_handle_width();
-        //         let half_handle = handle_size / 2;
+            already_used_size += child_size + handle_size;
+        }
+        children_sizes.push(size - already_used_size);
 
-        //         let child_size =
-        //             separator_position.floor() as i32 - already_used_size - half_handle;
-        //         children_sizes.push(child_size);
-        //         children_sizes.push(handle_size);
-
-        //         already_used_size += child_size + handle_size;
-        //         next_child = separator.next_sibling();
-        //     } else {
-        //         // No siblings left, we take all of the remaining size
-        //         children_sizes.push(size - already_used_size);
-        //         break;
-        //     };
-        // }
-
-        // children_sizes
+        children_sizes
     }
 }

@@ -14,26 +14,23 @@ struct Rectangle {
 
 // @0,6306,80x5,0,0[80x2,0,0,0,80x2,0,3{40x2,0,3,1,39x2,41,3,2}]
 #[inline]
-fn calculate_percentage(bounds: &Rectangle, parent: &TmuxContainer) -> f64 {
+fn calculate_percentage(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
     let orientation = parent.c.orientation();
-    let percentage = match orientation {
+    let position = match orientation {
         Orientation::Horizontal => {
-            let relative_x = bounds.x - parent.bounds.x;
-            let relative_x = relative_x as f64 - 0.5;
-            println!("My X {}, parent X {}, parent width {} | relative X {}", bounds.x, parent.bounds.x, parent.bounds.width, relative_x);
-            relative_x / parent.bounds.width as f64
-        }
+            println!("Position X is {}", bounds.x - parent.bounds.x - 1);
+            bounds.x - parent.bounds.x - 1
+        },
         _ => {
-            let relative_y = bounds.y - parent.bounds.y;
-            let relative_y = relative_y as f64 - 0.5;
-            println!("My Y {}, parent Y {}, parent height {} | relative Y {}", bounds.y, parent.bounds.y, parent.bounds.height, relative_y);
-            relative_y / parent.bounds.height as f64
-        }
+            println!("Position Y is {}", bounds.y - parent.bounds.y - 1);
+            bounds.y - parent.bounds.y - 1
+        },
     };
-    let percentage = percentage.max(0.0);
+    // let percentage = percentage.max(0.0);
 
-    println!("Percentage is {}", percentage);
-    percentage
+    // println!("Percentage is {}", percentage);
+    // percentage
+    position
 }
 
 #[inline]
@@ -49,8 +46,8 @@ fn container_callback(
     if initial {
         let container = Container::new(orientation, window);
         if let Some(parent) = parent {
-            let percentage = calculate_percentage(&bounds, parent);
-            parent.c.append(&container, Some(percentage));
+            let position = calculate_percentage(&bounds, parent);
+            parent.c.append(&container, Some(position));
         } else {
             top_level.set_child(Some(&container));
         }
