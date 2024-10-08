@@ -75,6 +75,12 @@ impl Container {
                 container.recursive_size_measure()
             } else {
                 // Skip children of type Separator
+                if parent_orientation == Orientation::Horizontal {
+                    total_cols += 1;
+                } else {
+                    total_rows += 1;
+                }
+
                 next_child = child.next_sibling();
                 continue;
             };
