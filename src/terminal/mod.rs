@@ -2,7 +2,9 @@ mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
-    gdk::{ModifierType, RGBA}, pango::FontDescription, EventControllerKey, Orientation, ScrolledWindow
+    gdk::{ModifierType, RGBA},
+    pango::FontDescription,
+    EventControllerKey, Orientation, ScrolledWindow,
 };
 use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
@@ -22,6 +24,8 @@ glib::wrapper! {
 
 impl Terminal {
     pub fn new(top_level: &TopLevel, window: &IvyWindow, pane_id: Option<u32>) -> Self {
+        let window = window.clone();
+
         let pane_id = match pane_id {
             Some(pane_id) => pane_id,
             None => window.unique_terminal_id(),
@@ -54,48 +58,54 @@ impl Terminal {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().init_values(pane_id, &vte, window);
+        terminal.imp().init_values(pane_id, &vte, &window);
 
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);
 
         // Close terminal + pane/tab when the child (shell) exits
-        let _top_level = top_level.clone();
-        let _terminal = terminal.clone();
-        vte.connect_child_exited(move |_, _| {
-            // Now close the pane/tab
-            _top_level.close_pane(&_terminal);
+        vte.connect_child_exited(glib::clone!(
+            #[weak]
+            top_level,
+            #[weak]
+            terminal,
+            move |_, _| {
+                // Now close the pane/tab
+                top_level.close_pane(&terminal);
 
-            // Remove terminal from top level terminal list
-            _top_level.unregister_terminal(&_terminal);
-        });
+                // Remove terminal from top level terminal list
+                top_level.unregister_terminal(&terminal);
+            }
+        ));
 
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
         let eventctl = EventControllerKey::new();
-        let _terminal = terminal.clone();
-        let _window = window.clone();
-        let _vte = vte.clone();
-        eventctl.connect_key_pressed(move |_eventctl, keyval, key, state| {
-            if is_tmux {
-                _window.tmux_keypress(pane_id, key, keyval, state);
-                Propagation::Proceed
-            } else {
-                handle_keyboard(key, state, &_terminal, &top_level, &_vte)
+        eventctl.connect_key_pressed(glib::clone!(
+            #[strong]
+            terminal,
+            #[strong]
+            vte,
+            move |_eventctl, keyval, key, state| {
+                if is_tmux {
+                    window.tmux_keypress(pane_id, key, keyval, state);
+                    Propagation::Proceed
+                } else {
+                    handle_keyboard(key, state, &terminal, &top_level, &vte)
+                }
             }
-        });
+        ));
         vte.add_controller(eventctl);
 
-        // Spawn terminal
-        let pty_flags = PtyFlags::DEFAULT;
-        let argv = ["/bin/bash"];
-        let envv = [];
-        let spawn_flags = SpawnFlags::DEFAULT;
-
         if !is_tmux {
-            let _terminal = vte.clone();
+            // Spawn terminal
+            let pty_flags = PtyFlags::DEFAULT;
+            let argv = ["/bin/bash"];
+            let envv = [];
+            let spawn_flags = SpawnFlags::DEFAULT;
+
             vte.spawn_async(
                 pty_flags,
                 None,
@@ -105,9 +115,13 @@ impl Terminal {
                 || {},
                 -1,
                 gtk4::gio::Cancellable::NONE,
-                move |_result| {
-                    _terminal.grab_focus();
-                },
+                glib::clone!(
+                    #[weak]
+                    vte,
+                    move |_result| {
+                        vte.grab_focus();
+                    }
+                ),
             );
         }
 
