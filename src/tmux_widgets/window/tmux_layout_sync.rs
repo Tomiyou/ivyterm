@@ -164,7 +164,6 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
                 };
 
                 parse_layout_recursive(&mut iter, window, &top_level, &container, 1);
-                println!("Recursion finished");
             }
             _ => {
                 panic!("Parsed Layout has no Terminals")
@@ -199,13 +198,13 @@ fn parse_layout_recursive(
     //    ALWAYS: and descend recursively
 
     while let Some(tmux_pane) = layout.next() {
-        print_tab(nested);
-        println!("-- Next item: {:?}", tmux_pane);
         match tmux_pane {
             TmuxPane::Return => {
                 return;
             }
             TmuxPane::Terminal(term_id, allocation) => {
+                print_tab(nested);
+                println!("-- NEXT ITEM: {:?}", tmux_pane);
                 terminal_callback(
                     *term_id,
                     window,
@@ -217,6 +216,8 @@ fn parse_layout_recursive(
                 );
             }
             TmuxPane::Container(orientation, allocation) => {
+                print_tab(nested);
+                println!("-- NEXT ITEM: {:?}", tmux_pane);
                 let container = container_callback(
                     orientation,
                     window,
@@ -286,10 +287,21 @@ fn container_callback(
             return container;
         } else {
             print_tab(nested);
-            println!(
-                "Created new Container to replace the current child, position {}",
-                position
-            );
+            if let Ok(terminal) = next_pane.clone().downcast::<TmuxTerminal>() {
+                println!(
+                    "Created new Container to replace the current child TERMINAL {}, position {}",
+                    terminal.pane_id(),
+                    position
+                );
+            } else {
+                println!(
+                    "Created new Container to replace the current child (type {}), position {}",
+                    next_pane.type_(),
+                    position
+                );
+            }
+            let widget = top_level.clone().upcast();
+            print_hierarchy(&widget, 0);
         }
     } else {
         print_tab(nested);
@@ -301,6 +313,8 @@ fn container_callback(
 
     let container = TmuxContainer::new(&orientation, window);
     prepend_pane(window, &parent.c, &container, next_sibling, position);
+    print_tab(nested);
+    println!("After error?");
 
     container
 }
@@ -359,6 +373,8 @@ fn terminal_callback(
     // Terminal does not exist yet, simply prepend it before next_sibling
     print_tab(nested);
     let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
+    // print_tab(nested);
+    // let omegalul: Widget = new_terminal.clone().upcast();
     prepend_pane(window, &parent.c, &new_terminal, next_sibling, position);
 
     new_terminal
@@ -469,4 +485,26 @@ fn replace_pane(old: &impl IsA<Widget>, new: &impl IsA<Widget>) {
     let parent = old.parent().unwrap();
     new.insert_after(&parent, Some(old));
     old.unparent();
+}
+
+fn print_hierarchy(widget: &Widget, nested: u32) {
+    let mut nested = nested;
+    if let Ok(container) = widget.clone().downcast::<TmuxContainer>() {
+        print_tab(nested);
+        println!("** Container {}", container.type_());
+        nested += 1;
+    } else if let Ok(terminal) = widget.clone().downcast::<TmuxTerminal>() {
+        print_tab(nested);
+        println!("** Terminal ({}) {}", terminal.pane_id(), terminal.type_());
+        nested += 1;
+    } else if let Ok(separator) = widget.clone().downcast::<TmuxSeparator>() {
+        print_tab(nested);
+        println!("** Separator {}", separator.type_());
+        nested += 1;
+    }
+    let mut next_child = widget.first_child();
+    while let Some(child) = &next_child {
+        print_hierarchy(child, nested);
+        next_child = child.next_sibling();
+    }
 }

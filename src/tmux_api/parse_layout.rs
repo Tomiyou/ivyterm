@@ -51,8 +51,8 @@ fn parse_layout_recursive(buffer: &[u8], hierarchy: &mut Vec<TmuxPane>, nested: 
     let mut buffer = buffer;
 
     loop {
-        print_tab(nested);
-        println!("Remaining buffer: {}", from_utf8(buffer).unwrap());
+        // print_tab(nested);
+        // println!("Remaining buffer: {}", from_utf8(buffer).unwrap());
         // Read width
         let (width, bytes_read) = read_first_u32(buffer);
         buffer = &buffer[bytes_read + 1..];

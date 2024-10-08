@@ -118,8 +118,8 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::PaneSplit(tab_id, hierarchy) => {
-                // println!("Pane split: {}", std::str::from_utf8(&layout).unwrap());
-                // parse_tmux_layout(&layout[1..], &self);
+                println!("\n---------- Pane split ----------");
+                sync_tmux_layout(&self, tab_id, hierarchy);
             }
             TmuxEvent::FocusChanged(pane_id) => {
                 let terminals = self.imp().terminals.borrow();
@@ -128,10 +128,8 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::InitialLayout(tab_id, hierarchy) => {
-                // println!("Initial layout ({}): {:?}", tab_id, hierarchy);
+                println!("\n---------- Initial layout ----------");
                 sync_tmux_layout(&self, tab_id, hierarchy);
-                println!("Initial layout finished");
-                // println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
@@ -142,9 +140,8 @@ impl IvyTmuxWindow {
                 tmux.initial_output = TmuxTristate::Done;
             }
             TmuxEvent::LayoutChanged(tab_id, hierarchy) => {
-                // // todo!()
-                // println!("Layout changed: {}", std::str::from_utf8(&layout).unwrap());
-                // parse_tmux_layout(&layout[1..], &self);
+                println!("\n---------- Layout changed ----------");
+                sync_tmux_layout(&self, tab_id, hierarchy);
             }
             TmuxEvent::SizeChanged() => {
                 let mut binding = imp.tmux.borrow_mut();

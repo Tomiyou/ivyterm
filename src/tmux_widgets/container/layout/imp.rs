@@ -173,7 +173,7 @@ impl TmuxLayoutPriv {
                 let child_size = separator_position - already_used_size;
                 children_sizes.push(child_size);
                 children_sizes.push(handle_size);
-                println!("Pane size {}, separator size {}", child_size, handle_size);
+                // println!("Pane size {}, separator size {}", child_size, handle_size);
 
                 already_used_size += child_size + handle_size;
             }
@@ -183,7 +183,7 @@ impl TmuxLayoutPriv {
         // !(size < 0)
         if size >= 0 {
             children_sizes.push(size - already_used_size);
-            println!("Last pane size {}", size - already_used_size);
+            // println!("Last pane size {}", size - already_used_size);
         }
 
         children_sizes
