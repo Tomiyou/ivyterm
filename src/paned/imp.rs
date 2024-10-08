@@ -58,12 +58,19 @@ impl IvyPanedPriv {
     pub fn set_orientation(&self, orientation: Orientation) {
         self.orientation.replace(orientation);
 
-        let (separator_orientation, css_class) = match orientation {
-            Orientation::Horizontal => (Orientation::Vertical, "separator_cont_vertical"),
-            Orientation::Vertical => (Orientation::Horizontal, "separator_cont_horizontal"),
+        let (separator_orientation, css_class, cursor) = match orientation {
+            Orientation::Horizontal => (
+                Orientation::Vertical,
+                "separator_cont_vertical",
+                "col-resize",
+            ),
+            Orientation::Vertical => (
+                Orientation::Horizontal,
+                "separator_cont_horizontal",
+                "row-resize",
+            ),
             _ => panic!("Unable to invert orientation to create separator"),
         };
-        println!("Setting orientation: paned {:?}, separator {:?}", orientation, separator_orientation);
 
         // Create separator widget
         let separator = Separator::new(separator_orientation);
@@ -74,7 +81,7 @@ impl IvyPanedPriv {
         separator_container.set_parent(self.obj().as_ref());
 
         // Change the cursor when hovering separator and container
-        let cursor = Cursor::from_name("col-resize", None);
+        let cursor = Cursor::from_name(cursor, None);
         if let Some(cursor) = cursor.as_ref() {
             separator_container.set_cursor(Some(&cursor));
         }
