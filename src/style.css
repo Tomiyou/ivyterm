@@ -7,3 +7,14 @@ paned separator {
     min-width: 2px;
     min-height: 2px;
 }
+
+.separator_bg {
+    padding: 0px 3px;
+    background-color: black;
+}
+
+separator {
+    background-color: white;
+    min-width: 3px;
+    min-height: 3px;
+}
