@@ -5,7 +5,10 @@ mod tmux;
 use std::sync::atomic::Ordering;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{
+    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType,
+    WindowControls, WindowHandle,
+};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
@@ -163,7 +166,16 @@ impl IvyWindow {
         None
     }
 
-    pub fn change_color(&self) {
-        let app = self.application();
+    pub fn update_terminal_config(
+        &self,
+        font_desc: &FontDescription,
+        main_colors: [RGBA; 2],
+        palette_colors: [RGBA; 16],
+        scrollback_lines: u32,
+    ) {
+        let binding = self.imp().terminals.borrow();
+        for (_, terminal) in binding.iter() {
+            terminal.update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+        }
     }
 }

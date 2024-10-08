@@ -4,16 +4,16 @@ mod imp;
 use glib::Object;
 use gtk4::gdk::{Display, RGBA};
 use gtk4::CssProvider;
-use libadwaita::{gio, glib};
 use libadwaita::subclass::prelude::*;
+use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, GtkWindowExt};
 
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
 
-pub use config::INITIAL_WIDTH;
-pub use config::INITIAL_HEIGHT;
 pub use config::APPLICATION_TITLE;
+pub use config::INITIAL_HEIGHT;
+pub use config::INITIAL_WIDTH;
 pub use config::SPLIT_HANDLE_WIDTH;
 
 glib::wrapper! {
@@ -41,6 +41,10 @@ impl IvyApplication {
         let css_provider = binding.as_ref().unwrap();
         let window = IvyWindow::new(self, css_provider);
 
+        // Add Window to
+        let mut binding = imp.windows.borrow_mut();
+        binding.push(window.clone());
+
         if let Some(session_name) = tmux_session {
             println!("Starting TMUX");
             let tmux = attach_tmux(session_name, &window).unwrap();
@@ -53,24 +57,31 @@ impl IvyApplication {
         window.present();
     }
 
-    pub fn change_background_color(&self, rgba: RGBA) {
-        println!("Changing color to {}", rgba.to_str());
-        let red = (rgba.red() * 255.).round() as i32;
-        let green = (rgba.green() * 255.).round() as i32;
-        let blue = (rgba.blue() * 255.).round() as i32;
-        let hex_color = format!("#{:2X}{:2X}{:2X}", red, green, blue);
+    fn reload_css_colors(&self) {
+        let config = self.imp().config.borrow();
+        let [_foreground, background] = config.main_colors;
 
+        // Update CSS colors (background and separator)
         let binding = self.imp().css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
-        let new_css = BASE_CSS.replace("#000000", &hex_color);
-
+        let new_css = BASE_CSS.replace("#000000", &rgba_to_hex(&background));
         css_provider.load_from_data(&new_css);
 
-        // TODO: Propagate changed color to terminals
+        self.refresh_terminals();
+    }
+
+    fn refresh_terminals(&self) {
+        let (font_desc, main_colors, palette_colors, scrollback_lines) = self.get_terminal_config();
+
+        // Refresh terminals to respect the new colors
         let binding = self.imp().windows.borrow();
         for window in binding.iter() {
-            // window.change_color();
-            // window.queue_draw();
+            window.update_terminal_config(
+                &font_desc,
+                main_colors,
+                palette_colors,
+                scrollback_lines,
+            );
         }
     }
 }
@@ -90,4 +101,11 @@ fn load_css() -> CssProvider {
     );
 
     provider
+}
+
+fn rgba_to_hex(rgba: &RGBA) -> String {
+    let red = (rgba.red() * 255.).round() as i32;
+    let green = (rgba.green() * 255.).round() as i32;
+    let blue = (rgba.blue() * 255.).round() as i32;
+    format!("#{:2X}{:2X}{:2X}", red, green, blue)
 }

@@ -72,6 +72,7 @@ impl IvyApplication {
     }
 
     pub fn show_settings_window(&self) {
+        let app = self.clone();
         let window_box = Box::new(Orientation::Vertical, 0);
 
         // Window handle and buttons
@@ -80,21 +81,38 @@ impl IvyApplication {
         // Font picker
         let font_dialog = FontDialog::new();
         let font_dialog_button = FontDialogButton::new(Some(font_dialog));
-        font_dialog_button.connect_font_desc_notify(|button| {
-            let font_description = button.font_desc().unwrap();
-            println!(
-                "connect_font_desc_notify executed {:?}",
-                font_description.to_string()
-            );
-        });
+        font_dialog_button.connect_font_desc_notify(glib::clone!(
+            #[weak]
+            app,
+            move |button| {
+                let font_description = button.font_desc().unwrap();
+                update_font(&app, font_description);
+            }
+        ));
 
-        // Color picker
-        let color_dialog = ColorDialog::new();
-        let color_dialog_button = ColorDialogButton::new(Some(color_dialog));
+        // Color pickers
+        let foreground_color_dialog = ColorDialog::new();
+        let foreground_color_button = ColorDialogButton::new(Some(foreground_color_dialog));
+        foreground_color_button.connect_rgba_notify(glib::clone!(
+            #[weak]
+            app,
+            move |button| {
+                let rgba = button.rgba();
+                update_foreground_color(&app, rgba)
+            }
+        ));
+
+        let background_color_dialog = ColorDialog::new();
+        let background_color_button = ColorDialogButton::new(Some(background_color_dialog));
+        background_color_button.connect_rgba_notify(move |button| {
+            let rgba = button.rgba();
+            update_background_color(&app, rgba)
+        });
 
         window_box.append(&header_bar);
         window_box.append(&font_dialog_button);
-        window_box.append(&color_dialog_button);
+        window_box.append(&foreground_color_button);
+        window_box.append(&background_color_button);
 
         // Create a new window
         let window = ApplicationWindow::builder()
@@ -104,15 +122,31 @@ impl IvyApplication {
             .build();
 
         window.present();
-
-        color_dialog_button.connect_rgba_notify(move |button| {
-            let rgba = button.rgba();
-            println!("connect_rgba_notify executed {:?}", rgba);
-            let app = window.application();
-            if let Some(app) = app {
-                let app: IvyApplication = app.downcast().unwrap();
-                app.change_background_color(rgba);
-            }
-        });
     }
+}
+
+fn update_foreground_color(app: &IvyApplication, rgba: RGBA) {
+    let mut config = app.imp().config.borrow_mut();
+    let [_foreground, background] = config.main_colors;
+    config.main_colors = [rgba, background];
+    drop(config);
+
+    app.reload_css_colors();
+}
+
+fn update_background_color(app: &IvyApplication, rgba: RGBA) {
+    let mut config = app.imp().config.borrow_mut();
+    let [foreground, _background] = config.main_colors;
+    config.main_colors = [foreground, rgba];
+    drop(config);
+
+    app.reload_css_colors();
+}
+
+fn update_font(app: &IvyApplication, font_desc: FontDescription) {
+    let mut config = app.imp().config.borrow_mut();
+    config.font_desc = font_desc;
+    drop(config);
+
+    app.refresh_terminals();
 }

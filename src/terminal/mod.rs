@@ -2,8 +2,7 @@ mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
-    gdk::{ModifierType, RGBA},
-    EventControllerKey, Orientation, ScrolledWindow,
+    gdk::{ModifierType, RGBA}, pango::FontDescription, EventControllerKey, Orientation, ScrolledWindow
 };
 use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
@@ -117,6 +116,23 @@ impl Terminal {
 
     pub fn pane_id(&self) -> u32 {
         self.imp().id.get()
+    }
+
+    pub fn update_config(
+        &self,
+        font_desc: &FontDescription,
+        main_colors: [RGBA; 2],
+        palette_colors: [RGBA; 16],
+        scrollback_lines: u32,
+    ) {
+        let [foreground, background] = main_colors;
+        let palette: Vec<&RGBA> = palette_colors.iter().map(|c| c).collect();
+
+        let binding = self.imp().vte.borrow();
+        let vte = binding.as_ref().unwrap();
+        vte.set_font(Some(&font_desc));
+        vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
+        vte.set_scrollback_lines(scrollback_lines as i64);
     }
 
     pub fn feed_output(&self, output: Vec<u8>) {
