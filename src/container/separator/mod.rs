@@ -4,7 +4,7 @@ use libadwaita::{glib, prelude::*};
 
 use crate::settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH};
 
-use super::{layout::ContainerLayout, Container};
+use super::{layout_default::ContainerLayout, layout_tmux::TmuxLayout, Container};
 
 mod imp;
 
@@ -12,6 +12,11 @@ glib::wrapper! {
     pub struct Separator(ObjectSubclass<imp::SeparatorPriv>)
         @extends libadwaita::Bin, gtk4::Widget,
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Orientable;
+}
+
+enum Layout {
+    Default(ContainerLayout),
+    Tmux(TmuxLayout),
 }
 
 impl Separator {
@@ -53,14 +58,28 @@ impl Separator {
         }
 
         // Add ability to drag
+        let layout = container.layout_manager().unwrap();
+        let layout = match layout.downcast::<ContainerLayout>() {
+            Ok(layout) => Layout::Default(layout),
+            Err(layout) => {
+                let layout: TmuxLayout = layout.downcast().unwrap();
+                Layout::Tmux(layout)
+            }
+        };
+
         let drag = GestureDrag::new();
-        let layout: ContainerLayout = container.layout_manager().unwrap().downcast().unwrap();
         let container = container.clone();
-        let _self = bin.clone();
-        drag.connect_drag_update(move |drag, offset_x, offset_y| {
-            let (start_x, start_y) = drag.start_point().unwrap();
-            layout.drag_update(&container, &_self, start_x + offset_x, start_y + offset_y);
-        });
+        drag.connect_drag_update(glib::clone!(
+            #[strong]
+            bin,
+            move |drag, offset_x, offset_y| {
+                let (start_x, start_y) = drag.start_point().unwrap();
+                match &layout {
+                    Layout::Default(layout) => layout.drag_update(&container, &bin, start_x + offset_x, start_y + offset_y),
+                    Layout::Tmux(layout) => layout.drag_update(&container, &bin, start_x + offset_x, start_y + offset_y),
+                }
+            }
+        ));
         bin.add_controller(drag);
 
         bin

@@ -1,9 +1,11 @@
 mod imp;
-mod layout;
+mod layout_default;
+mod layout_tmux;
 mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
+use layout_tmux::TmuxLayout;
 use libadwaita::{glib, prelude::*};
 
 use crate::{terminal::Terminal, window::IvyWindow};
@@ -22,6 +24,11 @@ impl Container {
         container.set_hexpand(true);
 
         container.imp().window.replace(Some(window.clone()));
+
+        if window.is_tmux() {
+            let tmux_layout = TmuxLayout::new();
+            container.set_layout_manager(Some(tmux_layout));
+        }
 
         container
     }

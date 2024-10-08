@@ -6,7 +6,7 @@ use libadwaita::{glib, prelude::*};
 
 use crate::window::IvyWindow;
 
-use super::layout::ContainerLayout;
+use super::layout_default::ContainerLayout;
 use super::separator::Separator;
 
 // Object holding the state
