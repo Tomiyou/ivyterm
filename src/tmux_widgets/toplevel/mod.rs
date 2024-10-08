@@ -3,7 +3,7 @@ mod layout;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation, Widget};
+use gtk4::{graphene::Rect, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
 
@@ -11,11 +11,7 @@ use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
 
 use self::imp::Zoomed;
 
-use super::{
-    container::{TmuxContainer, TmuxSeparator},
-    terminal::TmuxTerminal,
-    IvyTmuxWindow,
-};
+use super::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow};
 
 glib::wrapper! {
     pub struct TmuxTopLevel(ObjectSubclass<imp::TopLevelPriv>)
