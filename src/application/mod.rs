@@ -10,6 +10,7 @@ use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
 use crate::normal_widgets::IvyNormalWindow;
 use crate::settings::show_preferences_window;
+use crate::tmux_widgets::IvyTmuxWindow;
 
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)
@@ -44,17 +45,17 @@ impl IvyApplication {
         let binding = imp.css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
 
-        let window = if let Some(session_name) = tmux_session {
+        if let Some(session_name) = tmux_session {
             println!("Attaching to TMUX session {}", session_name);
-            todo!();
             // let tmux = attach_tmux(session_name, &window).unwrap();
             // window.init_tmux(tmux);
+            let window = IvyTmuxWindow::new(self, css_provider, session_name);
+            window.present();
         } else {
             // Create initial Tab
-            IvyNormalWindow::new(self, css_provider)
+            let window = IvyNormalWindow::new(self, css_provider);
+            window.present();
         };
-
-        window.present();
     }
 
     fn reload_css_colors(&self) {

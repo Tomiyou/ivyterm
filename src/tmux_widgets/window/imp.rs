@@ -1,32 +1,29 @@
 use std::cell::{Cell, RefCell};
-use std::sync::atomic::AtomicU32;
 
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
-use crate::helpers::SortedTerminals;
-use crate::tmux::Tmux;
-use crate::toplevel::TopLevel;
+// use crate::helpers::SortedTerminals;
+// use crate::tmux::Tmux;
+// use crate::toplevel::TopLevel;
 
 // Object holding the state
 #[derive(Default)]
 pub struct IvyWindowPriv {
-    pub tmux: RefCell<Option<Tmux>>,
+    // pub tmux: RefCell<Option<Tmux>>,
     pub tab_view: RefCell<Option<TabView>>,
-    pub tabs: RefCell<Vec<TopLevel>>,
-    pub terminals: RefCell<SortedTerminals>,
+    // pub tabs: RefCell<Vec<TopLevel>>,
+    // pub terminals: RefCell<SortedTerminals>,
     pub css_provider: RefCell<CssProvider>,
-    pub next_tab_id: RefCell<AtomicU32>,
-    pub next_terminal_id: RefCell<AtomicU32>,
-    pub char_size: Cell<(i32, i32)>,
+    // pub char_size: Cell<(i32, i32)>,
 }
 
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for IvyWindowPriv {
     const NAME: &'static str = "IvyApplicationWindow";
-    type Type = super::IvyWindow;
+    type Type = super::IvyTmuxWindow;
     type ParentType = ApplicationWindow;
 }
 
