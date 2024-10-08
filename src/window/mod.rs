@@ -1,8 +1,11 @@
 mod imp;
+mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::{Key, ModifierType}, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
+
+use tmux::parse_tmux_layout;
 
 use crate::{
     global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, pane::Pane, tmux::{Tmux, TmuxCommand, TmuxEvent}, toplevel::TopLevel
@@ -88,9 +91,15 @@ impl IvyWindow {
     }
 
     pub fn init_tmux(&self, tmux: Tmux) {
-        // Get the initial layout
-        tmux.send_command(TmuxCommand::InitialLayout);
-        self.imp().tmux.replace(Some(tmux));
+        let imp = self.imp();
+
+        // First store Tmux
+        imp.tmux.replace(Some(tmux));
+
+        // Then get initial layout - this order to prevent a possible race condition
+        let binding = imp.tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+        tmux.get_initial_layout();
     }
 
     pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
@@ -100,11 +109,13 @@ impl IvyWindow {
             next_unique_tab_id()
         };
 
+        let is_tmux = self.imp().tmux.borrow().is_some();
+
         let binding = self.imp().tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
 
         // Create new TopLevel widget
-        let top_level = TopLevel::new(tab_view, self);
+        let top_level = TopLevel::new(tab_view, self, tab_id, !is_tmux);
 
         // Add pane as a page
         let page = tab_view.append(&top_level);
@@ -179,6 +190,27 @@ impl IvyWindow {
         }
     }
 
+    pub fn get_top_level(&self, id: u32) -> Option<TopLevel> {
+        let tabs = self.imp().tabs.borrow();
+        for top_level in tabs.iter() {
+            if top_level.tab_id() == id {
+                return Some(top_level.clone());
+            }
+        }
+
+        None
+    }
+
+    pub fn get_pane(&self, id: u32) -> Option<Pane> {
+        let terminals = self.imp().terminals.borrow();
+        let pane = terminals.get(&id);
+        if let Some(pane) = pane {
+            return Some(pane.clone());
+        }
+
+        None
+    }
+
     // pub fn get_tmux_cols_rows(&self) -> (i32, i32) {
     //     let imp = self.imp();
     //     let binding = imp.tabs.borrow();
@@ -211,6 +243,8 @@ impl IvyWindow {
         // It receives Tmux events from separate thread and runs GTK functions
         match event {
             TmuxEvent::LayoutChanged(layout) => {
+                println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
+                parse_tmux_layout(&layout[1..], &self);
                 // TODO: Move this somewhere better
                 self.tmux_resize_window();
                 self.tmux_inital_output();
@@ -232,5 +266,9 @@ impl IvyWindow {
                 }
             }
         }
+    }
+
+    pub fn tmux_layout_callback() {
+
     }
 }

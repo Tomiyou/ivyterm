@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use gtk4::{Box as Container, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
@@ -20,6 +20,7 @@ pub struct TopLevelPriv {
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<Pane>>,
     pub zoomed: RefCell<Option<Zoomed>>,
+    pub tab_id: Cell<u32>,
 }
 
 // The central trait for subclassing a GObject
@@ -40,8 +41,9 @@ impl WidgetImpl for TopLevelPriv {}
 impl BinImpl for TopLevelPriv {}
 
 impl TopLevelPriv {
-    pub fn init_values(&self, tab_view: &TabView, window: &IvyWindow) {
+    pub fn init_values(&self, tab_view: &TabView, window: &IvyWindow, tab_id: u32) {
         self.window.replace(Some(window.clone()));
         self.tab_view.replace(Some(tab_view.clone()));
+        self.tab_id.replace(tab_id);
     }
 }

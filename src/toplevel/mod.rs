@@ -18,17 +18,18 @@ glib::wrapper! {
 }
 
 impl TopLevel {
-    pub fn new(tab_view: &TabView, window: &IvyWindow) -> Self {
+    pub fn new(tab_view: &TabView, window: &IvyWindow, tab_id: u32, spawn_terminal: bool) -> Self {
         let top_level: TopLevel = Object::builder().build();
-
-        top_level.imp().init_values(tab_view, window);
-
-        let terminal = Pane::new(&top_level, window, None);
-
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
         top_level.set_focusable(true);
-        top_level.set_child(Some(&terminal));
+
+        top_level.imp().init_values(tab_view, window, tab_id);
+
+        if spawn_terminal {
+            let terminal = Pane::new(&top_level, window, None);
+            top_level.set_child(Some(&terminal));
+        }
 
         top_level
     }
@@ -43,6 +44,10 @@ impl TopLevel {
         let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
         window.close_tab(self);
+    }
+
+    pub fn tab_id(&self) -> u32 {
+        self.imp().tab_id.get()
     }
 
     pub fn split_pane(&self, terminal: &Pane, orientation: Orientation) -> (Pane, Option<Container>) {

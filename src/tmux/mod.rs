@@ -4,15 +4,11 @@ use std::str::from_utf8;
 
 use async_channel::{Receiver, Sender};
 use gtk4::gio::spawn_blocking;
-use layout::{parse_tmux_layout, read_first_u32};
 use log::debug;
 
 use crate::error::IvyError;
 use crate::window::IvyWindow;
 
-mod layout;
-
-// TODO: Implement command queue using channels
 pub struct Tmux {
     stdin_stream: ChildStdin,
     command_queue: Sender<TmuxCommand>,
@@ -20,18 +16,23 @@ pub struct Tmux {
 }
 
 impl Tmux {
-    pub fn send_command(&self, command: TmuxCommand) {
+    pub fn get_initial_layout(&self) {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
+        let command = TmuxCommand::InitialLayout;
+
+        debug!("Getting initial layout");
+        command_queue.send_blocking(command).unwrap();
+        stdin_stream
+            .write_all(b"list-windows -F \"#{window_id},#{window_layout}\"\n")
+            .unwrap();
+    }
+
+    pub fn send_command(&self, command: TmuxCommand) {
+        let command_queue = &self.command_queue;
+        let mut stdin_stream = &self.stdin_stream;
         match command {
-            TmuxCommand::InitialLayout => {
-                debug!("Getting initial layout");
-                command_queue.send_blocking(command).unwrap();
-                stdin_stream
-                    .write_all(b"list-windows -F \"#{window_layout},#{history_size}\"\n")
-                    .unwrap();
-            }
             TmuxCommand::InitialOutput(pane_id) => {
                 debug!("Getting initial output of pane {}", pane_id);
                 let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
@@ -97,7 +98,7 @@ pub enum TmuxCommand {
 
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
-    LayoutChanged(String),
+    LayoutChanged(Vec<u8>),
     Output(u32, Vec<u8>),
     Exit,
 }
@@ -133,10 +134,10 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
         tmux_read_stdout(stdout_stream, tmux_event_sender, cmd_queue_receiver);
     });
     // Receive events from the channel on main thread
-    let window = window.clone();
+    let _window = window.clone();
     glib::spawn_future_local(async move {
         while let Ok(event) = tmux_event_receiver.recv().await {
-            window.tmux_event_callback(event)
+            _window.tmux_event_callback(event)
         }
     });
 
@@ -330,7 +331,7 @@ fn tmux_read_stdout(
 #[inline]
 fn tmux_command_result(
     command: &TmuxCommand,
-    buffer: &[u8],
+    buffer: &mut Vec<u8>,
     result_line: usize,
     empty_lines: usize,
     event_channel: &Sender<TmuxEvent>,
@@ -339,7 +340,9 @@ fn tmux_command_result(
         TmuxCommand::InitialLayout => {
             // let bytes = output.as_bytes();
             // parse_tmux_layout(bytes);
-            let layout = String::from_utf8(buffer.to_vec()).unwrap();
+            let mut layout = Vec::with_capacity(buffer.len() + 1);
+            layout.append(buffer);
+
             event_channel
                 .send_blocking(TmuxEvent::LayoutChanged(layout))
                 .unwrap();
@@ -366,4 +369,18 @@ fn tmux_command_result(
         }
         _ => {}
     }
+}
+
+#[inline]
+pub fn read_first_u32(buffer: &[u8]) -> (u32, usize) {
+    let mut i = 0;
+    let mut number: u32 = 0;
+
+    // Read buffer char by char (assuming ASCII) and parse number
+    while buffer[i] > 47 && buffer[i] < 58 {
+        number *= 10;
+        number += (buffer[i] - 48) as u32;
+        i += 1;
+    }
+    (number, i + 1)
 }
