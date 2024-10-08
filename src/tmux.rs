@@ -1,9 +1,7 @@
-use std::{
-    io::{BufRead, BufReader},
-    process::{ChildStdout, Command, Stdio},
-    sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
-};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::process::{ChildStdout, Command, Stdio};
+use std::str::{from_utf8, from_utf8_unchecked};
+use std::sync::mpsc::{self, Receiver, Sender};
 
 use gtk4::gio::spawn_blocking;
 
@@ -23,7 +21,7 @@ pub fn attach_tmux(session_name: &str) -> Result<(), IvyError> {
         .arg("attach-session")
         .arg("-t")
         .arg(session_name)
-        // .stdin(Stdio::piped())
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -42,14 +40,13 @@ pub fn attach_tmux(session_name: &str) -> Result<(), IvyError> {
     spawn_blocking(move || {
         // Read from tmux stdout and send events to channel
         if let Some(stdout_stream) = stdout_pipe {
-            read_tmux_output(stdout_stream);
+            read_tmux_output(stdout_stream, tmux_event_sender);
         }
     });
 
-    // let kekw = stdin_pipe
-    //     .unwrap()
-    //     .write_fmt(format_args!("{:.*}", 2, 1.234567));
-    // println!("Hello darkness my old friend");
+    let mut tmux_input = BufWriter::new(stdin_pipe.unwrap());
+    let status = tmux_input.write_all(b"send 'ls' Enter");
+    println!("Hello darkness my old friend");
 
     Ok(())
 }
@@ -62,60 +59,59 @@ enum CurrentCommand {
     Error,
 }
 
-const TMUX_POLL_MILLIS: Duration = Duration::from_millis(10);
-
-fn read_tmux_output(stdout_stream: ChildStdout) {
-    let mut buffer = String::new();
+fn read_tmux_output(stdout_stream: ChildStdout, tx_channel: Sender<TmuxEvent>) {
+    let mut buffer = Vec::with_capacity(65534);
     let mut command_output = String::new();
     let mut reader = BufReader::new(stdout_stream);
 
     let mut state = CurrentCommand::None;
 
-    while let Ok(bytes_read) = reader.read_line(&mut buffer) {
-        if bytes_read != 0 {
-            if buffer.starts_with('%') {
-                // This is a notification
-
-                if buffer.starts_with("%output") {
-                    // We were given output
-                    let line = &buffer[9..];
-                    let mut space_idx = 0;
-                    for character in line.bytes() {
-                        // Find space first space character
-                        if character == 32 {
-                            break;
-                        }
-                        space_idx += 1;
-                    }
-                    if space_idx == 0 {
-                        panic!("space_idx cannot be 0! {}", line);
-                    }
-                    let pane_id: u16 = line[..space_idx].parse().unwrap();
-                    println!("Output on Pane {}: {}", pane_id, &line[space_idx + 1..]);
-                } else if buffer.starts_with("%begin") {
-                } else if buffer.starts_with("%end") {
-                    println!("Given command: ({:?}) {}", state, command_output);
-                    state = CurrentCommand::None;
-                } else if buffer.starts_with("%error") {
-                    println!("Error: ({:?}) {}", state, command_output);
-                    state = CurrentCommand::None;
-                } else if buffer.starts_with("%session-changed") {
-                    println!("Session changed: {}", &buffer[17..]);
-                } else if buffer.starts_with("%exit") {
-                    println!("Exit: {}", &buffer[6..]);
-                } else {
-                    print!("Unknown notification: {}", buffer)
-                }
-            } else {
-                // This is output from a command we ran
-                command_output.push_str(&buffer);
-            }
-
-            buffer.clear();
+    // TODO: Handle output larger than 65534 bytes
+    while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
+        if bytes_read == 0 {
+            continue;
         }
 
-        // TODO: Polling is probably a bad idea
-        std::thread::sleep(TMUX_POLL_MILLIS);
+        // All output from Tmux is acutally ASCII, except %output which we handle separately
+        let line = unsafe { from_utf8_unchecked(&buffer) };
+
+        if buffer[0] == b'%' {
+            // This is a notification
+            if line.starts_with("%output") {
+                // We were given output, we can assume that up until pane_id, output is ASCII
+                let mut space_idx = 9;
+                let mut pane_id = 0;
+                loop {
+                    // Find space first space character
+                    if buffer[space_idx] == 32 {
+                        break;
+                    }
+                    pane_id *= 10;
+                    pane_id += buffer[space_idx] - 48;
+                    space_idx += 1;
+                }
+                let output = from_utf8(&buffer[space_idx + 1..]).unwrap();
+                println!("Output on Pane {}: {}", pane_id, output);
+            } else if line.starts_with("%begin") {
+            } else if line.starts_with("%end") {
+                println!("Given command: ({:?}) {}", state, command_output);
+                state = CurrentCommand::None;
+            } else if line.starts_with("%error") {
+                println!("Error: ({:?}) {}", state, command_output);
+                state = CurrentCommand::None;
+            } else if line.starts_with("%session-changed") {
+                println!("Session changed: {}", &line[17..]);
+            } else if line.starts_with("%exit") {
+                println!("Exit: {}", &line[6..]);
+            } else {
+                print!("Unknown notification: {}", line)
+            }
+        } else {
+            // This is output from a command we ran
+            command_output.push_str(line);
+        }
+
+        buffer.clear();
     }
     buffer.clear();
 }
