@@ -6,6 +6,16 @@ use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
 use crate::{application::IvyApplication, keyboard::Keybinding};
 
+#[inline]
+fn set_text_from_trigger(label: &Label, trigger: &Option<ShortcutTrigger>) {
+    if let Some(trigger) = trigger {
+        let text = trigger.to_str();
+        label.set_label(text.as_str());
+    } else {
+        label.set_label("");
+    }
+}
+
 // TODO: Remove text from Keybinding (use to_label() instead)
 struct LearningKeybinding {
     keybinding: Rc<RefCell<Keybinding>>,
@@ -39,8 +49,7 @@ impl LearningKeybinding {
         }
 
         let binding = self.keybinding.borrow();
-        let text = &binding.text;
-        self.display_widget.set_label(text);
+        set_text_from_trigger(&self.display_widget, &binding.trigger);
 
         // Remove keyboard controller if any
         println!("Removed controller");
@@ -76,9 +85,9 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
     row_box.append(&label_widget);
 
     let keybind_widget = Label::builder()
-        .label(&keybinding.text)
         .halign(Align::End)
         .build();
+    set_text_from_trigger(&keybind_widget, &keybinding.trigger);
     row_box.append(&keybind_widget);
 
     let keybinding = Rc::new(RefCell::new(keybinding));

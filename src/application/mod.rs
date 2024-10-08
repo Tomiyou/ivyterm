@@ -2,14 +2,12 @@ mod config;
 mod imp;
 
 use glib::Object;
-use gtk4::gdk::{Display, Event, RGBA};
-use gtk4::pango::FontDescription;
+use gtk4::gdk::Display;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
-use crate::keyboard::{Keybinding, KeyboardAction};
 use crate::settings::show_preferences_window;
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
@@ -34,8 +32,12 @@ impl IvyApplication {
     }
 
     pub fn init_keybindings(&self) {
-        let mut config = self.imp().config.borrow_mut();
-        config.keybindings.init();
+        let imp = self.imp();
+        let mut config = imp.config.borrow_mut();
+        let mut parsed_keybindings = config.keybindings.init();
+
+        let mut keybindings = imp.keybindings.borrow_mut();
+        keybindings.append(&mut parsed_keybindings)
     }
 
     pub fn new_window(&self, tmux_session: Option<&str>) {
@@ -89,21 +91,6 @@ impl IvyApplication {
                 );
             }
         }
-    }
-
-    pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
-        let config = self.imp().config.borrow();
-        config.get_terminal_config()
-    }
-
-    pub fn handle_keyboard_event(&self, event: Event) -> Option<KeyboardAction> {
-        let config = self.imp().config.borrow();
-        config.keybindings.handle_event(event)
-    }
-
-    pub fn get_keybindings(&self) -> Vec<Keybinding> {
-        let config = self.imp().config.borrow();
-        config.keybindings.to_vec()
     }
 }
 

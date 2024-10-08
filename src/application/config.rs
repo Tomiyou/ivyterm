@@ -1,11 +1,26 @@
 use glib::subclass::types::ObjectSubclassIsExt;
-use gtk4::{gdk::RGBA, pango::FontDescription};
+use gtk4::{gdk::{Event, RGBA}, pango::FontDescription};
 
-use crate::settings::{IvyColor, IvyFont};
+use crate::{keyboard::{check_keybinding_match, Keybinding, KeyboardAction}, settings::{IvyColor, IvyFont}};
 
 use super::IvyApplication;
 
 impl IvyApplication {
+    pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
+        let config = self.imp().config.borrow();
+        config.get_terminal_config()
+    }
+
+    pub fn handle_keyboard_event(&self, event: Event) -> Option<KeyboardAction> {
+        let keybindings = self.imp().keybindings.borrow();
+        check_keybinding_match(&keybindings, event)
+    }
+
+    pub fn get_keybindings(&self) -> Vec<Keybinding> {
+        let keybindings = self.imp().keybindings.borrow();
+        keybindings.clone()
+    }
+
     pub fn update_foreground_color(&self, rgba: RGBA) {
         let mut config = self.imp().config.borrow_mut();
         let color: IvyColor = rgba.into();
