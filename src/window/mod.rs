@@ -14,8 +14,7 @@ use crate::{
 glib::wrapper! {
     pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
         @extends ApplicationWindow, gtk4::Window, gtk4::Widget,
-        @implements gio::ActionGroup, gio::ActionMap;
-        // @extends gtk::Button, gtk::Widget;
+        @implements gio::ActionGroup, gio::ActionMap, gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Native, gtk4::Root, gtk4::ShortcutManager;
 }
 
 impl IvyWindow {
