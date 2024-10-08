@@ -2,9 +2,11 @@ mod imp;
 mod layout;
 mod separator;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object};
+use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
 use libadwaita::{glib, prelude::*};
+
+use crate::terminal::Terminal;
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -13,10 +15,7 @@ glib::wrapper! {
 }
 
 impl Container {
-    pub fn new(
-        orientation: Orientation,
-        _spacing: u32,
-    ) -> Self {
+    pub fn new(orientation: Orientation, _spacing: u32) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);
@@ -51,6 +50,47 @@ impl Container {
 
     pub fn children_count(&self) -> usize {
         self.imp().get_children_count()
+    }
+
+    pub fn recursive_size_measure(&self) -> (i64, i64) {
+        let container_type = Type::from_name("IvyTerminalContainer").unwrap();
+        let terminal_type = Type::from_name("IvyTerminalCustomTerminal").unwrap();
+        let parent_orientation = self.orientation();
+
+        let (mut total_cols, mut total_rows) = if parent_orientation == Orientation::Horizontal {
+            (0, i64::MAX)
+        } else {
+            (i64::MAX, 0)
+        };
+
+        let mut next_child = self.first_child();
+        while let Some(child) = next_child {
+            let child_type = child.type_();
+
+            let (cols, rows) = if child_type == terminal_type {
+                let terminal: Terminal = child.clone().downcast().unwrap();
+                terminal.get_cols_or_rows()
+            } else if child_type == container_type {
+                let container: Container = child.clone().downcast().unwrap();
+                container.recursive_size_measure()
+            } else {
+                // Skip children of type Separator
+                next_child = child.next_sibling();
+                continue;
+            };
+
+            if parent_orientation == Orientation::Horizontal {
+                total_cols += cols;
+                total_rows = total_rows.min(rows);
+            } else {
+                total_cols = total_cols.min(cols);
+                total_rows += rows;
+            }
+
+            next_child = child.next_sibling();
+        }
+
+        (total_cols, total_rows)
     }
 }
 

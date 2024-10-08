@@ -272,14 +272,18 @@ impl TopLevel {
         None
     }
 
-    pub fn get_size_rows_cols(&self) -> (i32, i32) {
-        let width = self.width();
-        let height = self.height();
+    pub fn get_cols_rows(&self) -> (i64, i64) {
+        // TODO: Doing things this way means different TopLevels can have different sizes...
+        // Just do it the Tmux way
 
-        let terminals = self.imp().terminals.borrow();
-        if let Some(terminal) = terminals.first() {
-            // VTE will have a border of 1 px on left/right
-            return terminal.get_rows_cols_for_size(width - 2, height);
+        if let Some(child) = self.child() {
+            // If our child is a Terminal, we can measure its cols,rows directly
+            if let Ok(container) = child.clone().downcast::<Container>() {
+                return container.recursive_size_measure();
+            } else {
+                let terminal: Terminal = child.downcast().unwrap();
+                return terminal.get_cols_or_rows();
+            }
         }
 
         (0, 0)

@@ -73,7 +73,7 @@ impl IvyWindow {
         }
     }
 
-    pub fn tmux_sync_size(&self) {
+    fn tmux_sync_size(&self) {
         let imp = self.imp();
 
         let binding = imp.tab_view.borrow();
@@ -82,31 +82,31 @@ impl IvyWindow {
 
         if let Some(selected_page) = selected_page {
             let top_level: TopLevel = selected_page.child().downcast().unwrap();
-            let (cols, rows) = top_level.get_size_rows_cols();
-            debug!("New Tmux size is {}x{}", cols, rows);
+            let (cols, rows) = top_level.get_cols_rows();
 
             let mut binding = self.imp().tmux.borrow_mut();
             let tmux = binding.as_mut().unwrap();
             // Tell Tmux resize future is no longer running
             tmux.update_resize_future(false);
-            tmux.change_size(cols, rows);
+            tmux.change_size(cols as i32, rows as i32);
         }
     }
 
     pub fn resync_tmux_size(&self) {
         // First check if a future is already running
         let mut binding = self.imp().tmux.borrow_mut();
-        let tmux = binding.as_mut().unwrap();
-        if tmux.update_resize_future(true) {
-            // A future is already running, we can stop
-            return;
-        }
+        if let Some(tmux) = binding.as_mut() {
+            if tmux.update_resize_future(true) {
+                // A future is already running, we can stop
+                return;
+            }
 
-        let window = self.clone();
-        glib::spawn_future_local(async move {
-            glib::timeout_future(RESIZE_TIMEOUT).await;
-            window.tmux_sync_size();
-        });
+            let window = self.clone();
+            glib::spawn_future_local(async move {
+                glib::timeout_future(RESIZE_TIMEOUT).await;
+                window.tmux_sync_size();
+            });
+        }
     }
 
     pub fn tmux_event_callback(&self, event: TmuxEvent) {
