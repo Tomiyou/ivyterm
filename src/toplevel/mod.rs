@@ -77,9 +77,6 @@ impl TopLevel {
             let new_paned = IvyPaned::new(orientation, start_child, new_terminal);
             paned.set_start_child(Some(&new_paned));
 
-            // Re-calculate panes divider position
-            let size = paned.size(paned.orientation());
-            paned.set_position(0.5);
             return;
         }
 
@@ -91,9 +88,6 @@ impl TopLevel {
             let new_paned = IvyPaned::new(orientation, end_child, new_terminal);
             paned.set_end_child(Some(&new_paned));
 
-            // Re-calculate panes divider position
-            let size = paned.size(paned.orientation());
-            paned.set_position(0.5);
             return;
         }
     }

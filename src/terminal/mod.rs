@@ -146,7 +146,9 @@ fn handle_keyboard(
             }
         }
         Some(Keybinding::ToggleZoom) => {
-            top_level.toggle_zoom(terminal);
+            let bounds = top_level.bounds();
+            println!("TopLevel bounds {:?}", bounds.unwrap());
+            // top_level.toggle_zoom(terminal);
         }
         None => return Propagation::Proceed,
     };
