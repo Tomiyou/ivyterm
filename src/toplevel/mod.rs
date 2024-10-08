@@ -94,6 +94,7 @@ impl TopLevel {
 
     pub fn close_pane(&self, closing_terminal: &Terminal) {
         self.unzoom();
+        self.unregister_terminal(closing_terminal);
 
         let parent = closing_terminal.parent().unwrap();
         if parent.eq(self) {
@@ -106,12 +107,12 @@ impl TopLevel {
         let container: Container = parent.downcast().unwrap();
         container.remove(closing_terminal);
 
+        let last_focused_terminal = self.lru_terminal().unwrap();
+
         // If the conatiner has more than 1 child left, we are done. Otherwise remove the container
         // and leave the 1 child in its place.
         if container.children_count() > 1 {
-            if let Some(terminal) = self.lru_terminal() {
-                terminal.grab_focus();
-            }
+            last_focused_terminal.grab_focus();
             return;
         }
 
@@ -126,7 +127,7 @@ impl TopLevel {
             // Parent is TopLevel
             parent.set_child(Some(&retained_child));
             // Since retained_child is the only terminal remaining, focus it
-            retained_child.grab_focus();
+            last_focused_terminal.grab_focus();
             return;
         }
 
@@ -134,9 +135,7 @@ impl TopLevel {
             // Parent is another Container
             parent.replace(&container, &retained_child);
             // Grab focus on the least recently used terminal
-            if let Some(terminal) = self.lru_terminal() {
-                terminal.grab_focus();
-            }
+            last_focused_terminal.grab_focus();
             return;
         }
 

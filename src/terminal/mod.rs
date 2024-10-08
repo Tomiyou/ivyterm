@@ -63,10 +63,6 @@ impl Terminal {
             #[weak]
             terminal,
             move |_, _| {
-                // Remove terminal from top level terminal list
-                top_level.unregister_terminal(&terminal);
-
-                // Now close the pane/tab
                 top_level.close_pane(&terminal);
             }
         ));
