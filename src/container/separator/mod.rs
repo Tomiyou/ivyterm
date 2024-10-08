@@ -1,4 +1,4 @@
-use glib::{subclass::types::ObjectSubclassIsExt, Object};
+use glib::Object;
 use gtk4::{gdk::Cursor, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
@@ -13,11 +13,7 @@ glib::wrapper! {
 }
 
 impl Separator {
-    pub fn new(
-        orientation: &Orientation,
-        percentage: f64,
-        handle_size: Option<i32>,
-    ) -> Self {
+    pub fn new(orientation: &Orientation, handle_size: Option<i32>) -> Self {
         let (separator_orientation, cursor) = match orientation {
             Orientation::Horizontal => (Orientation::Vertical, "col-resize"),
             Orientation::Vertical => (Orientation::Horizontal, "row-resize"),
@@ -31,7 +27,6 @@ impl Separator {
         bin.set_orientation(separator_orientation);
         bin.set_child(Some(&separator));
         bin.set_css_classes(&["separator_container"]);
-        bin.set_percentage(percentage);
 
         // Calculate Handle size and apply margins
         // Since each VTE widget also has a fixed padding of 1 px for each direction,
@@ -57,26 +52,10 @@ impl Separator {
         bin
     }
 
-    pub fn get_percentage(&self) -> f64 {
-        self.imp().percentage.get()
-    }
-
-    pub fn set_percentage(&self, percentage: f64) -> f64 {
-        self.imp().percentage.replace(percentage)
-    }
-
     pub fn get_handle_width(&self) -> i32 {
         let orientation = get_opposite_orientation(self.orientation());
         let (_, handle_size, _, _) = self.measure(orientation, -1);
         handle_size
-    }
-
-    pub fn get_prev_sibling_size(&self) -> i32 {
-        self.imp().prev_sibling_size.get()
-    }
-
-    pub fn set_prev_sibling_size(&self, pos: i32) {
-        self.imp().prev_sibling_size.replace(pos);
     }
 }
 

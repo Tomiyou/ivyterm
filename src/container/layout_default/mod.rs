@@ -7,6 +7,7 @@ use libadwaita::{glib, prelude::*};
 
 use super::separator::Separator;
 use super::Container;
+use imp::TmuxSeparator;
 
 glib::wrapper! {
     pub struct ContainerLayout(ObjectSubclass<imp::ContainerLayoutPriv>)
@@ -27,14 +28,16 @@ impl ContainerLayout {
         // Update percentages of already existing Separators
         let new_percentage = old_len as f64 / new_len as f64;
         for separator in separators.iter_mut() {
-            let percentage = separator.get_percentage() * new_percentage;
-            separator.set_percentage(percentage);
+            separator.percentage *= new_percentage;
         }
 
         // Create a new Separator
         let orientation = container.orientation();
-        let separator = Separator::new(&orientation, new_percentage, None);
-        separators.push(separator.clone());
+        let separator = Separator::new(&orientation, None);
+        separators.push(TmuxSeparator {
+            s: separator.clone(),
+            percentage: new_percentage,
+        });
 
         // Add ability to drag
         let drag = GestureDrag::new();
@@ -43,9 +46,11 @@ impl ContainerLayout {
             container,
             #[strong]
             separator,
+            #[strong(rename_to = layout)]
+            self,
             move |drag, offset_x, offset_y| {
                 let (start_x, start_y) = drag.start_point().unwrap();
-                drag_update(
+                layout.drag_update(
                     &separator,
                     &container,
                     start_x + offset_x,
@@ -58,50 +63,46 @@ impl ContainerLayout {
         separator
     }
 
-    pub fn remove_separator(&self, removed_pane: &impl IsA<Widget>) -> usize {
+    pub fn remove_separator(&self, separator: Option<Widget>) -> usize {
         let mut separators = self.imp().separators.borrow_mut();
 
         // Find the removed Separator
-        let (removed_separator, removed_percentage) = match removed_pane.next_sibling() {
-            Some(separator) => {
-                let separator: Separator = separator.downcast().unwrap();
-                // To calculate percentage removed we need to find the previous percentage
-                let previous_percentage = match removed_pane.prev_sibling() {
-                    Some(previous_separator) => {
-                        let previous_separator: Separator = previous_separator.downcast().unwrap();
-                        previous_separator.get_percentage()
-                    }
-                    None => 0.0,
-                };
-                let removed_percentage = separator.get_percentage() - previous_percentage;
-
-                (separator, removed_percentage)
+        let (removed_separator, removed_percentage) = if let Some(separator) = separator {
+            let removed_separator: Separator = separator.downcast().unwrap();
+            let mut previous_percentage = 0.0;
+            let mut removed_percentage = 0.0;
+            for s in separators.iter() {
+                if s.s.eq(&removed_separator) {
+                    removed_percentage = s.percentage - previous_percentage;
+                    break;
+                }
+                previous_percentage = s.percentage;
             }
-            None => {
-                // Last pane is removed
-                let separator = separators.pop().unwrap();
-                let removed_percentage = 1.0 - separator.get_percentage();
-                (separator, removed_percentage)
-            }
+            (removed_separator, removed_percentage)
+        } else {
+            // Last pane is removed
+            let separator = separators.pop().unwrap();
+            let removed_percentage = 1.0 - separator.percentage;
+            (separator.s, removed_percentage)
         };
 
         let opposite = 1.0 - removed_percentage;
 
         // Distribute the removed size
         let mut found = false;
-        separators.retain(|separator| {
-            if separator.eq(&removed_separator) {
+        separators.retain_mut(|separator| {
+            if separator.s.eq(&removed_separator) {
                 found = true;
                 return false;
             }
 
-            let old_percentage = separator.get_percentage();
+            let old_percentage = separator.percentage;
             let new_percentage = if found {
                 (old_percentage - removed_percentage) / opposite
             } else {
                 old_percentage / opposite
             };
-            separator.set_percentage(new_percentage);
+            separator.percentage = new_percentage;
             println!("New percentage {}", new_percentage);
 
             true
@@ -111,37 +112,47 @@ impl ContainerLayout {
 
         separators.len() + 1
     }
-}
 
-fn drag_update(separator: &Separator, container: &Container, x: f64, y: f64) {
-    let orientation = container.orientation();
-    let allocation = separator.allocation();
+    fn drag_update(&self, separator: &Separator, container: &Container, x: f64, y: f64) {
+        let orientation = container.orientation();
+        let allocation = separator.allocation();
 
-    if orientation == Orientation::Horizontal {
-        let old_position = allocation.x();
-        let new_position = old_position as f64 + x;
-        let new_position = new_position.round() as i32;
+        if orientation == Orientation::Horizontal {
+            let old_position = allocation.x();
+            let new_position = old_position as f64 + x;
+            let new_position = new_position.round() as i32;
 
-        if new_position != old_position {
-            let container_width = container.allocation().width();
-            let percentage = new_position as f64 / container_width as f64;
-            // println!("X Position {} -> {} | percentage: {}", old_position, new_position, percentage);
+            if new_position != old_position {
+                let container_width = container.allocation().width();
+                let percentage = new_position as f64 / container_width as f64;
+                // println!("X Position {} -> {} | percentage: {}", old_position, new_position, percentage);
 
-            separator.set_percentage(percentage);
-            container.queue_allocate();
-        }
-    } else {
-        let old_position = allocation.y();
-        let new_position = old_position as f64 + y;
-        let new_position = new_position.round() as i32;
+                for s in self.imp().separators.borrow_mut().iter_mut() {
+                    if s.s.eq(separator) {
+                        s.percentage = percentage;
+                        break;
+                    }
+                }
+                container.queue_allocate();
+            }
+        } else {
+            let old_position = allocation.y();
+            let new_position = old_position as f64 + y;
+            let new_position = new_position.round() as i32;
 
-        if new_position != old_position {
-            let container_height = container.allocation().height();
-            let percentage = new_position as f64 / container_height as f64;
-            // println!("Y Position {} -> {} | percentage: {}", old_position, new_position, percentage);
+            if new_position != old_position {
+                let container_height = container.allocation().height();
+                let percentage = new_position as f64 / container_height as f64;
+                // println!("Y Position {} -> {} | percentage: {}", old_position, new_position, percentage);
 
-            separator.set_percentage(percentage);
-            container.queue_allocate();
-        }
-    };
+                for s in self.imp().separators.borrow_mut().iter_mut() {
+                    if s.s.eq(separator) {
+                        s.percentage = percentage;
+                        break;
+                    }
+                }
+                container.queue_allocate();
+            }
+        };
+    }
 }

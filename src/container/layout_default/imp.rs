@@ -8,10 +8,15 @@ use vte4::{Cast, WidgetExt};
 use crate::container::separator::Separator;
 use crate::container::Container;
 
+pub struct TmuxSeparator {
+    pub s: Separator,
+    pub percentage: f64,
+}
+
 // Object holding the state
 #[derive(Default)]
 pub struct ContainerLayoutPriv {
-    pub separators: RefCell<Vec<Separator>>,
+    pub separators: RefCell<Vec<TmuxSeparator>>,
 }
 
 // The central trait for subclassing a GObject
@@ -172,30 +177,22 @@ impl ContainerLayoutPriv {
 
         let mut already_used_size = 0;
 
-        let mut next_child = container.first_child();
-        while let Some(child) = next_child {
-            if let Some(separator) = child.next_sibling() {
-                let separator: Separator = separator.downcast().unwrap();
-                // Percentage is the position of the Separator in % of the total size
-                let percentage = separator.get_percentage();
-                let separator_position = size as f64 * percentage;
+        for separator in separators.iter() {
+            // Percentage is the position of the Separator in % of the total size
+            let percentage = separator.percentage;
+            let separator_position = size as f64 * percentage;
 
-                let handle_size = separator.get_handle_width();
-                let half_handle = handle_size / 2;
+            let handle_size = separator.s.get_handle_width();
+            let half_handle = handle_size / 2;
 
-                let child_size =
-                    separator_position.floor() as i32 - already_used_size - half_handle;
-                children_sizes.push(child_size);
-                children_sizes.push(handle_size);
+            let child_size =
+                separator_position.floor() as i32 - already_used_size - half_handle;
+            children_sizes.push(child_size);
+            children_sizes.push(handle_size);
 
-                already_used_size += child_size + handle_size;
-                next_child = separator.next_sibling();
-            } else {
-                // No siblings left, we take all of the remaining size
-                children_sizes.push(size - already_used_size);
-                break;
-            };
+            already_used_size += child_size + handle_size;
         }
+        children_sizes.push(size - already_used_size);
 
         children_sizes
     }

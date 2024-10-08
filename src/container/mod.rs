@@ -46,11 +46,11 @@ impl Container {
         let imp = self.imp();
         if let Some(last_child) = self.last_child() {
             // let last_child: Terminal = last_child.downcast().unwrap();
-            let layout = self.imp().layout.borrow();
+            let layout = imp.layout.borrow();
             let new_separator = match layout.as_ref().unwrap() {
                 Layout::Default(layout) => layout.add_separator(self),
                 Layout::Tmux(layout) => {
-                    let binding = self.imp().window.borrow();
+                    let binding = imp.window.borrow();
                     let window = binding.as_ref().unwrap();
                     let char_size = window.get_char_size();
                     layout.add_separator(self, percentage.unwrap(), char_size)
@@ -70,9 +70,10 @@ impl Container {
     }
 
     pub fn remove(&self, child: &impl IsA<Widget>) -> usize {
+        let separator = child.next_sibling();
         let layout = self.imp().layout.borrow();
         let len = match layout.as_ref().unwrap() {
-            Layout::Default(layout) => layout.remove_separator(child),
+            Layout::Default(layout) => layout.remove_separator(separator),
             Layout::Tmux(layout) => layout.remove_separator(),
         };
 

@@ -8,10 +8,15 @@ use vte4::{Cast, WidgetExt};
 use crate::container::separator::Separator;
 use crate::container::Container;
 
+pub struct TmuxSeparator {
+    s: Separator,
+    position: u32,
+}
+
 // Object holding the state
 #[derive(Default)]
 pub struct TmuxLayoutPriv {
-    pub separators: RefCell<Vec<Separator>>,
+    pub separators: RefCell<Vec<TmuxSeparator>>,
     pub char_size: Cell<(i32, i32)>,
 }
 
@@ -165,45 +170,46 @@ impl TmuxLayoutPriv {
 
     #[inline]
     fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
-        let separators = self.separators.borrow();
-        let child_count = (separators.len() * 2) + 1;
-        let mut children_sizes = Vec::with_capacity(child_count);
+        todo!();
+        // let separators = self.separators.borrow();
+        // let child_count = (separators.len() * 2) + 1;
+        // let mut children_sizes = Vec::with_capacity(child_count);
 
-        // Handle being given size less than 0 (usually when not initialized yet or error)
-        if size < 0 {
-            for _ in 0..child_count {
-                children_sizes.push(-1);
-            }
-            return children_sizes;
-        }
+        // // Handle being given size less than 0 (usually when not initialized yet or error)
+        // if size < 0 {
+        //     for _ in 0..child_count {
+        //         children_sizes.push(-1);
+        //     }
+        //     return children_sizes;
+        // }
 
-        let mut already_used_size = 0;
+        // let mut already_used_size = 0;
 
-        let mut next_child = container.first_child();
-        while let Some(child) = next_child {
-            if let Some(separator) = child.next_sibling() {
-                let separator: Separator = separator.downcast().unwrap();
-                // Percentage is the position of the Separator in % of the total size
-                let percentage = separator.get_percentage();
-                let separator_position = size as f64 * percentage;
+        // let mut next_child = container.first_child();
+        // while let Some(child) = next_child {
+        //     if let Some(separator) = child.next_sibling() {
+        //         let separator: Separator = separator.downcast().unwrap();
+        //         // Percentage is the position of the Separator in % of the total size
+        //         let percentage = separator.get_percentage();
+        //         let separator_position = size as f64 * percentage;
 
-                let handle_size = separator.get_handle_width();
-                let half_handle = handle_size / 2;
+        //         let handle_size = separator.get_handle_width();
+        //         let half_handle = handle_size / 2;
 
-                let child_size =
-                    separator_position.floor() as i32 - already_used_size - half_handle;
-                children_sizes.push(child_size);
-                children_sizes.push(handle_size);
+        //         let child_size =
+        //             separator_position.floor() as i32 - already_used_size - half_handle;
+        //         children_sizes.push(child_size);
+        //         children_sizes.push(handle_size);
 
-                already_used_size += child_size + handle_size;
-                next_child = separator.next_sibling();
-            } else {
-                // No siblings left, we take all of the remaining size
-                children_sizes.push(size - already_used_size);
-                break;
-            };
-        }
+        //         already_used_size += child_size + handle_size;
+        //         next_child = separator.next_sibling();
+        //     } else {
+        //         // No siblings left, we take all of the remaining size
+        //         children_sizes.push(size - already_used_size);
+        //         break;
+        //     };
+        // }
 
-        children_sizes
+        // children_sizes
     }
 }
