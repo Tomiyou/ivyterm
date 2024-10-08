@@ -1,184 +1,184 @@
-use std::str::from_utf8;
+use std::time::Duration;
 
-use gtk4::{Box as Container, Orientation};
-use libadwaita::prelude::*;
+use glib::subclass::types::ObjectSubclassIsExt;
+use gtk4::gdk::{Key, ModifierType};
+use libadwaita::{glib, prelude::*};
+use log::debug;
 
-use crate::{terminal::Terminal, separator::new_separator, toplevel::TopLevel, window::IvyWindow};
+use crate::{
+    keyboard::keycode_to_arrow_key,
+    tmux::{Tmux, TmuxCommand, TmuxEvent},
+    toplevel::TopLevel,
+    window::layout::parse_tmux_layout,
+};
 
-pub fn parse_tmux_layout(buffer: &[u8], window: &IvyWindow) {
-    // Read tab ID
-    let (tab_id, bytes_read) = read_first_u32(buffer);
-    let buffer = &buffer[bytes_read + 1..];
+use super::IvyWindow;
 
-    // Skip the initial whatever
-    let bytes_read = read_until_char(buffer, b',');
-    let buffer = &buffer[bytes_read + 1..];
+const RESIZE_TIMEOUT: Duration = Duration::from_millis(5);
 
-    // Either get the existing tab, or spawn a new one if it does not exist yet
-    let top_level = if let Some(top_level) = window.get_top_level(tab_id) {
-        top_level
-    } else {
-        window.new_tab(Some(tab_id))
-    };
+impl IvyWindow {
+    pub fn init_tmux(&self, tmux: Tmux) {
+        let imp = self.imp();
 
-    // Parse the recursive layout
-    println!(
-        "Tab id is {}, remaining buffer: {}",
-        tab_id,
-        from_utf8(buffer).unwrap()
-    );
-    parse_layout_recursive(buffer, window, &top_level, None, 0);
-}
+        // First store Tmux
+        imp.tmux.replace(Some(tmux));
 
-fn parse_layout_recursive(
-    buffer: &[u8],
-    window: &IvyWindow,
-    top_level: &TopLevel,
-    parent: Option<&Container>,
-    nested: u32,
-) {
-    // We can assume that layout is purse ASCII text
-    let mut buffer = buffer;
-    let mut is_first_child = true;
+        // Connect window resize signals
+        self.connect_maximized_notify(|window| {
+            window.spawn_resize_future();
+        });
+        self.connect_default_width_notify(|window| {
+            window.spawn_resize_future();
+        });
+        self.connect_default_height_notify(|window| {
+            window.spawn_resize_future();
+        });
 
-    fn print_tab(nested: u32) {
-        for i in 0..nested {
-            print!("    ");
+        // Then get initial layout - this order to prevent a possible race condition
+        let binding = imp.tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+        tmux.get_initial_layout();
+    }
+
+    pub fn is_tmux(&self) -> bool {
+        let binding = self.imp().tmux.borrow();
+        binding.is_some()
+    }
+
+    pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
+        let binding = self.imp().tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+
+        let mut prefix = String::new();
+        let mut shift_relevant = false;
+        if state.contains(ModifierType::ALT_MASK) {
+            prefix.push_str("M-");
+            shift_relevant = true;
+
+            // Hacky workaround for Alt+Backspace
+            if keycode == 22 {
+                tmux.send_keypress(pane_id, '\x7f', prefix, None);
+                return;
+            }
+        }
+        if state.contains(ModifierType::CONTROL_MASK) {
+            prefix.push_str("C-");
+            shift_relevant = true;
+        }
+        // Uppercase characters work without S-, so this case is only
+        // relevant when Ctrl/Alt is also pressed
+        if state.contains(ModifierType::SHIFT_MASK) && shift_relevant {
+            prefix.push_str("S-");
+        }
+
+        if let Some(c) = keyval.to_unicode() {
+            tmux.send_keypress(pane_id, c, prefix, None);
+        } else if let Some(direction) = keycode_to_arrow_key(keycode) {
+            let direction = match direction {
+                crate::keyboard::Direction::Left => "Left",
+                crate::keyboard::Direction::Right => "Right",
+                crate::keyboard::Direction::Up => "Up",
+                crate::keyboard::Direction::Down => "Down",
+            };
+            tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
         }
     }
 
-    // print_tab(nested);
-    // println!("parse_layout_recursive: {}", from_utf8(buffer).unwrap());
+    pub fn tmux_sync_size(&self) {
+        let imp = self.imp();
 
-    loop {
-        // print_tab(nested);
-        // println!("Remaining buffer: |{}|", from_utf8(buffer).unwrap());
+        let binding = imp.tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+        let selected_page = tab_view.selected_page();
 
-        // TODO: What if already exists
-        if !is_first_child {
-            if let Some(parent) = parent {
-                let orientation = parent.orientation();
-                let new_separator = new_separator(orientation);
-                parent.append(&new_separator);
-            }
+        if let Some(selected_page) = selected_page {
+            let top_level: TopLevel = selected_page.child().downcast().unwrap();
+            let (cols, rows) = top_level.get_size_rows_cols();
+            debug!("New Tmux size is {}x{}", cols, rows);
+
+            let mut binding = self.imp().tmux.borrow_mut();
+            let tmux = binding.as_mut().unwrap();
+            // Tell Tmux resize future is no longer running
+            tmux.update_resize_future(false);
+            tmux.change_size(cols, rows);
+        }
+    }
+
+    fn spawn_resize_future(&self) {
+        // First check if a future is already running
+        let mut binding = self.imp().tmux.borrow_mut();
+        let tmux = binding.as_mut().unwrap();
+        if tmux.update_resize_future(true) {
+            // A future is already running, we can stop
+            return;
         }
 
-        // Read width
-        let (width, bytes_read) = read_first_u32(buffer);
-        buffer = &buffer[bytes_read + 1..];
+        let window = self.clone();
+        glib::spawn_future_local(async move {
+            glib::timeout_future(RESIZE_TIMEOUT).await;
+            window.tmux_sync_size();
+        });
+    }
 
-        // Read height
-        let (height, bytes_read) = read_first_u32(buffer);
-        buffer = &buffer[bytes_read + 1..];
+    pub fn tmux_event_callback(&self, event: TmuxEvent) {
+        let imp = self.imp();
 
-        // Read x coordinate
-        let (x, bytes_read) = read_first_u32(buffer);
-        buffer = &buffer[bytes_read + 1..];
+        // This future runs on main thread of GTK application
+        // It receives Tmux events from separate thread and runs GTK functions
+        match event {
+            TmuxEvent::InitialLayout(layout) => {
+                println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
+                parse_tmux_layout(&layout[1..], &self);
 
-        // Read y coordinate
-        let (y, bytes_read) = read_first_u32(buffer);
-        buffer = &buffer[bytes_read..];
+                // Sync Window size to Tmux
+                self.spawn_resize_future();
+            }
+            TmuxEvent::InitialOutputFinished() => {
+                let mut binding = imp.tmux.borrow_mut();
+                let tmux = binding.as_mut().unwrap();
+                tmux.initial_output_captured = true;
+            }
+            TmuxEvent::LayoutChanged(layout) => {
+                let mut binding = imp.tmux.borrow_mut();
+                let tmux = binding.as_mut().unwrap();
 
-        // Now we have to determine if this is a Pane or a Container
-        if buffer[0] == ',' as u8 {
-            // This is a Pane
-            buffer = &buffer[1..];
+                // If initial output has not been captured, this must be a Tmux resize event
+                if tmux.initial_output_captured == false {
+                    tmux.initial_size_set = true;
 
-            let (pane_id, bytes_read) = read_first_u32(buffer);
-            buffer = &buffer[bytes_read..];
-
-            if let Some(pane) = window.get_pane(pane_id) {
-                // Pane exists already
-            } else {
-                let new_terminal = Terminal::new(top_level, window, Some(pane_id));
-
-                if let Some(parent) = parent {
-                    parent.append(&new_terminal);
-                } else {
-                    println!("Pane without Container parent");
-                    top_level.set_child(Some(&new_terminal));
+                    let terminals = imp.terminals.borrow();
+                    for (pane_id, _) in terminals.iter() {
+                        tmux.get_initial_output(*pane_id);
+                    }
+                    return;
                 }
 
-                top_level.register_terminal(&new_terminal);
+                // todo!()
             }
-        } else {
-            // This is a Container
-            let (orientation, open, close) = if buffer[0] == '[' as u8 {
-                (Orientation::Vertical, b'[', b']')
-            } else {
-                (Orientation::Horizontal, b'{', b'}')
-            };
+            TmuxEvent::Output(pane_id, output) => {
+                // Ignore Output events until initial output has been captured
+                let tmux = imp.tmux.borrow();
+                if tmux.as_ref().unwrap().initial_output_captured == false {
+                    return;
+                }
 
-            // TODO: What if already exists
-            let new_container = Container::new(orientation, 0);
-            if let Some(parent) = parent {
-                parent.append(&new_container);
-            } else {
-                top_level.set_child(Some(&new_container));
+                let terminals = imp.terminals.borrow();
+                if let Some(pane) = terminals.get(&pane_id) {
+                    pane.feed_output(output);
+                }
             }
-
-            // recursively call parse_tmux_layout
-            let bytes_read = find_closing_bracket(buffer, open, close);
-            parse_layout_recursive(&buffer[1..bytes_read], window, top_level, Some(&new_container), nested + 1);
-
-            buffer = &buffer[bytes_read + 1..];
-        }
-
-        if buffer.is_empty() {
-            break;
-        }
-
-        is_first_child = false;
-        buffer = &buffer[1..];
-    }
-}
-
-#[inline]
-pub fn read_first_u32(buffer: &[u8]) -> (u32, usize) {
-    let mut i = 0;
-    let mut number: u32 = 0;
-
-    // Read buffer char by char (assuming ASCII) and parse number
-    while i < buffer.len() && buffer[i] > 47 && buffer[i] < 58 {
-        number *= 10;
-        number += (buffer[i] - 48) as u32;
-        i += 1;
-    }
-    (number, i)
-}
-
-#[inline]
-pub fn read_until_char(buffer: &[u8], c: u8) -> usize {
-    let mut i = 0;
-    while buffer[i] != c {
-        i += 1;
-    }
-    i
-}
-
-#[inline]
-fn find_closing_bracket(buffer: &[u8], open: u8, close: u8) -> usize {
-    let mut nested = 0;
-
-    for (i, b) in buffer.iter().enumerate() {
-        let b = *b;
-
-        // Assumes there is at least one opening bracket before a closing one
-        if b == open {
-            nested += 1;
-            // println!("Matched open: {} {}", b as char, open as char);
-        } else if b == close {
-            nested -= 1;
-
-            // println!("Matched close: {} {}", b as char, close as char);
-            if nested == 0 {
-                return i;
+            TmuxEvent::Exit => {
+                println!("Received EXIT event, closing window!");
+                self.close();
+            }
+            TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
+                let binding = &self.imp().terminals;
+                if let Some(pane) = binding.borrow().get(&pane_id) {
+                    pane.scroll_view(empty_lines);
+                }
             }
         }
     }
 
-    panic!(
-        "No closing bracket found in buffer! {}",
-        from_utf8(buffer).unwrap()
-    );
+    pub fn tmux_layout_callback() {}
 }

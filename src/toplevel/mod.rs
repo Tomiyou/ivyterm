@@ -277,4 +277,17 @@ impl TopLevel {
 
         None
     }
+
+    pub fn get_size_rows_cols(&self) -> (i32, i32) {
+        let width = self.width();
+        let height = self.height();
+
+        let terminals = self.imp().terminals.borrow();
+        if let Some(terminal) = terminals.first() {
+            // VTE will have a border of 1 px on left/right
+            return terminal.get_rows_cols_for_size(width - 2, height);
+        }
+
+        (0, 0)
+    }
 }

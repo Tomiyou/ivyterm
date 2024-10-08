@@ -1,14 +1,14 @@
 mod imp;
+mod layout;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{gdk::{Key, ModifierType}, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
-use tmux::parse_tmux_layout;
-
 use crate::{
-    global_state::show_settings_window, keyboard::keycode_to_arrow_key, next_unique_tab_id, terminal::Terminal, tmux::{Tmux, TmuxCommand, TmuxEvent}, toplevel::TopLevel
+    global_state::show_settings_window, next_unique_tab_id, terminal::Terminal,
+    toplevel::TopLevel,
 };
 
 glib::wrapper! {
@@ -82,23 +82,9 @@ impl IvyWindow {
 
         window_box.append(&window_handle);
         window_box.append(&tab_view);
-
         window.set_content(Some(&window_box));
-        // window.connect_realize();
 
         window
-    }
-
-    pub fn init_tmux(&self, tmux: Tmux) {
-        let imp = self.imp();
-
-        // First store Tmux
-        imp.tmux.replace(Some(tmux));
-
-        // Then get initial layout - this order to prevent a possible race condition
-        let binding = imp.tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
-        tmux.get_initial_layout();
     }
 
     pub fn new_tab(&self, id: Option<u32>) -> TopLevel {
@@ -133,11 +119,6 @@ impl IvyWindow {
         tab_view.close_page(&page);
     }
 
-    pub fn is_tmux(&self) -> bool {
-        let binding = self.imp().tmux.borrow();
-        binding.is_some()
-    }
-
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.insert(pane_id, terminal.clone());
@@ -148,45 +129,6 @@ impl IvyWindow {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(&pane_id);
         println!("Terminal with ID {} unregistered", pane_id);
-    }
-
-    pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
-        let binding = self.imp().tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
-
-        let mut prefix = String::new();
-        let mut shift_relevant = false;
-        if state.contains(ModifierType::ALT_MASK) {
-            prefix.push_str("M-");
-            shift_relevant = true;
-
-            // Hacky workaround for Alt+Backspace
-            if keycode == 22 {
-                tmux.send_keypress(pane_id, '\x7f', prefix, None);
-                return;
-            }
-        }
-        if state.contains(ModifierType::CONTROL_MASK) {
-            prefix.push_str("C-");
-            shift_relevant = true;
-        }
-        // Uppercase characters work without S-, so this case is only
-        // relevant when Ctrl/Alt is also pressed
-        if state.contains(ModifierType::SHIFT_MASK) && shift_relevant {
-            prefix.push_str("S-");
-        }
-
-        if let Some(c) = keyval.to_unicode() {
-            tmux.send_keypress(pane_id, c, prefix, None);
-        } else if let Some(direction) = keycode_to_arrow_key(keycode) {
-            let direction = match direction {
-                crate::keyboard::Direction::Left => "Left",
-                crate::keyboard::Direction::Right => "Right",
-                crate::keyboard::Direction::Up => "Up",
-                crate::keyboard::Direction::Down => "Down",
-            };
-            tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
-        }
     }
 
     pub fn get_top_level(&self, id: u32) -> Option<TopLevel> {
@@ -208,66 +150,5 @@ impl IvyWindow {
         }
 
         None
-    }
-
-    // pub fn get_tmux_cols_rows(&self) -> (i32, i32) {
-    //     let imp = self.imp();
-    //     let binding = imp.tabs.borrow();
-    //     let top_level = binding.first().unwrap();
-    //     let width = top_level.size(Orientation::Horizontal);
-    //     let height = top_level.size(Orientation::Vertical);
-    //     let binding = imp.terminals.borrow();
-    //     // let terminal = binding.iter
-    // }
-
-    pub fn tmux_resize_window(&self) {
-        let mut binding = self.imp().tmux.borrow_mut();
-        let tmux = binding.as_mut().unwrap();
-        tmux.change_size(80, 30);
-    }
-
-    pub fn tmux_inital_output(&self) {
-        let imp = self.imp();
-        let binding = imp.tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
-
-        let terminals = imp.terminals.borrow();
-        for (pane_id, _) in terminals.iter() {
-            tmux.send_command(TmuxCommand::InitialOutput(*pane_id));
-        }
-    }
-
-    pub fn tmux_event_callback(&self, event: TmuxEvent) {
-        // This future runs on main thread of GTK application
-        // It receives Tmux events from separate thread and runs GTK functions
-        match event {
-            TmuxEvent::LayoutChanged(layout) => {
-                println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
-                parse_tmux_layout(&layout[1..], &self);
-                // TODO: Move this somewhere better
-                self.tmux_resize_window();
-                self.tmux_inital_output();
-            }
-            TmuxEvent::Output(pane_id, output) => {
-                let binding = &self.imp().terminals;
-                if let Some(pane) = binding.borrow().get(&pane_id) {
-                    pane.feed_output(output);
-                }
-            }
-            TmuxEvent::Exit => {
-                println!("Received EXIT event, closing window!");
-                self.close();
-            }
-            TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
-                let binding = &self.imp().terminals;
-                if let Some(pane) = binding.borrow().get(&pane_id) {
-                    pane.scroll_view(empty_lines);
-                }
-            }
-        }
-    }
-
-    pub fn tmux_layout_callback() {
-
     }
 }

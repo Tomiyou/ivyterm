@@ -12,7 +12,10 @@ use crate::window::IvyWindow;
 pub struct Tmux {
     stdin_stream: ChildStdin,
     command_queue: Sender<TmuxCommand>,
-    window_size: (u32, u32),
+    window_size: (i32, i32),
+    resize_future: bool,
+    pub initial_size_set: bool,
+    pub initial_output_captured: bool,
 }
 
 impl Tmux {
@@ -29,28 +32,29 @@ impl Tmux {
             .unwrap();
     }
 
-    pub fn send_command(&self, command: TmuxCommand) {
+    pub fn get_initial_output(&self, pane_id: u32) {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
-        match command {
-            TmuxCommand::InitialOutput(pane_id) => {
-                debug!("Getting initial output of pane {}", pane_id);
-                let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
-                command_queue.send_blocking(command).unwrap();
-                stdin_stream.write_all(cmd.as_bytes()).unwrap();
-            }
-            _ => {
-                panic!("Don't know how to handle command {:?}", command);
-            }
-        }
+
+        debug!("Getting initial output of pane {}", pane_id);
+        let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
+        command_queue.send_blocking(TmuxCommand::InitialOutput(pane_id)).unwrap();
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 
-    pub fn change_size(&mut self, cols: u32, rows: u32) {
+    pub fn change_size(&mut self, cols: i32, rows: i32) {
+        if self.window_size == (cols, rows) {
+            println!(
+                "Not updating Tmux size to {}x{}, since it did not change",
+                cols, rows
+            );
+            return;
+        }
         self.window_size = (cols, rows);
 
         let command = TmuxCommand::ChangeSize(cols, rows);
 
-        debug!("Resizing Tmux client to {}x{}", cols, rows);
+        println!("Resizing Tmux client to {}x{}", cols, rows);
         let cmd = format!("refresh-client -C {},{}\n", cols, rows);
         self.command_queue.send_blocking(command).unwrap();
         self.stdin_stream.write_all(cmd.as_bytes()).unwrap();
@@ -85,6 +89,13 @@ impl Tmux {
         command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
+
+    /// Updates resize_future to `new` value, while returning the old value
+    pub fn update_resize_future(&mut self, new: bool) -> bool {
+        let old = self.resize_future;
+        self.resize_future = new;
+        return old;
+    }
 }
 
 #[derive(Debug)]
@@ -92,12 +103,14 @@ pub enum TmuxCommand {
     Init,
     InitialLayout,
     Keypress,
-    ChangeSize(u32, u32),
+    ChangeSize(i32, i32),
     InitialOutput(u32),
 }
 
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
+    InitialLayout(Vec<u8>),
+    InitialOutputFinished(),
     LayoutChanged(Vec<u8>),
     Output(u32, Vec<u8>),
     Exit,
@@ -147,6 +160,9 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
         stdin_stream: stdin_stream,
         command_queue: cmd_queue_sender,
         window_size: (0, 0),
+        resize_future: false,
+        initial_size_set: false,
+        initial_output_captured: false,
     };
 
     Ok(tmux)
@@ -290,6 +306,9 @@ fn tmux_read_stdout(
                             event_channel
                                 .send_blocking(TmuxEvent::ScrollOutput(pane_id, empty_line_count))
                                 .expect("Event channel closed!");
+                            event_channel
+                                .send_blocking(TmuxEvent::InitialOutputFinished())
+                                .expect("Event channel closed!");
                         }
                         _ => {}
                     }
@@ -301,6 +320,9 @@ fn tmux_read_stdout(
                 empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
+                event_channel
+                    .send_blocking(TmuxEvent::LayoutChanged(buffer.clone()))
+                    .unwrap();
             } else if buffer_starts_with(&buffer, "%error") {
                 // Command we executed produced an error
                 current_command = Some(command_queue.recv_blocking().unwrap());
@@ -338,13 +360,8 @@ fn tmux_command_result(
 ) {
     match command {
         TmuxCommand::InitialLayout => {
-            // let bytes = output.as_bytes();
-            // parse_tmux_layout(bytes);
-            let mut layout = Vec::with_capacity(buffer.len() + 1);
-            layout.append(buffer);
-
             event_channel
-                .send_blocking(TmuxEvent::LayoutChanged(layout))
+                .send_blocking(TmuxEvent::InitialLayout(buffer.clone()))
                 .unwrap();
         }
         TmuxCommand::InitialOutput(pane_id) => {
