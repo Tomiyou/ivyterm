@@ -1,4 +1,4 @@
-use gtk::gdk::{Key, ModifierType};
+use gtk4::gdk::{Key, ModifierType};
 
 pub enum Keybinding {
     TabNew,

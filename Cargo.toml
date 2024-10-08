@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-adw = { version = "0.6.0", package = "libadwaita" }
-glib = "0.19.2"
-gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }
+glib = "0.19.5"
+gtk4 = { version = "0.8.2", features = ["v4_12"] }
+libadwaita = "0.6.0"
 vte4 = { version = "0.7.1", features = ["v0_74"] }

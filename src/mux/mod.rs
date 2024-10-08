@@ -1,9 +1,9 @@
 mod pane;
 mod terminal;
 
-use adw::glib::signal::Propagation;
-use adw::{prelude::*, Bin};
-use gtk::{EventControllerKey, Orientation, Paned, ScrolledWindow};
+use libadwaita::glib::signal::Propagation;
+use libadwaita::{prelude::*, Bin};
+use gtk4::{EventControllerKey, Orientation, Paned, ScrolledWindow};
 
 use crate::keyboard::matches_keybinding;
 

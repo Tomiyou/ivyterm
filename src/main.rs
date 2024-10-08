@@ -2,11 +2,11 @@ use std::ptr;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use adw::prelude::*;
-use adw::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
+use libadwaita::prelude::*;
+use libadwaita::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
 use glib::property::PropertyGet;
-use gtk::gdk::{Display, ModifierType};
-use gtk::{
+use gtk4::gdk::{Display, ModifierType};
+use gtk4::{
     Align, Box, Button, CssProvider, EventControllerKey, Orientation, PackType, WindowControls,
     WindowHandle,
 };
@@ -27,10 +27,10 @@ fn load_css() {
     provider.load_from_string(include_str!("style.css"));
 
     // Add the provider to the default screen
-    gtk::style_context_add_provider_for_display(
+    gtk4::style_context_add_provider_for_display(
         &Display::default().expect("Could not connect to a display."),
         &provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
 

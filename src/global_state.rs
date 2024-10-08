@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use adw::{prelude::*, HeaderBar};
-use adw::{Application, ApplicationWindow};
-use gtk::{Box, ColorDialog, ColorDialogButton, Orientation};
+use libadwaita::{prelude::*, HeaderBar};
+use libadwaita::{Application, ApplicationWindow};
+use gtk4::{Box, ColorDialog, ColorDialogButton, Orientation};
 
 pub const INITIAL_WIDTH: i32 = 800;
 pub const INITIAL_HEIGHT: i32 = 640;

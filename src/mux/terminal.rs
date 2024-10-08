@@ -19,7 +19,7 @@ pub fn create_terminal() -> Terminal {
             println!("Lmao its me Mario");
         },
         -1,
-        gtk::gio::Cancellable::NONE,
+        gtk4::gio::Cancellable::NONE,
         |_| println!("Some callback?"),
     );
 

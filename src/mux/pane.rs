@@ -1,6 +1,6 @@
-use adw::glib::signal::Propagation;
-use adw::{prelude::*, Bin};
-use gtk::{EventControllerKey, Orientation, Paned, ScrolledWindow, Widget};
+use libadwaita::glib::signal::Propagation;
+use libadwaita::{prelude::*, Bin};
+use gtk4::{EventControllerKey, Orientation, Paned, ScrolledWindow, Widget};
 
 use crate::keyboard::{matches_keybinding, Keybinding};
 use crate::mux::terminal::create_terminal;
@@ -121,7 +121,7 @@ fn close_pane(closing_paned: Paned, nested_level: u32) {
         retained_child.type_()
     );
     if nested_level == 0 {
-        // Parent is adw::Bin
+        // Parent is libadwaita::Bin
         let parent = closing_paned.parent().unwrap();
         let parent = parent.downcast::<Bin>().unwrap();
 
@@ -129,7 +129,7 @@ fn close_pane(closing_paned: Paned, nested_level: u32) {
         return;
     }
 
-    // Parent is another gtk::Paned
+    // Parent is another gtk4::Paned
     let parent = closing_paned.parent().unwrap();
     let parent = parent.downcast::<Paned>().unwrap();
     parent.emit_cycle_child_focus(true);
