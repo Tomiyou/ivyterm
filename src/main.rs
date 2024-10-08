@@ -1,12 +1,9 @@
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
 
-use gtk4::gdk::{Display, ModifierType};
-use gtk4::{
-    Align, Box, Button, CssProvider, EventControllerKey, Orientation, PackType, WindowControls,
-    WindowHandle,
-};
+use gtk4::gdk::Display;
+use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::prelude::*;
-use libadwaita::{glib::signal::Propagation, Application, ApplicationWindow, TabBar, TabView};
+use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
 use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
 use mux::create_tab;
@@ -16,7 +13,6 @@ mod keyboard;
 mod mux;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
-static TAB_COUNT: AtomicU32 = AtomicU32::new(0);
 static GLOBAL_TERMINAL_ID: AtomicU32 = AtomicU32::new(0);
 
 fn load_css() {
@@ -59,14 +55,14 @@ fn main() -> glib::ExitCode {
 
         // Close the tab_view when 0 tabs remain
         let _window = window.clone();
-        tab_view.connect_close_page(move |tab_view, page| {
-            let page_count = tab_view.n_pages();
-            if page_count < 2 {
+        tab_view.connect_close_page(move |tab_view, _page| {
+            if tab_view.n_pages() < 2 {
                 _window.close();
             }
             true
         });
 
+        // Create initial Tab
         create_tab(&tab_view);
 
         // Terminal settings

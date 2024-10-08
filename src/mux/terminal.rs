@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use glib::{Propagation, SpawnFlags};
 use gtk4::{
     gdk::{Key, ModifierType, RGBA},
@@ -9,7 +11,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 use crate::{
     global_state::GLOBAL_SETTINGS,
     keyboard::{matches_keybinding, Keybinding},
-    mux::{pane::close_pane, toplevel::TopLevel},
+    mux::{pane::close_pane, toplevel::TopLevel}, GLOBAL_TERMINAL_ID,
 };
 
 use super::pane::split_pane;
@@ -37,6 +39,8 @@ fn cast_parent(parent: Widget) -> ParentType {
 }
 
 pub fn create_terminal(top_level: &TopLevel) -> Terminal {
+    let terminal_id = GLOBAL_TERMINAL_ID.fetch_add(1, Ordering::Relaxed);
+
     // Get terminal font
     let font_desc = {
         let reader = GLOBAL_SETTINGS.read().unwrap();
@@ -50,8 +54,8 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         .build();
 
     // Close terminal + pane/tab when the child (shell) exits
-    terminal.connect_child_exited(|terminal, _exit_code| {
-        println!("Exited!");
+    terminal.connect_child_exited(move |terminal, _exit_code| {
+        println!("Terminal {} exited!", terminal_id);
         terminal.unrealize();
 
         let parent = terminal.parent().unwrap();
@@ -89,6 +93,7 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         -1,
         gtk4::gio::Cancellable::NONE,
         move |_result| {
+            println!("Terminal {} spawned, grabbing focus", terminal_id);
             _terminal.grab_focus();
         },
     );
