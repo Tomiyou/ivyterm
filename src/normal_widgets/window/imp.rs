@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::sync::atomic::AtomicU32;
 
 use gtk4::CssProvider;

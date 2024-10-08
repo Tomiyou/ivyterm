@@ -6,7 +6,7 @@ use libadwaita::{glib, prelude::*};
 
 use crate::normal_widgets::window::IvyWindow;
 
-use super::{layout_default::ContainerLayout};
+use super::layout_default::ContainerLayout;
 
 // Object holding the state
 #[derive(glib::Properties)]

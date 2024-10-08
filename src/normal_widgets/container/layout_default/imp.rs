@@ -8,15 +8,10 @@ use vte4::{Cast, WidgetExt};
 use crate::normal_widgets::container::separator::Separator;
 use crate::normal_widgets::container::Container;
 
-pub struct TmuxSeparator {
-    pub s: Separator,
-    pub percentage: f64,
-}
-
 // Object holding the state
 #[derive(Default)]
 pub struct ContainerLayoutPriv {
-    pub separators: RefCell<Vec<TmuxSeparator>>,
+    pub separators: RefCell<Vec<Separator>>,
 }
 
 // The central trait for subclassing a GObject
@@ -53,7 +48,7 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
         let orientation = paned.orientation();
 
         let allocations: Vec<Allocation> = if orientation == Orientation::Horizontal {
-            let children_sizes = self.get_children_sizes(&paned, width);
+            let children_sizes = self.get_children_sizes(width);
 
             let mut x = 0;
             children_sizes
@@ -66,7 +61,7 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
                 })
                 .collect()
         } else {
-            let children_sizes = self.get_children_sizes(&paned, height);
+            let children_sizes = self.get_children_sizes(height);
 
             let mut y = 0;
             children_sizes
@@ -110,7 +105,7 @@ impl ContainerLayoutPriv {
         // entire container and need to calculate height.
         // But since we need to measure height of each child, we need to calculate width of each
         // child, which depends on percentage of each split.
-        let children_sizes = self.get_children_sizes(container, size);
+        let children_sizes = self.get_children_sizes(size);
 
         let mut minimum = 0;
         let mut natural = 0;
@@ -162,7 +157,7 @@ impl ContainerLayoutPriv {
     }
 
     #[inline]
-    fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
+    fn get_children_sizes(&self, size: i32) -> Vec<i32> {
         let separators = self.separators.borrow();
         let child_count = (separators.len() * 2) + 1;
         let mut children_sizes = Vec::with_capacity(child_count);
@@ -179,10 +174,10 @@ impl ContainerLayoutPriv {
 
         for separator in separators.iter() {
             // Percentage is the position of the Separator in % of the total size
-            let percentage = separator.percentage;
+            let percentage = separator.get_percentage();
             let separator_position = size as f64 * percentage;
 
-            let handle_size = separator.s.get_handle_width();
+            let handle_size = separator.get_handle_width();
             let half_handle = handle_size / 2;
 
             let child_size =
