@@ -119,10 +119,13 @@ fn handle_keyboard(
             top_level.close_tab();
         }
         Some(Keybinding::SelectPane(direction)) => {
-            let terminal = eventctl.widget().downcast::<Terminal>().unwrap();
-            if let Some(new_focus) = top_level.find_neighbor(&terminal, direction) {
+            top_level.unzoom();
+            if let Some(new_focus) = top_level.find_neighbor(terminal, direction) {
                 new_focus.grab_focus();
             }
+        }
+        Some(Keybinding::ToggleZoom) => {
+            top_level.toggle_zoom(terminal);
         }
         None => return Propagation::Proceed,
     };

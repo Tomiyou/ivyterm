@@ -11,6 +11,8 @@ use crate::{
     mux::{pane::new_paned, terminal::create_terminal},
 };
 
+use self::imp::Zoomed;
+
 use super::create_tab;
 
 glib::wrapper! {
@@ -53,6 +55,8 @@ impl TopLevel {
     }
 
     pub fn split_pane(&self, terminal: &Terminal, orientation: Orientation) {
+        self.unzoom();
+
         let new_terminal = create_terminal(&self);
 
         let parent = terminal.parent().unwrap();
@@ -98,6 +102,8 @@ impl TopLevel {
     }
 
     pub fn close_pane(&self, closing_terminal: &Terminal) {
+        self.unzoom();
+
         let parent = closing_terminal.parent().unwrap();
         if parent.eq(self) {
             // Parent of the closing terminal is myself, we need to close this tab
@@ -180,6 +186,76 @@ impl TopLevel {
         }
 
         panic!("Parent is neither Bin nor Paned");
+    }
+
+    pub fn toggle_zoom(&self, terminal: &Terminal) {
+        let imp = self.imp();
+        let binding = imp.terminals.borrow();
+        if binding.len() < 2 {
+            // There is only 1 terminal present, no need for any zooming
+            return;
+        }
+
+        let mut binding = imp.zoomed.borrow_mut();
+        if let Some(zoomed) = binding.take() {
+            // Unzoom the terminal
+            self.set_child(None::<&Widget>);
+            if zoomed.is_start_child {
+                zoomed.terminal_paned.set_start_child(Some(&zoomed.terminal));
+            } else {
+                zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
+            }
+
+            self.set_child(Some(&zoomed.root_paned));
+            terminal.grab_focus();
+            return;
+        }
+        // Zoom the terminal
+
+        // Remove Terminal from its parent Paned
+        let terminal_paned: Paned = terminal.parent().unwrap().downcast().unwrap();
+        let is_start_child = if terminal_paned.start_child().unwrap().eq(terminal) {
+            terminal_paned.set_start_child(None::<&Widget>);
+            true
+        } else {
+            terminal_paned.set_end_child(None::<&Widget>);
+            false
+        };
+
+        // Remove root Paned and replace it with Terminal
+        let root_paned: Paned = self.child().unwrap().downcast().unwrap();
+        self.set_child(Some(terminal));
+        terminal.grab_focus();
+
+        let zoomed = Zoomed {
+            terminal: terminal.clone(),
+            root_paned,
+            terminal_paned,
+            is_start_child
+        };
+        binding.replace(zoomed);
+    }
+
+    pub fn unzoom(&self) {
+        let imp = self.imp();
+        let binding = imp.terminals.borrow();
+        if binding.len() < 2 {
+            // There is only 1 terminal present, no need for any unzooming
+            return;
+        }
+
+        let mut binding = imp.zoomed.borrow_mut();
+        if let Some(zoomed) = binding.take() {
+            self.set_child(None::<&Widget>);
+            if zoomed.is_start_child {
+                zoomed.terminal_paned.set_start_child(Some(&zoomed.terminal));
+            } else {
+                zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
+            }
+
+            self.set_child(Some(&zoomed.root_paned));
+            zoomed.terminal.grab_focus();
+        }
     }
 
     pub fn register_terminal(&self, terminal: &Terminal) {

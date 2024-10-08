@@ -14,6 +14,7 @@ pub enum Keybinding {
     PaneSplit(bool),
     PaneClose,
     SelectPane(Direction),
+    ToggleZoom,
 }
 
 pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
@@ -24,6 +25,7 @@ pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
             32 => return Some(Keybinding::PaneSplit(true)),
             46 => return Some(Keybinding::PaneSplit(false)),
             26 => return Some(Keybinding::PaneClose),
+            53 => return Some(Keybinding::ToggleZoom),
             _ => {}
         };
     }
