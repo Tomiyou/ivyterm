@@ -2,7 +2,10 @@ use std::io::Write;
 
 use log::debug;
 
-use crate::{keyboard::KeyboardAction, tmux_api::TmuxCommand};
+use crate::{
+    keyboard::{Direction, KeyboardAction},
+    tmux_api::TmuxCommand,
+};
 
 use super::TmuxAPI;
 
@@ -96,24 +99,33 @@ impl TmuxAPI {
                 )
             }
             KeyboardAction::PaneClose => {
-                // top_level.close_pane(terminal);
-                todo!();
+                command_queue
+                    .send_blocking(TmuxCommand::PaneClose(pane_id))
+                    .unwrap();
+                format!("kill-pane -t {}\n", pane_id)
             }
             KeyboardAction::TabNew => {
-                // top_level.create_tab(None);
-                todo!();
+                command_queue.send_blocking(TmuxCommand::TabNew).unwrap();
+                String::from("new-window\n")
             }
             KeyboardAction::TabClose => {
-                // top_level.close_tab();
-                todo!();
+                command_queue.send_blocking(TmuxCommand::TabClose).unwrap();
+                String::from("kill-window\n")
             }
             KeyboardAction::SelectPane(direction) => {
-                todo!();
-                // let previous_size = top_level.unzoom();
-                // if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size)
-                // {
-                //     new_focus.grab_focus();
-                // }
+                let cmd = format!(
+                    "select-pane {}\n",
+                    match direction {
+                        Direction::Down => "-D",
+                        Direction::Left => "-L",
+                        Direction::Right => "-R",
+                        Direction::Up => "-U",
+                    }
+                );
+                command_queue
+                    .send_blocking(TmuxCommand::PaneSelect(direction))
+                    .unwrap();
+                cmd
             }
             KeyboardAction::ToggleZoom => {
                 todo!();
@@ -121,7 +133,6 @@ impl TmuxAPI {
             }
             KeyboardAction::CopySelected => {
                 todo!();
-                // vte.emit_copy_clipboard();
             }
         };
 

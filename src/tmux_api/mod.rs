@@ -6,6 +6,7 @@ use gtk4::Orientation;
 use receive::tmux_read_stdout;
 
 use crate::helpers::IvyError;
+use crate::keyboard::Direction;
 use crate::tmux_widgets::IvyTmuxWindow;
 
 mod parse_layout;
@@ -27,12 +28,17 @@ pub enum TmuxTristate {
     Done,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TmuxCommand {
     Init,
     InitialLayout,
     Keypress,
+    TabNew,
+    TabClose,
     PaneSplit(bool),
+    PaneClose(u32),
+    PaneSelect(Direction),
     ChangeSize(i32, i32),
     InitialOutput(u32),
 }
