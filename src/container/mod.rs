@@ -43,13 +43,16 @@ impl Container {
     }
 
     pub fn append(&self, child: &impl IsA<Widget>, percentage: Option<f64>) {
+        let imp = self.imp();
         if let Some(last_child) = self.last_child() {
-            let last_child: Terminal = last_child.downcast().unwrap();
+            // let last_child: Terminal = last_child.downcast().unwrap();
             let layout = self.imp().layout.borrow();
             let new_separator = match layout.as_ref().unwrap() {
                 Layout::Default(layout) => layout.add_separator(self),
                 Layout::Tmux(layout) => {
-                    let char_size = last_child.get_char_width_height();
+                    let binding = self.imp().window.borrow();
+                    let window = binding.as_ref().unwrap();
+                    let char_size = window.get_char_size();
                     layout.add_separator(self, percentage.unwrap(), char_size)
                 },
             };

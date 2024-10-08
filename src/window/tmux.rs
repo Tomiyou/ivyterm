@@ -34,6 +34,10 @@ impl IvyWindow {
         binding.is_some()
     }
 
+    pub fn get_char_size(&self) -> (i32, i32) {
+        self.imp().char_size.get()
+    }
+
     pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
         let binding = self.imp().tmux.borrow();
         let tmux = binding.as_ref().unwrap();

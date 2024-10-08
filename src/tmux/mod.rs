@@ -72,11 +72,11 @@ impl Tmux {
 
         let cmd = if let Some(control) = movement {
             // Navigation keys (left, right, page up, ...)
-            format!("send-keys -t {} {}{}\n", pane_id, prefix, control)
+            format!("send-keys -t %{} {}{}\n", pane_id, prefix, control)
         } else if c.is_ascii_control() {
             // A control character was just pressed
             let ascii = c as u8;
-            format!("send-keys -t {} -- {}\\{:03o}\n", pane_id, prefix, ascii)
+            format!("send-keys -t %{} -- {}\\{:03o}\n", pane_id, prefix, ascii)
         } else {
             // We send single-quoted keys, but what if we want to send a single quote?
             let quote = if c == '\'' { '"' } else { '\'' };
@@ -86,12 +86,12 @@ impl Tmux {
             let flags = if prefix.is_empty() { "-l" } else { "" };
 
             format!(
-                "send-keys -t {} {} -- {}{}{}{}\n",
+                "send-keys -t %{} {} -- {}{}{}{}\n",
                 pane_id, flags, quote, prefix, c, quote
             )
         };
 
-        debug!("send_keypress: {}", &cmd[..cmd.len() - 1]);
+        println!("send_keypress: {}", &cmd[..cmd.len() - 1]);
         command_queue.send_blocking(TmuxCommand::Keypress).unwrap();
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }

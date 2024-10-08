@@ -135,9 +135,15 @@ impl IvyWindow {
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
-        let mut terminals = self.imp().terminals.borrow_mut();
+        let imp = self.imp();
+        let mut terminals = imp.terminals.borrow_mut();
         terminals.insert(pane_id, &terminal);
         println!("Terminal with ID {} registered", pane_id);
+
+        if self.is_tmux() {
+            let char_size = terminal.get_char_width_height();
+            imp.char_size.replace(char_size);
+        }
     }
 
     pub fn unregister_terminal(&self, pane_id: u32) {

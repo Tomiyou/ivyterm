@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::atomic::AtomicU32;
 
 use gtk4::CssProvider;
@@ -19,6 +19,7 @@ pub struct IvyWindowPriv {
     pub css_provider: RefCell<CssProvider>,
     pub next_tab_id: RefCell<AtomicU32>,
     pub next_terminal_id: RefCell<AtomicU32>,
+    pub char_size: Cell<(i32, i32)>,
 }
 
 // The central trait for subclassing a GObject

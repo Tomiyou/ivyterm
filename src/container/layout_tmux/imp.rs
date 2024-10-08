@@ -57,6 +57,7 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
     }
 
     fn allocate(&self, widget: &Widget, width: i32, height: i32, _baseline: i32) {
+        println!("Allocate {} x {}", width, height);
         let container: Container = widget.clone().downcast().unwrap();
         let orientation = container.orientation();
 
@@ -110,6 +111,7 @@ impl TmuxLayoutPriv {
         // entire container and need to calculate height.
         // But since we need to measure height of each child, we need to calculate width of each
         // child, which depends on percentage of each split.
+        println!("get_preferred_size_for_opposite_orientation {}", size);
         let children_sizes = self.get_children_sizes(container, size);
 
         let mut minimum = 0;
