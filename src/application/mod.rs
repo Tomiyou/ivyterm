@@ -107,5 +107,5 @@ fn rgba_to_hex(rgba: &RGBA) -> String {
     let red = (rgba.red() * 255.).round() as i32;
     let green = (rgba.green() * 255.).round() as i32;
     let blue = (rgba.blue() * 255.).round() as i32;
-    format!("#{:2X}{:2X}{:2X}", red, green, blue)
+    format!("#{:02X}{:02X}{:02X}", 0, 0, 0)
 }
