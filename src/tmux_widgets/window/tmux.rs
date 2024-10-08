@@ -122,7 +122,10 @@ impl IvyTmuxWindow {
                 sync_tmux_layout(&self, tab_id, hierarchy);
             }
             TmuxEvent::FocusChanged(pane_id) => {
-                let terminals = self.imp().terminals.borrow();
+                let imp = self.imp();
+                imp.focused_pane.replace(pane_id);
+
+                let terminals = imp.terminals.borrow();
                 if let Some(terminal) = terminals.get(pane_id) {
                     terminal.grab_focus();
                 }

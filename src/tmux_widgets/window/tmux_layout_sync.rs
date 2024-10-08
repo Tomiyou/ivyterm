@@ -25,6 +25,8 @@ fn print_tab(nested: u32) {
 }
 
 pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPane>) {
+    let window_imp = window.imp();
+
     {
         let mut nested = 0;
         for pane in layout.iter() {
@@ -59,7 +61,7 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
     // First we remove any Terminals which do not exist in Tmux anymore
     // TODO: Make this less brute force
     {
-        let mut registered_terminals = window.imp().terminals.borrow_mut();
+        let mut registered_terminals = window_imp.terminals.borrow_mut();
         let original_len = registered_terminals.len();
 
         registered_terminals.retain(|t| {
@@ -175,6 +177,17 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
         }
     } else {
         panic!("Parsed Layout empty")
+    }
+
+    // TODO: Fix this, Tmux currently does not report active Pane
+    // Ensure the correct Pane is focused
+    let focused_pane = window_imp.focused_pane.get();
+    let registered_terminals = window_imp.terminals.borrow();
+    if let Some(terminal) = registered_terminals.get(focused_pane) {
+        println!("Grabbing focus for pane {}", focused_pane);
+        terminal.grab_focus();
+    } else {
+        println!("Unable to grab focus for pane {}", focused_pane);
     }
 }
 
