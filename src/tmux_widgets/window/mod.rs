@@ -151,7 +151,6 @@ impl IvyTmuxWindow {
     pub fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
         let tabs = self.imp().tabs.borrow();
         for top_level in tabs.iter() {
-            println!("Top level iter {}", top_level.tab_id());
             if top_level.tab_id() == id {
                 return Some(top_level.clone());
             }
