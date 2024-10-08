@@ -52,12 +52,12 @@ impl IvyApplication {
 
     fn reload_css_colors(&self) {
         let config = self.imp().config.borrow();
-        let [_foreground, background] = config.main_colors;
+        let background_hex = config.background.to_hex();
 
         // Update CSS colors (background and separator)
         let binding = self.imp().css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
-        let new_css = BASE_CSS.replace("#000000", &rgba_to_hex(&background));
+        let new_css = BASE_CSS.replace("#000000", &background_hex);
         css_provider.load_from_data(&new_css);
 
         self.refresh_terminals();
@@ -106,11 +106,4 @@ fn load_css() -> CssProvider {
     );
 
     provider
-}
-
-fn rgba_to_hex(rgba: &RGBA) -> String {
-    let red = (rgba.red() * 255.).round() as i32;
-    let green = (rgba.green() * 255.).round() as i32;
-    let blue = (rgba.blue() * 255.).round() as i32;
-    format!("#{:02X}{:02X}{:02X}", red, green, blue)
 }

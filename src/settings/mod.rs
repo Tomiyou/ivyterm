@@ -1,5 +1,6 @@
 use gtk4::{gdk::RGBA, pango::FontDescription};
 use libadwaita::{prelude::*, PreferencesWindow};
+use serde::{Deserialize, Deserializer};
 
 use general::create_general_page;
 // use keybindings::create_keybinding_page;
@@ -15,62 +16,107 @@ pub const APPLICATION_TITLE: &str = "ivyTerm";
 pub const SPLIT_HANDLE_WIDTH: i32 = 10;
 pub const SPLIT_VISUAL_WIDTH: i32 = 3;
 
+#[derive(Deserialize)]
 pub struct GlobalConfig {
-    pub font_desc: FontDescription,
-    pub main_colors: [RGBA; 2],
-    pub palette_colors: [RGBA; 16],
+    pub font: IvyFont,
     pub scrollback_lines: u32,
+    pub foreground: IvyColor,
+    pub background: IvyColor,
+    pub standard_colors: [IvyColor; 8],
+    pub bright_colors: [IvyColor; 8],
+    keybindings: Keybindings,
+}
+
+#[derive(Clone)]
+pub struct IvyColor(RGBA);
+impl<'de> serde::Deserialize<'de> for IvyColor {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let hex = String::deserialize(d)?;
+        match RGBA::parse(hex) {
+            Ok(rgba) => Ok(IvyColor(rgba)),
+            Err(err) => panic!("Error parsing hex: {}", err),
+        }
+    }
+}
+
+impl IvyColor {
+    pub fn to_hex(&self) -> String {
+        let rgba = self.0;
+        let red = (rgba.red() * 255.).round() as i32;
+        let green = (rgba.green() * 255.).round() as i32;
+        let blue = (rgba.blue() * 255.).round() as i32;
+        format!("#{:02X}{:02X}{:02X}", red, green, blue)
+    }
+}
+
+impl From<RGBA> for IvyColor {
+    fn from(value: RGBA) -> Self {
+        Self(value)
+    }
+}
+
+impl Into<RGBA> for IvyColor {
+    fn into(self) -> RGBA {
+        self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct IvyFont(FontDescription);
+impl<'de> serde::Deserialize<'de> for IvyFont {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let font_description = String::deserialize(d)?;
+        let font_description = FontDescription::from_string(&font_description);
+        Ok(IvyFont(font_description))
+    }
+}
+
+impl From<FontDescription> for IvyFont {
+    fn from(value: FontDescription) -> Self {
+        Self(value)
+    }
+}
+
+impl Into<FontDescription> for IvyFont {
+    fn into(self) -> FontDescription {
+        self.0
+    }
+}
+
+#[derive(Deserialize)]
+struct Keybindings {
+    new_tab: String,
+    close_tab: String,
+    split_horizontal: String,
+    split_vertical: String,
+    close_pane: String,
+    toggle_zoom: String,
+    copy_selection: String,
 }
 
 impl Default for GlobalConfig {
     fn default() -> Self {
-        // TODO: Parse config from file
-
-        // Font
-        let font_desc = FontDescription::from_string("CommitMono weight=400 13");
-
-        // Colors
-        let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
-        let background = RGBA::new(0.0, 0.0, 0.0, 1.0);
-        let ambience_colors = [
-            // Standard colors
-            RGBA::parse("#2e3436").unwrap(),
-            RGBA::parse("#cc0000").unwrap(),
-            RGBA::parse("#4e9a06").unwrap(),
-            RGBA::parse("#c4a000").unwrap(),
-            RGBA::parse("#3465a4").unwrap(),
-            RGBA::parse("#75507b").unwrap(),
-            RGBA::parse("#06989a").unwrap(),
-            RGBA::parse("#d3d7cf").unwrap(),
-            // Bright colors
-            RGBA::parse("#555753").unwrap(),
-            RGBA::parse("#ef2929").unwrap(),
-            RGBA::parse("#8ae234").unwrap(),
-            RGBA::parse("#fce94f").unwrap(),
-            RGBA::parse("#729fcf").unwrap(),
-            RGBA::parse("#ad7fa8").unwrap(),
-            RGBA::parse("#34e2e2").unwrap(),
-            RGBA::parse("#eeeeec").unwrap(),
-        ];
-
-        Self {
-            // font_desc: FontDescription::default(),
-            font_desc,
-            main_colors: [foreground, background],
-            palette_colors: ambience_colors,
-            scrollback_lines: 2000,
-        }
+        let default_config = include_str!("../default.toml");
+        let config: GlobalConfig = toml::from_str(&default_config).unwrap();
+        config
     }
 }
 
 impl GlobalConfig {
     pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
-        let font_desc = self.font_desc.clone();
-        let main_colors = self.main_colors.clone();
-        let palette_colors = self.palette_colors.clone();
+        let font = self.font.clone().into();
         let scrollback_lines = self.scrollback_lines.clone();
+        let main_colors = [
+            self.foreground.clone().into(),
+            self.background.clone().into(),
+        ];
+        let standard_colors: [RGBA; 8] = self.standard_colors.clone().map(|c| c.into());
+        let bright_colors: [RGBA; 8] = self.bright_colors.clone().map(|c| c.into());
 
-        (font_desc, main_colors, palette_colors, scrollback_lines)
+        let palette_colors = [standard_colors, bright_colors].concat();
+        let palette_colors: [RGBA; 16] = palette_colors.try_into().unwrap();
+
+        (font, main_colors, palette_colors, scrollback_lines)
     }
 }
 
