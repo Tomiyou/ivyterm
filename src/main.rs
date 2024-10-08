@@ -59,7 +59,7 @@ fn main() -> glib::ExitCode {
             if tab_view.n_pages() < 2 {
                 _window.close();
             }
-            true
+            false
         });
 
         // Create initial Tab
