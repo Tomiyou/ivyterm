@@ -83,12 +83,13 @@ impl Terminal {
         let eventctl = EventControllerKey::new();
         let _terminal = terminal.clone();
         let _window = window.clone();
+        let _vte = vte.clone();
         eventctl.connect_key_pressed(move |_eventctl, keyval, key, state| {
             if is_tmux {
                 _window.tmux_keypress(pane_id, key, keyval, state);
                 Propagation::Proceed
             } else {
-                handle_keyboard(key, state, &_terminal, &top_level)
+                handle_keyboard(key, state, &_terminal, &top_level, &_vte)
             }
         });
         vte.add_controller(eventctl);
@@ -165,6 +166,7 @@ fn handle_keyboard(
     state: ModifierType,
     terminal: &Terminal,
     top_level: &TopLevel,
+    vte: &Vte,
 ) -> Propagation {
     // Handle terminal splits
     if !state.contains(ModifierType::CONTROL_MASK)
@@ -202,6 +204,9 @@ fn handle_keyboard(
         }
         Some(Keybinding::ToggleZoom) => {
             top_level.toggle_zoom(terminal);
+        }
+        Some(Keybinding::CopySelected) => {
+            vte.emit_copy_clipboard();
         }
         None => return Propagation::Proceed,
     };

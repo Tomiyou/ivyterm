@@ -15,6 +15,7 @@ pub enum Keybinding {
     PaneClose,
     SelectPane(Direction),
     ToggleZoom,
+    CopySelected,
 }
 
 pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
@@ -29,6 +30,7 @@ pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
 
 pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
     if state.contains(ModifierType::CONTROL_MASK) && state.contains(ModifierType::SHIFT_MASK) {
+        // println!("Keycode is {}", keycode);
         match keycode {
             28 => return Some(Keybinding::TabNew),
             25 => return Some(Keybinding::TabClose),
@@ -36,6 +38,7 @@ pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
             46 => return Some(Keybinding::PaneSplit(false)),
             26 => return Some(Keybinding::PaneClose),
             53 => return Some(Keybinding::ToggleZoom),
+            54 => return Some(Keybinding::CopySelected),
             _ => {}
         };
     }
