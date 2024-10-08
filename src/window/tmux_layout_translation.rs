@@ -18,11 +18,11 @@ fn calculate_percentage(bounds: &Rectangle, parent: &TmuxContainer) -> i32 {
     let orientation = parent.c.orientation();
     let position = match orientation {
         Orientation::Horizontal => {
-            println!("Position X is {}", bounds.x - parent.bounds.x - 1);
+            // println!("Position X is {}", bounds.x - parent.bounds.x - 1);
             bounds.x - parent.bounds.x - 1
         },
         _ => {
-            println!("Position Y is {}", bounds.y - parent.bounds.y - 1);
+            // println!("Position Y is {}", bounds.y - parent.bounds.y - 1);
             bounds.y - parent.bounds.y - 1
         },
     };

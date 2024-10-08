@@ -1,6 +1,6 @@
 mod imp;
-mod layout;
-mod tmux;
+mod tmux_translation;
+mod tmux_layout_translation;
 
 use std::sync::atomic::Ordering;
 
@@ -182,7 +182,9 @@ impl IvyWindow {
     ) {
         let binding = self.imp().terminals.borrow();
         for sorted in binding.iter() {
-            sorted.terminal.update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+            sorted
+                .terminal
+                .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
         }
     }
 }

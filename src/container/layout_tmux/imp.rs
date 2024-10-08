@@ -62,7 +62,6 @@ impl LayoutManagerImpl for TmuxLayoutPriv {
     }
 
     fn allocate(&self, widget: &Widget, width: i32, height: i32, _baseline: i32) {
-        println!("Allocate {} x {}", width, height);
         let container: Container = widget.clone().downcast().unwrap();
         let orientation = container.orientation();
 

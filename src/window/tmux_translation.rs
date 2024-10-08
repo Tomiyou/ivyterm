@@ -9,7 +9,7 @@ use crate::{
     keyboard::keycode_to_arrow_key,
     tmux::{Tmux, TmuxEvent, TmuxTristate},
     toplevel::TopLevel,
-    window::layout::parse_tmux_layout,
+    window::tmux_layout_translation::parse_tmux_layout,
 };
 
 use super::IvyWindow;
