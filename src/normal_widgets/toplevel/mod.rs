@@ -11,7 +11,7 @@ use crate::{
 
 use self::imp::Zoomed;
 
-use super::{container::Container, terminal::Terminal, window::IvyWindow};
+use super::{container::Container, terminal::Terminal, window::IvyNormalWindow};
 
 glib::wrapper! {
     pub struct TopLevel(ObjectSubclass<imp::TopLevelPriv>)
@@ -20,7 +20,7 @@ glib::wrapper! {
 }
 
 impl TopLevel {
-    pub fn new(tab_view: &TabView, window: &IvyWindow, tab_id: u32) -> Self {
+    pub fn new(tab_view: &TabView, window: &IvyNormalWindow, tab_id: u32) -> Self {
         let top_level: TopLevel = Object::builder().build();
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);

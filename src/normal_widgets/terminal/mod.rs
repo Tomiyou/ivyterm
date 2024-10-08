@@ -9,7 +9,7 @@ use crate::{
     application::IvyApplication, keyboard::KeyboardAction,
 };
 
-use super::{toplevel::TopLevel, window::IvyWindow};
+use super::{toplevel::TopLevel, window::IvyNormalWindow};
 
 glib::wrapper! {
     pub struct Terminal(ObjectSubclass<imp::TerminalPriv>)
@@ -18,7 +18,7 @@ glib::wrapper! {
 }
 
 impl Terminal {
-    pub fn new(top_level: &TopLevel, window: &IvyWindow, pane_id: Option<u32>) -> Self {
+    pub fn new(top_level: &TopLevel, window: &IvyNormalWindow, pane_id: Option<u32>) -> Self {
         let window = window.clone();
 
         let pane_id = match pane_id {

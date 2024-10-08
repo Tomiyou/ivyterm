@@ -3,4 +3,4 @@ mod toplevel;
 mod window;
 mod terminal;
 
-pub use window::IvyWindow;
+pub use window::IvyNormalWindow;

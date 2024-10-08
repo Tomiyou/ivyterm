@@ -4,15 +4,15 @@ use gtk4::{Orientation, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*};
 
-use crate::normal_widgets::window::IvyWindow;
+use crate::normal_widgets::window::IvyNormalWindow;
 
-use super::layout_default::ContainerLayout;
+use super::layout::ContainerLayout;
 
 // Object holding the state
 #[derive(glib::Properties)]
 #[properties(wrapper_type = super::Container)]
 pub struct ContainerPriv {
-    pub window: RefCell<Option<IvyWindow>>,
+    pub window: RefCell<Option<IvyNormalWindow>>,
     pub layout: RefCell<Option<ContainerLayout>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,

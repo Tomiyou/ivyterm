@@ -24,7 +24,7 @@ pub struct IvyWindowPriv {
 #[glib::object_subclass]
 impl ObjectSubclass for IvyWindowPriv {
     const NAME: &'static str = "IvyApplicationWindow";
-    type Type = super::IvyWindow;
+    type Type = super::IvyNormalWindow;
     type ParentType = ApplicationWindow;
 }
 

@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use gtk4::Widget;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{helpers::WithId, normal_widgets::{container::Container, terminal::Terminal, window::IvyWindow}};
+use crate::{helpers::WithId, normal_widgets::{container::Container, terminal::Terminal, window::IvyNormalWindow}};
 
 use super::layout::TopLevelLayout;
 
@@ -18,7 +18,7 @@ pub struct Zoomed {
 // Object holding the state
 #[derive(Default)]
 pub struct TopLevelPriv {
-    pub window: RefCell<Option<IvyWindow>>,
+    pub window: RefCell<Option<IvyNormalWindow>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<Terminal>>,
     pub lru_terminals: RefCell<Vec<WithId<Terminal>>>,
@@ -49,7 +49,7 @@ impl WidgetImpl for TopLevelPriv {}
 impl BinImpl for TopLevelPriv {}
 
 impl TopLevelPriv {
-    pub fn init_values(&self, tab_view: &TabView, window: &IvyWindow, tab_id: u32) {
+    pub fn init_values(&self, tab_view: &TabView, window: &IvyNormalWindow, tab_id: u32) {
         self.window.replace(Some(window.clone()));
         self.tab_view.replace(Some(tab_view.clone()));
         self.tab_id.replace(tab_id);

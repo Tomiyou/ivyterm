@@ -1,14 +1,14 @@
 mod imp;
-mod layout_default;
+mod layout;
 mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{Orientation, Widget};
 use libadwaita::{glib, prelude::*};
 
-pub use layout_default::ContainerLayout;
+pub use layout::ContainerLayout;
 
-use super::window::IvyWindow;
+use super::window::IvyNormalWindow;
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -17,7 +17,7 @@ glib::wrapper! {
 }
 
 impl Container {
-    pub fn new(orientation: Orientation, window: &IvyWindow) -> Self {
+    pub fn new(orientation: Orientation, window: &IvyNormalWindow) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);

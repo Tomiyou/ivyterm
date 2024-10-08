@@ -17,12 +17,12 @@ use crate::{
 use super::{terminal::Terminal, toplevel::TopLevel};
 
 glib::wrapper! {
-    pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
+    pub struct IvyNormalWindow(ObjectSubclass<imp::IvyWindowPriv>)
         @extends ApplicationWindow, gtk4::Window, gtk4::Widget,
         @implements gio::ActionGroup, gio::ActionMap, gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Native, gtk4::Root, gtk4::ShortcutManager;
 }
 
-impl IvyWindow {
+impl IvyNormalWindow {
     pub fn new(app: &IvyApplication, css_provider: &CssProvider) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));

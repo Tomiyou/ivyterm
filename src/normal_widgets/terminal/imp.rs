@@ -3,13 +3,13 @@ use std::cell::{Cell, RefCell};
 use libadwaita::{glib, subclass::prelude::*};
 use vte4::{Terminal as Vte, WidgetExt};
 
-use crate::normal_widgets::window::IvyWindow;
+use crate::normal_widgets::window::IvyNormalWindow;
 
 // Object holding the state
 #[derive(Default)]
 pub struct TerminalPriv {
     pub vte: RefCell<Option<Vte>>,
-    window: RefCell<Option<IvyWindow>>,
+    window: RefCell<Option<IvyNormalWindow>>,
     pub id: Cell<u32>,
 }
 
@@ -37,7 +37,7 @@ impl WidgetImpl for TerminalPriv {
 impl BinImpl for TerminalPriv {}
 
 impl TerminalPriv {
-    pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyWindow) {
+    pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyNormalWindow) {
         self.id.replace(id);
         self.vte.borrow_mut().replace(terminal.clone());
         self.window.borrow_mut().replace(window.clone());

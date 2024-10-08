@@ -8,7 +8,7 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
-use crate::normal_widgets::IvyWindow;
+use crate::normal_widgets::IvyNormalWindow;
 use crate::settings::show_preferences_window;
 
 glib::wrapper! {
@@ -45,13 +45,13 @@ impl IvyApplication {
         let css_provider = binding.as_ref().unwrap();
 
         let window = if let Some(session_name) = tmux_session {
+            println!("Attaching to TMUX session {}", session_name);
             todo!();
-            // println!("Starting TMUX");
             // let tmux = attach_tmux(session_name, &window).unwrap();
             // window.init_tmux(tmux);
         } else {
             // Create initial Tab
-            IvyWindow::new(self, css_provider)
+            IvyNormalWindow::new(self, css_provider)
         };
 
         window.present();
@@ -81,7 +81,7 @@ impl IvyApplication {
 
         // Refresh terminals to respect the new colors
         for window in self.windows() {
-            if let Ok(window) = window.downcast::<IvyWindow>() {
+            if let Ok(window) = window.downcast::<IvyNormalWindow>() {
                 window.update_terminal_config(
                     &font_desc,
                     main_colors,
