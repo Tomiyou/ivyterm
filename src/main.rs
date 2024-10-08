@@ -1,6 +1,3 @@
-use std::sync::atomic::AtomicU32;
-use std::sync::atomic::Ordering;
-
 use application::IvyApplication;
 use libadwaita::glib;
 use libadwaita::prelude::*;
