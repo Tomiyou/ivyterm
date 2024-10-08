@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use gtk4::gdk::Cursor;
-use gtk4::{Orientation, Separator, Widget};
+use gtk4::{GestureDrag, Orientation, Separator, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*, Bin};
 
@@ -85,6 +85,17 @@ impl IvyPanedPriv {
         if let Some(cursor) = cursor.as_ref() {
             separator_container.set_cursor(Some(&cursor));
         }
+
+        // Add ability to drag
+        let drag = GestureDrag::new();
+        let paned = self.obj().clone();
+        let layout: IvyLayout = paned.layout_manager().unwrap().downcast().unwrap();
+        let _separator_container = separator_container.clone();
+        drag.connect_drag_update(move |drag, offset_x, offset_y| {
+            let (start_x, start_y) = drag.start_point().unwrap();
+            layout.drag_update(&paned, &_separator_container, start_x + offset_x, start_y + offset_y);
+        });
+        separator_container.add_controller(drag);
 
         // Store separator widget inside priv struct
         self.separator.replace(Some(separator_container));

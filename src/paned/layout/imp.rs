@@ -9,8 +9,9 @@ use crate::paned::IvyPaned;
 
 // Object holding the state
 pub struct IvyLayoutPriv {
-    pub percentage: Cell<f32>,
+    pub percentage: Cell<f64>,
     pub last_combined_size: Cell<i32>,
+    pub current_first_child_size: Cell<i32>,
 }
 
 impl Default for IvyLayoutPriv {
@@ -18,6 +19,7 @@ impl Default for IvyLayoutPriv {
         Self {
             percentage: Cell::new(0.5),
             last_combined_size: Cell::new(-1),
+            current_first_child_size: Cell::new(-1),
         }
     }
 }
@@ -70,6 +72,8 @@ impl LayoutManagerImpl for IvyLayoutPriv {
 
             let (handle_alloc, start_alloc, end_alloc) = if orientation == Orientation::Horizontal {
                 let start_child_width = self.get_start_child_size(width - handle_size);
+                self.current_first_child_size.replace(start_child_width);
+
                 let handle_allocation = Allocation::new(start_child_width, 0, handle_size, height);
                 let start_child_allocation = Allocation::new(0, 0, start_child_width, height);
                 let end_child_allocation = Allocation::new(
@@ -86,6 +90,8 @@ impl LayoutManagerImpl for IvyLayoutPriv {
                 )
             } else {
                 let start_child_height = self.get_start_child_size(height - handle_size);
+                self.current_first_child_size.replace(start_child_height);
+
                 let handle_allocation = Allocation::new(0, start_child_height, width, handle_size);
                 let start_child_allocation = Allocation::new(0, 0, width, start_child_height);
                 let end_child_allocation = Allocation::new(
@@ -246,7 +252,7 @@ impl IvyLayoutPriv {
 
     #[inline]
     fn get_start_child_size(&self, combined_size: i32) -> i32 {
-        (self.percentage.get() * combined_size as f32) as i32
+        (self.percentage.get() * combined_size as f64) as i32
     }
 }
 
