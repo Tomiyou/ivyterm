@@ -1,14 +1,15 @@
 use std::cell::RefCell;
 
+use gtk4::{Box as Container, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{global_state::WindowState, container::Container, pane::Pane};
+use crate::{global_state::WindowState, pane::Pane};
 
 pub struct Zoomed {
     pub terminal: Pane,
-    pub root_paned: Container,
-    pub terminal_paned: Container,
-    pub is_start_child: bool,
+    pub root_container: Container,
+    pub terminal_container: Container,
+    pub previous_sibling: Option<Widget>,
     pub previous_bounds: (i32, i32, i32, i32),
 }
 

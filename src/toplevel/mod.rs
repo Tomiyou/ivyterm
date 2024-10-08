@@ -7,7 +7,8 @@ use gtk4::{graphene::Rect, Box as Container, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, pane::Pane, separator::new_separator, GLOBAL_TAB_ID
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, pane::Pane, separator::new_separator,
+    GLOBAL_TAB_ID,
 };
 
 use self::imp::Zoomed;
@@ -84,7 +85,7 @@ impl TopLevel {
         // The split orientation is different from Container's, meaning we have to insert a new Container
         let new_container = Container::new(orientation, 0);
         container.insert_child_after(&new_container, Some(terminal));
-        container.remove(terminal);
+        terminal.unparent();
         new_container.append(terminal);
         new_container.append(&new_separator);
         new_container.append(&new_terminal);
@@ -105,13 +106,13 @@ impl TopLevel {
 
         // Check if there is a next sibling (Separator) and remove it, otherwise remove previous sibling
         if let Some(separator) = closing_terminal.next_sibling() {
-            container.remove(&separator);
+            separator.unparent();
         } else if let Some(separator) = closing_terminal.prev_sibling() {
-            container.remove(&separator);
+            separator.unparent();
         } else {
             panic!("Closing terminal has no next/previous sibling!");
         }
-        container.remove(closing_terminal);
+        closing_terminal.unparent();
 
         // If container only has 1 child left, we need to remove it and leave the 1 child in its place
         let retained_child = container.first_child().unwrap();
@@ -120,7 +121,7 @@ impl TopLevel {
         }
 
         // Remove the last child from Container, which will be deleted
-        container.remove(&retained_child);
+        retained_child.unparent();
 
         // Determine if parent is type Bin or Container
         let parent = container.parent().unwrap();
@@ -135,7 +136,7 @@ impl TopLevel {
         if let Ok(parent) = parent.downcast::<Container>() {
             // Parent is another Container
             parent.insert_child_after(&retained_child, Some(&container));
-            parent.remove(&container);
+            container.unparent();
 
             // Grab focus for a new terminal
             // new_focus.grab_focus();
@@ -147,75 +148,60 @@ impl TopLevel {
     }
 
     pub fn toggle_zoom(&self, terminal: &Pane) {
-        // let imp = self.imp();
-        // let binding = imp.terminals.borrow();
-        // if binding.len() < 2 {
-        //     // There is only 1 terminal present, no need for any zooming
-        //     return;
-        // }
+        let imp = self.imp();
+        let binding = imp.terminals.borrow();
+        if binding.len() < 2 {
+            // There is only 1 terminal present, no need for any zooming
+            return;
+        }
 
-        // let mut binding = imp.zoomed.borrow_mut();
-        // if let Some(zoomed) = binding.take() {
-        //     // Unzoom the terminal
-        //     self.set_child(None::<&Widget>);
-        //     if zoomed.is_start_child {
-        //         zoomed
-        //             .terminal_paned
-        //             .set_start_child(Some(&zoomed.terminal));
-        //     } else {
-        //         zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
-        //     }
+        let mut binding = imp.zoomed.borrow_mut();
+        if let Some(z) = binding.take() {
+            // Unzoom the terminal
+            self.set_child(None::<&Widget>);
+            z.terminal_container
+                .insert_child_after(&z.terminal, z.previous_sibling.as_ref());
 
-        //     self.set_child(Some(&zoomed.root_paned));
-        //     terminal.grab_focus();
-        //     return;
-        // }
-        // // Zoom the terminal
+            self.set_child(Some(&z.root_container));
+            z.terminal.grab_focus();
+            return;
+        }
+        // Zoom the terminal
 
-        // // We need to remember the current width and height for the unzoom portion
-        // let (x, y, width, height) = terminal.bounds().unwrap();
+        // We need to remember the current width and height for the unzoom portion
+        let (x, y, width, height) = terminal.bounds().unwrap();
 
-        // // Remove Terminal from its parent Container
-        // let terminal_paned: Container = terminal.parent().unwrap().downcast().unwrap();
-        // let is_start_child = if terminal_paned.start_child().unwrap().eq(terminal) {
-        //     terminal_paned.set_start_child(None::<&Widget>);
-        //     true
-        // } else {
-        //     terminal_paned.set_end_child(None::<&Widget>);
-        //     false
-        // };
+        // Remove Terminal from its parent Container
+        let terminal_paned: Container = terminal.parent().unwrap().downcast().unwrap();
+        let previous_sibling = terminal.prev_sibling();
+        terminal.unparent();
 
-        // // Remove root Container and replace it with Terminal
-        // let root_paned: Container = self.child().unwrap().downcast().unwrap();
-        // self.set_child(Some(terminal));
-        // terminal.grab_focus();
+        // Remove root Container and replace it with Terminal
+        let root_paned: Container = self.child().unwrap().downcast().unwrap();
+        self.set_child(Some(terminal));
+        terminal.grab_focus();
 
-        // let zoomed = Zoomed {
-        //     terminal: terminal.clone(),
-        //     root_paned,
-        //     terminal_paned,
-        //     is_start_child,
-        //     previous_bounds: (x, y, width, height),
-        // };
-        // binding.replace(zoomed);
+        let zoomed = Zoomed {
+            terminal: terminal.clone(),
+            root_container: root_paned,
+            terminal_container: terminal_paned,
+            previous_sibling,
+            previous_bounds: (x, y, width, height),
+        };
+        binding.replace(zoomed);
     }
 
     pub fn unzoom(&self) -> Option<(i32, i32, i32, i32)> {
         let mut binding = self.imp().zoomed.borrow_mut();
-        if let Some(zoomed) = binding.take() {
+        if let Some(z) = binding.take() {
             self.set_child(None::<&Widget>);
-            if zoomed.is_start_child {
-                zoomed
-                    .terminal_paned
-                    .set_start_child(Some(&zoomed.terminal));
-            } else {
-                zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
-            }
+            z.terminal_container
+                .insert_child_after(&z.terminal, z.previous_sibling.as_ref());
 
-            self.set_child(Some(&zoomed.root_paned));
-            zoomed.terminal.grab_focus();
+            self.set_child(Some(&z.root_container));
+            z.terminal.grab_focus();
 
-            return Some(zoomed.previous_bounds);
+            return Some(z.previous_bounds);
         }
 
         None
