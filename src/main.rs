@@ -6,11 +6,10 @@ use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
 use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
-use mux::create_tab;
+use toplevel::create_tab;
 
 mod global_state;
 mod keyboard;
-mod mux;
 mod terminal;
 mod toplevel;
 mod paned;

@@ -1,16 +1,16 @@
 mod imp;
 
+use std::sync::atomic::Ordering;
+
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal,
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal, GLOBAL_TAB_ID,
 };
 
 use self::imp::Zoomed;
-
-use super::create_tab;
 
 glib::wrapper! {
     pub struct TopLevel(ObjectSubclass<imp::TopLevel>)
@@ -313,4 +313,16 @@ impl TopLevel {
 
         None
     }
+}
+
+pub fn create_tab(tab_view: &TabView) {
+    let tab_id = GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed);
+    let top_level = TopLevel::new(tab_view);
+
+    // Add pane as a page
+    let page = tab_view.append(&top_level);
+
+    let text = format!("Terminal {}", tab_id);
+    page.set_title(&text);
+    tab_view.set_selected_page(&page);
 }
