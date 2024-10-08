@@ -250,7 +250,7 @@ fn sync_layout_recursive(
     while let Some(tmux_pane) = layout.next() {
         match tmux_pane {
             TmuxPane::Return => {
-                return;
+                break;
             }
             TmuxPane::Terminal(term_id, allocation) => {
                 debug!("-- NEXT ITEM: {:?}", tmux_pane);
@@ -306,6 +306,8 @@ fn sync_layout_recursive(
         //     remove_unparented_widgets(&container);
         // }
     }
+
+    parent.c.queue_allocate();
 }
 
 struct Position {
