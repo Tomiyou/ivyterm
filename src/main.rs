@@ -11,6 +11,8 @@ use mux::create_tab;
 mod global_state;
 mod keyboard;
 mod mux;
+mod terminal;
+mod toplevel;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
 

@@ -5,8 +5,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
 use crate::{
     global_state::GLOBAL_SETTINGS,
-    keyboard::{handle_input, Keybinding},
-    mux::toplevel::TopLevel,
+    keyboard::{handle_input, Keybinding}, toplevel::TopLevel,
 };
 
 pub fn create_terminal(top_level: &TopLevel) -> Terminal {

@@ -6,9 +6,7 @@ use libadwaita::{glib, prelude::*, TabView};
 use vte4::{Terminal, WidgetExt};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH,
-    keyboard::Direction,
-    mux::{pane::new_paned, terminal::create_terminal},
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, mux::new_paned, terminal::create_terminal
 };
 
 use self::imp::Zoomed;
