@@ -3,6 +3,7 @@ use super::TmuxTopLevel;
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::{Orientation, Widget};
 use libadwaita::prelude::*;
+use log::debug;
 
 use crate::{
     tmux_api::{Rectangle, TmuxPane},
@@ -92,12 +93,18 @@ impl TmuxTopLevel {
                         let last_child = container.last_child().unwrap();
                         if first_child.eq(&last_child) {
                             // First child is also the last child (only 1 child left)
-                            println!("Leftover child replacing closing Container");
-                            first_child.unparent();
-                            replace_pane(&container, &first_child);
+                            debug!(
+                                "Leftover child {} replacing closing Container {}",
+                                first_child.type_(),
+                                container.type_()
+                            );
+                            replace_container(&container, &first_child);
                         }
                     }
                 }
+
+                // Terminal is unregistered for TopLevel, but we also need to unregister it from Window
+                window.unregister_terminal(term_id);
 
                 false
             });
@@ -431,17 +438,13 @@ fn calculate_position(bounds: &Rectangle, parent: &ParentContainer) -> Position 
     // Depending if widget is last or not is why we need BOTH a position for
     // a next_sibling() Separator and a prev_sibling() Separator
     match orientation {
-        Orientation::Horizontal => {
-            Position {
-                prev: bounds.x - parent.bounds.x - 1,
-                next: bounds.x - parent.bounds.x + bounds.width,
-            }
+        Orientation::Horizontal => Position {
+            prev: bounds.x - parent.bounds.x - 1,
+            next: bounds.x - parent.bounds.x + bounds.width,
         },
-        _ => {
-            Position {
-                prev: bounds.y - parent.bounds.y - 1,
-                next: bounds.y - parent.bounds.y + bounds.height,
-            }
+        _ => Position {
+            prev: bounds.y - parent.bounds.y - 1,
+            next: bounds.y - parent.bounds.y + bounds.height,
         },
     }
 }
@@ -521,10 +524,23 @@ fn remove_pane(child: &impl IsA<Widget>) {
     child.unparent();
 }
 
-fn replace_pane(old: &impl IsA<Widget>, new: &impl IsA<Widget>) {
-    let parent = old.parent().unwrap();
-    new.insert_after(&parent, Some(old));
-    old.unparent();
+fn replace_container(closing: &impl IsA<Widget>, survivor: &impl IsA<Widget>) {
+    // At this point, closing is parent of survivor
+    survivor.unparent();
+
+    let parent = closing.parent().unwrap();
+
+    // TODO: use match for all castings
+    match parent.downcast::<TmuxTopLevel>() {
+        Ok(top_level) => {
+            println!("Using set_child() instead of unparent() ...");
+            top_level.set_child(Some(survivor));
+        }
+        Err(container) => {
+            survivor.insert_after(&container, Some(closing));
+            closing.unparent();
+        }
+    }
 }
 
 fn print_hierarchy(widget: &impl IsA<Widget>, nested: u32) {
