@@ -1,11 +1,11 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation, Paned, Widget};
+use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, mux::new_paned, terminal::IvyTerminal,
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, paned::IvyPaned, terminal::IvyTerminal
 };
 
 use self::imp::Zoomed;
@@ -62,24 +62,24 @@ impl TopLevel {
             let old_terminal = self.child().unwrap();
 
             self.set_child(None::<&Self>);
-            let new_paned = new_paned(orientation, old_terminal, new_terminal);
+            let new_paned = IvyPaned::new(orientation, old_terminal, new_terminal);
             self.set_child(Some(&new_paned));
             return;
         }
         // Terminal's parent is a Paned widget
 
-        let paned: Paned = parent.downcast().unwrap();
+        let paned: IvyPaned = parent.downcast().unwrap();
         let start_child = paned.start_child().unwrap();
         if start_child.eq(terminal) {
             // Replace first child
             paned.set_start_child(None::<&Widget>);
 
-            let new_paned = new_paned(orientation, start_child, new_terminal);
+            let new_paned = IvyPaned::new(orientation, start_child, new_terminal);
             paned.set_start_child(Some(&new_paned));
 
             // Re-calculate panes divider position
             let size = paned.size(paned.orientation());
-            paned.set_position(size / 2);
+            paned.set_position(0.5);
             return;
         }
 
@@ -88,12 +88,12 @@ impl TopLevel {
             // Replace end child
             paned.set_end_child(None::<&Widget>);
 
-            let new_paned = new_paned(orientation, end_child, new_terminal);
+            let new_paned = IvyPaned::new(orientation, end_child, new_terminal);
             paned.set_end_child(Some(&new_paned));
 
             // Re-calculate panes divider position
             let size = paned.size(paned.orientation());
-            paned.set_position(size / 2);
+            paned.set_position(0.5);
             return;
         }
     }
@@ -109,7 +109,7 @@ impl TopLevel {
         }
 
         // Parent of the closing terminal is a Paned widget
-        let closing_paned: Paned = parent.downcast().unwrap();
+        let closing_paned: IvyPaned = parent.downcast().unwrap();
 
         // Paned always has 2 children present, if not, then it would have been deleted
         let start_child = closing_paned.start_child().unwrap();
@@ -155,9 +155,9 @@ impl TopLevel {
             return;
         }
 
-        if let Ok(parent) = parent.downcast::<Paned>() {
+        if let Ok(parent) = parent.downcast::<IvyPaned>() {
             // Parent is another gtk4::Paned
-            parent.emit_cycle_child_focus(true);
+            // parent.emit_cycle_child_focus(true);
 
             let start_child = parent.start_child().unwrap();
             let end_child = parent.end_child().unwrap();
@@ -171,10 +171,6 @@ impl TopLevel {
             } else {
                 panic!("Closing Pane is neither first nor end child");
             }
-
-            // Re-adjust split positions
-            let size = parent.size(parent.orientation());
-            parent.set_position(size / 2);
 
             // Grab focus for a new terminal
             new_focus.grab_focus();
@@ -215,7 +211,7 @@ impl TopLevel {
         let (_, _, width, height) = terminal.bounds().unwrap();
 
         // Remove Terminal from its parent Paned
-        let terminal_paned: Paned = terminal.parent().unwrap().downcast().unwrap();
+        let terminal_paned: IvyPaned = terminal.parent().unwrap().downcast().unwrap();
         let is_start_child = if terminal_paned.start_child().unwrap().eq(terminal) {
             terminal_paned.set_start_child(None::<&Widget>);
             true
@@ -225,7 +221,7 @@ impl TopLevel {
         };
 
         // Remove root Paned and replace it with Terminal
-        let root_paned: Paned = self.child().unwrap().downcast().unwrap();
+        let root_paned: IvyPaned = self.child().unwrap().downcast().unwrap();
         self.set_child(Some(terminal));
         terminal.grab_focus();
 

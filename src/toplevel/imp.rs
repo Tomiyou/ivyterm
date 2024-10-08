@@ -1,14 +1,13 @@
 use std::cell::RefCell;
 
-use gtk4::Paned;
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::terminal::IvyTerminal;
+use crate::{paned::IvyPaned, terminal::IvyTerminal};
 
 pub struct Zoomed {
     pub terminal: IvyTerminal,
-    pub root_paned: Paned,
-    pub terminal_paned: Paned,
+    pub root_paned: IvyPaned,
+    pub terminal_paned: IvyPaned,
     pub is_start_child: bool,
     pub previous_size: (i32, i32),
 }

@@ -13,6 +13,7 @@ mod keyboard;
 mod mux;
 mod terminal;
 mod toplevel;
+mod paned;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
 

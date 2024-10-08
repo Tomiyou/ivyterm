@@ -19,6 +19,8 @@ impl IvyPaned {
         let container: Self = Object::builder().build();
         container.set_spacing(0);
         container.set_orientation(orientation);
+        container.set_vexpand(true);
+        container.set_hexpand(true);
 
         {
             let separator = Separator::new(Orientation::Vertical);
@@ -46,6 +48,7 @@ impl IvyPaned {
         }
 
         // Show separator
+        imp.separator_visible.replace(true);
         let binding = imp.separator.borrow();
         let separator = binding.as_ref().unwrap();
         if prepend {
@@ -116,11 +119,15 @@ impl IvyPaned {
         }
     }
 
-    pub fn get_start_child(&self) -> Option<Widget> {
+    pub fn start_child(&self) -> Option<Widget> {
         self.imp().start_child.borrow().clone()
     }
 
-    pub fn get_end_child(&self) -> Option<Widget> {
+    pub fn end_child(&self) -> Option<Widget> {
         self.imp().end_child.borrow().clone()
+    }
+
+    pub fn set_position(&self, percentage: f32) {
+        
     }
 }
