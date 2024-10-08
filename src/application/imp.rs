@@ -4,7 +4,7 @@ use gtk4::CssProvider;
 use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 
-use super::config::GlobalConfig;
+use crate::settings::GlobalConfig;
 
 // Object holding the state
 #[derive(Default)]

@@ -3,19 +3,15 @@ mod imp;
 
 use glib::Object;
 use gtk4::gdk::{Display, RGBA};
+use gtk4::pango::FontDescription;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
+use crate::settings::show_preferences_window;
 use crate::tmux::attach_tmux;
 use crate::window::IvyWindow;
-
-pub use config::APPLICATION_TITLE;
-pub use config::INITIAL_HEIGHT;
-pub use config::INITIAL_WIDTH;
-pub use config::SPLIT_HANDLE_WIDTH;
-pub use config::SPLIT_VISUAL_WIDTH;
 
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)
@@ -67,8 +63,14 @@ impl IvyApplication {
         self.refresh_terminals();
     }
 
+    pub fn show_settings(&self) {
+        show_preferences_window(self);
+    }
+
     fn refresh_terminals(&self) {
-        let (font_desc, main_colors, palette_colors, scrollback_lines) = self.get_terminal_config();
+        let config = self.imp().config.borrow();
+        let (font_desc, main_colors, palette_colors, scrollback_lines) =
+            config.get_terminal_config();
 
         // Refresh terminals to respect the new colors
         for window in self.windows() {
@@ -81,6 +83,11 @@ impl IvyApplication {
                 );
             }
         }
+    }
+
+    pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
+        let config = self.imp().config.borrow();
+        config.get_terminal_config()
     }
 }
 

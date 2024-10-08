@@ -11,3 +11,7 @@ separator {
     min-width: 3px;
     min-height: 3px;
 }
+
+.setting_row {
+    padding: 10px 20px;
+}

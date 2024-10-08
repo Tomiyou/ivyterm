@@ -2,7 +2,10 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Cursor, GestureDrag, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
-use crate::{application::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH}, container::get_opposite_orientation};
+use crate::{
+    container::get_opposite_orientation,
+    settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH},
+};
 
 use super::{layout::ContainerLayout, Container};
 

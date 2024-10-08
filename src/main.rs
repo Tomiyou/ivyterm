@@ -6,6 +6,7 @@ mod application;
 mod container;
 mod error;
 mod keyboard;
+mod settings;
 mod terminal;
 mod tmux;
 mod toplevel;
