@@ -39,7 +39,7 @@ impl LearningKeybinding {
         }
     }
 
-    pub fn update_and_remove(&self, update: Option<String>) {
+    pub fn update_and_remove(&self, update: Option<&str>) {
         let mut keybinding = self.keybinding.borrow_mut();
 
         if let Some(trigger) = update {
@@ -110,6 +110,7 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
         move |row| {
             if row.has_focus() == false {
                 if let Some(learning) = learning.borrow_mut().take() {
+                    println!("Some learning is some");
                     learning.update_and_remove(None);
                 }
             }
@@ -145,6 +146,7 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
             &keybind_widget,
             &row,
         ));
+        drop(binding);
 
         keyboard_ctrl.connect_key_pressed(glib::clone!(
             #[weak]
@@ -153,13 +155,12 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
             Propagation::Stop,
             move |_, keyval, keycode, state| {
                 let unicode = keyval.to_unicode();
-                println!("Controller input {:?} - {}", keyval.to_unicode(), keycode);
                 if unicode.is_none() {
                     return Propagation::Stop;
                 }
                 let unicode = unicode.unwrap();
 
-                let binding = learning.borrow();
+                let mut binding = learning.borrow_mut();
                 let _learning = binding
                     .as_ref()
                     .expect("Keybind learning input, but not learning!");
@@ -170,13 +171,16 @@ fn create_keybinding_row(keybinding: Keybinding) -> PreferencesRow {
                     }
                     22 => {
                         // Handle Backspace - unassign keybinding
-                        _learning.update_and_remove(Some("".to_string()));
+                        _learning.update_and_remove(Some(""));
                     }
                     _ => {
                         let trigger = key_event_to_trigger(unicode, state);
-                        _learning.update_and_remove(Some(trigger));
+                        _learning.update_and_remove(Some(&trigger));
                     }
                 }
+
+                // Drop LearningKeybinding as we are no longer learning
+                *binding = None;
                 Propagation::Stop
             }
         ));
