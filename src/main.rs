@@ -20,8 +20,8 @@ fn main() -> glib::ExitCode {
     });
 
     application.connect_activate(move |app| {
-        // app.new_window(None);
-        app.new_window(Some("plastika"), Some("localhost"));
+        app.new_window(None, None);
+        // app.new_window(Some("plastika"), Some("localhost"));
     });
     application.run()
 }
