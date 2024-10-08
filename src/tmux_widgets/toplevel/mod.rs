@@ -247,8 +247,8 @@ impl TmuxTopLevel {
             // VTE widget has a fixed padding of 1px on each side
             let cols = (allocation.width() - 2) / char_width;
             let rows = (allocation.height() - 2) / char_height;
-            // println!("Cols: {} | total width {} char width {}", cols, allocation.width(), char_width);
-            // println!("Rows: {} | total width {} char width {}", rows, allocation.height(), char_height);
+            println!("Cols: {} | total width {} char width {}", cols, allocation.width(), char_width);
+            println!("Rows: {} | total width {} char width {}", rows, allocation.height(), char_height);
             return (cols, rows);
         }
 

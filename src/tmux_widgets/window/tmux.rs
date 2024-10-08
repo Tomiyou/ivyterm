@@ -128,8 +128,9 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::InitialLayout(tab_id, hierarchy) => {
-                println!("Initial layout ({}): {:?}", tab_id, hierarchy);
+                // println!("Initial layout ({}): {:?}", tab_id, hierarchy);
                 sync_tmux_layout(&self, tab_id, hierarchy);
+                println!("Initial layout finished");
                 // println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)

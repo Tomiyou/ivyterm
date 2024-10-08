@@ -11,6 +11,16 @@ fn print_tab(nested: u32) {
 }
 
 pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
+    println!("Given layout {}", from_utf8(buffer).unwrap());
+
+    let buffer = if buffer[0] == b'@' {
+        // Skip @
+        println!("Skipping @");
+        &buffer[1..]
+    } else {
+        &buffer
+    };
+
     // Read tab ID
     let (tab_id, bytes_read) = read_first_u32(buffer);
     let buffer = &buffer[bytes_read + 1..];
@@ -18,6 +28,11 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>) {
     // Skip the initial whatever
     let bytes_read = read_until_char(buffer, b',');
     let buffer = &buffer[bytes_read + 1..];
+
+    // TODO: Handle actual and visible layout
+    // This is a temporary fix for layout change event, which sends 2 layouts at once
+    let bytes_read = read_until_char(buffer, b' ');
+    let buffer = &buffer[..bytes_read];
 
     println!(
         "Tab id is {}, remaining buffer: {}",
@@ -36,6 +51,8 @@ fn parse_layout_recursive(buffer: &[u8], hierarchy: &mut Vec<TmuxPane>, nested: 
     let mut buffer = buffer;
 
     loop {
+        print_tab(nested);
+        println!("Remaining buffer: {}", from_utf8(buffer).unwrap());
         // Read width
         let (width, bytes_read) = read_first_u32(buffer);
         buffer = &buffer[bytes_read + 1..];
@@ -110,7 +127,7 @@ pub fn read_first_u32(buffer: &[u8]) -> (u32, usize) {
 #[inline]
 pub fn read_until_char(buffer: &[u8], c: u8) -> usize {
     let mut i = 0;
-    while buffer[i] != c {
+    while i < buffer.len() && buffer[i] != c {
         i += 1;
     }
     i

@@ -19,12 +19,30 @@ struct ParentContainer {
 }
 
 fn print_tab(nested: u32) {
-    for i in 0..nested {
+    for _ in 0..nested {
         print!("    ");
     }
 }
 
 pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPane>) {
+    {
+        let mut nested = 0;
+        for pane in layout.iter() {
+            match pane {
+                TmuxPane::Container(_, _) => {
+                    print_tab(nested);
+                    println!("- {:?}", pane);
+                    nested += 1
+                },
+                TmuxPane::Return => nested -= 1,
+                _ => {
+                    print_tab(nested);
+                    println!("- {:?}", pane);
+                }
+            }
+        }
+    }
+
     let top_level = if let Some(top_level) = window.get_top_level(tab_id) {
         println!("Reusing top Level {}", top_level.tab_id());
         top_level
@@ -35,58 +53,60 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
 
     // First we remove any Terminals which do not exist in Tmux anymore
     // TODO: Make this less brute force
-    let mut registered_terminals = window.imp().terminals.borrow_mut();
-    let original_len = registered_terminals.len();
+    {
+        let mut registered_terminals = window.imp().terminals.borrow_mut();
+        let original_len = registered_terminals.len();
 
-    registered_terminals.retain(|t| {
-        let mut still_exists = false;
-        // Check if our registered terminal has NOT been closed
-        for pane in layout.iter() {
-            match pane {
-                TmuxPane::Terminal(pane_id, _) => {
-                    if t.id == *pane_id {
-                        still_exists = true;
-                        break;
+        registered_terminals.retain(|t| {
+            let mut still_exists = false;
+            // Check if our registered terminal has NOT been closed
+            for pane in layout.iter() {
+                match pane {
+                    TmuxPane::Terminal(pane_id, _) => {
+                        if t.id == *pane_id {
+                            still_exists = true;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if still_exists {
+                return true;
+            }
+
+            // Terminal has been closed by Tmux, we have to do the same
+            println!("Terminal {} closed by Tmux", t.id);
+
+            let parent = t.terminal.parent();
+            remove_pane(&t.terminal);
+
+            if original_len > 1 {
+                // We know that there is at least 1 TmuxContainer, so Parent must be Container
+                if let Some(container) = parent {
+                    // If Container has only 1 child left at this point, we should remove it
+                    let first_child = container.first_child().unwrap();
+                    let last_child = container.last_child().unwrap();
+                    if first_child.eq(&last_child) {
+                        // First child is also the last child (only 1 child left)
+                        println!("Leftover child replace closing Container");
+                        first_child.unparent();
+                        replace_pane(&container, &first_child);
+                        println!("KEKW");
                     }
                 }
-                _ => {}
             }
-        }
-        if still_exists {
-            return true;
-        }
 
-        // Terminal has been closed by Tmux, we have to do the same
-        println!("Terminal {} closed by Tmux", t.id);
-
-        let parent = t.terminal.parent();
-        remove_pane(&t.terminal);
-
-        if original_len > 1 {
-            // We know that there is at least 1 TmuxContainer, so Parent must be Container
-            if let Some(container) = parent {
-                // If Container has only 1 child left at this point, we should remove it
-                let first_child = container.first_child().unwrap();
-                let last_child = container.last_child().unwrap();
-                if first_child.eq(&last_child) {
-                    // First child is also the last child (only 1 child left)
-                    println!("Leftover child replace closing Container");
-                    first_child.unparent();
-                    replace_pane(&container, &first_child);
-                    println!("KEKW");
-                }
-            }
-        }
-
-        false
-    });
+            false
+        });
+    }
 
     // All closed Terminals are gone at this point
     // Now we have to determine if the first child is a Pane or a Container
     let mut iter = layout.iter();
     if let Some(first) = iter.next() {
         match first {
-            TmuxPane::Terminal(term_id, bounds) => {
+            TmuxPane::Terminal(term_id, _) => {
                 let term_id = *term_id;
                 // terminal_callback(pane_id, window, top_level, parent, allocation, &mut current_sibling);
                 if let Some(existing) = window.get_terminal_by_id(term_id) {
@@ -126,7 +146,6 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
                     } else {
                         // The first child is a Terminal, replace with a new Container
                         println!("The first child is a Terminal, replace with a new Container");
-                        top_level.set_child(None::<&Widget>);
                         let container = TmuxContainer::new(orientation, window);
                         top_level.set_child(Some(&container));
                         container
@@ -145,6 +164,7 @@ pub fn sync_tmux_layout(window: &IvyTmuxWindow, tab_id: u32, layout: Vec<TmuxPan
                 };
 
                 parse_layout_recursive(&mut iter, window, &top_level, &container, 1);
+                println!("Recursion finished");
             }
             _ => {
                 panic!("Parsed Layout has no Terminals")
@@ -180,7 +200,7 @@ fn parse_layout_recursive(
 
     while let Some(tmux_pane) = layout.next() {
         print_tab(nested);
-        println!("Next item: {:?}", tmux_pane);
+        println!("-- Next item: {:?}", tmux_pane);
         match tmux_pane {
             TmuxPane::Return => {
                 return;
@@ -255,6 +275,7 @@ fn container_callback(
     if let Some(next_pane) = next_sibling {
         if let Ok(container) = next_pane.clone().downcast::<TmuxContainer>() {
             // Ensure bounds (position) are correct?
+            print_tab(nested);
             println!("Container is already in the correct place");
             if let Some(separator) = container.next_sibling() {
                 let separator: TmuxSeparator = separator.downcast().unwrap();
@@ -264,12 +285,14 @@ fn container_callback(
             move_child_pointer(next_sibling, container.clone().upcast());
             return container;
         } else {
+            print_tab(nested);
             println!(
                 "Created new Container to replace the current child, position {}",
                 position
             );
         }
     } else {
+        print_tab(nested);
         println!(
             "Created new Container, next_sibling is None, position {}",
             position
@@ -303,6 +326,7 @@ fn terminal_callback(
         if let Some(next_pane) = next_sibling {
             // Check if this next_pane is already this terminal
             if existing.eq(next_pane) {
+                print_tab(nested);
                 println!(
                     "Pane with ID {} already in the correct place, position is {}",
                     pane_id, position
@@ -323,6 +347,7 @@ fn terminal_callback(
         remove_pane(&existing);
         // Now insert it in the correct place
         prepend_pane(window, &parent.c, &existing, next_sibling, position);
+        print_tab(nested);
         println!(
             "Pane with ID {} moved to new position ({})",
             pane_id, position
@@ -332,8 +357,7 @@ fn terminal_callback(
     }
 
     // Terminal does not exist yet, simply prepend it before next_sibling
-    // print_tab(nested);
-    // println!("Created new Terminal {}", pane_id);
+    print_tab(nested);
     let new_terminal = TmuxTerminal::new(top_level, window, pane_id);
     prepend_pane(window, &parent.c, &new_terminal, next_sibling, position);
 

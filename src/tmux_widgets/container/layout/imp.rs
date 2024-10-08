@@ -1,6 +1,6 @@
 use gtk4::{Allocation, LayoutManager, Orientation, Widget};
-use libadwaita::{prelude::*, subclass::prelude::*};
 use libadwaita::{glib, Bin};
+use libadwaita::{prelude::*, subclass::prelude::*};
 
 use crate::tmux_widgets::container::{TmuxContainer, TmuxSeparator};
 
@@ -159,14 +159,12 @@ impl TmuxLayoutPriv {
         let mut children_sizes = Vec::with_capacity(16);
         let mut already_used_size = 0;
 
-        while let Some(child) = next_child.as_ref() {
+        while let Some(child) = &next_child {
             // Check if child is TmuxSeparator
             if size < 0 {
                 children_sizes.push(-1);
-                continue;
-            }
             // TODO: Optimize this cast (if needed)
-            if let Ok(separator) = child.clone().downcast::<TmuxSeparator>() {
+            } else if let Ok(separator) = child.clone().downcast::<TmuxSeparator>() {
                 let handle_size = separator.get_handle_width();
 
                 // cell_size is size of handle + 2 (1px of padding on each side)
@@ -175,6 +173,7 @@ impl TmuxLayoutPriv {
                 let child_size = separator_position - already_used_size;
                 children_sizes.push(child_size);
                 children_sizes.push(handle_size);
+                println!("Pane size {}, separator size {}", child_size, handle_size);
 
                 already_used_size += child_size + handle_size;
             }
@@ -184,6 +183,7 @@ impl TmuxLayoutPriv {
         // !(size < 0)
         if size >= 0 {
             children_sizes.push(size - already_used_size);
+            println!("Last pane size {}", size - already_used_size);
         }
 
         children_sizes
@@ -191,38 +191,38 @@ impl TmuxLayoutPriv {
 
     // #[inline]
     // fn get_children_sizesXXX(&self, container: &TmuxContainer, size: i32) -> Vec<i32> {
-        // let separators = self.separators.borrow();
-        // let child_count = (separators.len() * 2) + 1;
-        // let mut children_sizes = Vec::with_capacity(child_count);
+    // let separators = self.separators.borrow();
+    // let child_count = (separators.len() * 2) + 1;
+    // let mut children_sizes = Vec::with_capacity(child_count);
 
-        // // Handle being given size less than 0 (usually when not initialized yet or error)
-        // if size < 0 {
-        //     for _ in 0..child_count {
-        //         children_sizes.push(-1);
-        //     }
-        //     return children_sizes;
-        // }
+    // // Handle being given size less than 0 (usually when not initialized yet or error)
+    // if size < 0 {
+    //     for _ in 0..child_count {
+    //         children_sizes.push(-1);
+    //     }
+    //     return children_sizes;
+    // }
 
-        // // All Separators are the same size
-        // let handle_size = separators.first().unwrap().get_handle_width();
-        // // Cell size is 2px larger than handle_size, since we must account for VTE widget
-        // // fixed padding of 1px on each side
-        // let cell_size = handle_size + 2;
-        // let mut already_used_size = 0;
+    // // All Separators are the same size
+    // let handle_size = separators.first().unwrap().get_handle_width();
+    // // Cell size is 2px larger than handle_size, since we must account for VTE widget
+    // // fixed padding of 1px on each side
+    // let cell_size = handle_size + 2;
+    // let mut already_used_size = 0;
 
-        // for separator in separators.iter() {
-        //     // Each child size is calculated like this: position of the Separator
-        //     // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
-        //     //  We then subtract how much size we used up to this point
-        //     let separator_position = (separator.get_position() * cell_size) + 2;
-        //     let child_size = separator_position - already_used_size;
-        //     children_sizes.push(child_size);
-        //     children_sizes.push(handle_size);
+    // for separator in separators.iter() {
+    //     // Each child size is calculated like this: position of the Separator
+    //     // (position in cells * cell_size) + 2 (accounting for VTE widget padding)
+    //     //  We then subtract how much size we used up to this point
+    //     let separator_position = (separator.get_position() * cell_size) + 2;
+    //     let child_size = separator_position - already_used_size;
+    //     children_sizes.push(child_size);
+    //     children_sizes.push(handle_size);
 
-        //     already_used_size += child_size + handle_size;
-        // }
-        // children_sizes.push(size - already_used_size);
+    //     already_used_size += child_size + handle_size;
+    // }
+    // children_sizes.push(size - already_used_size);
 
-        // children_sizes
+    // children_sizes
     // }
 }
