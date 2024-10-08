@@ -1,12 +1,12 @@
 mod imp;
-mod layout_tmux;
+mod layout;
 mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
 use libadwaita::{glib, prelude::*};
 
-pub use layout_tmux::TmuxLayout;
+pub use layout::TmuxLayout;
 pub use separator::TmuxSeparator;
 
 use super::{terminal::TmuxTerminal, IvyTmuxWindow};

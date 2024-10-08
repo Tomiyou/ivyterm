@@ -1,4 +1,3 @@
-mod api;
 mod container;
 mod toplevel;
 mod terminal;

@@ -6,7 +6,9 @@ use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
-    keyboard::{keycode_to_arrow_key, KeyboardAction}, tmux_widgets::{api::{Tmux, TmuxEvent, TmuxTristate}, toplevel::TmuxTopLevel, window::tmux_layout_sync::parse_tmux_layout},
+    keyboard::{keycode_to_arrow_key, KeyboardAction},
+    tmux_api::{TmuxEvent, TmuxTristate},
+    tmux_widgets::{toplevel::TmuxTopLevel, window::tmux_layout_sync::parse_tmux_layout},
 };
 
 use super::IvyTmuxWindow;
@@ -14,23 +16,6 @@ use super::IvyTmuxWindow;
 const RESIZE_TIMEOUT: Duration = Duration::from_millis(5);
 
 impl IvyTmuxWindow {
-    pub fn init_tmux(&self, tmux: Tmux) {
-        let imp = self.imp();
-
-        // First store Tmux
-        imp.tmux.replace(Some(tmux));
-
-        // Then get initial layout - this order to prevent a possible race condition
-        let binding = imp.tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
-        tmux.get_initial_layout();
-    }
-
-    pub fn is_tmux(&self) -> bool {
-        let binding = self.imp().tmux.borrow();
-        binding.is_some()
-    }
-
     pub fn get_char_size(&self) -> (i32, i32) {
         self.imp().char_size.get()
     }
@@ -83,7 +68,11 @@ impl IvyTmuxWindow {
 
         if let Some(selected_page) = selected_page {
             let top_level: TmuxTopLevel = selected_page.child().downcast().unwrap();
-            println!("Top Level width {} height {}", top_level.width(), top_level.height());
+            println!(
+                "Top Level width {} height {}",
+                top_level.width(),
+                top_level.height()
+            );
             let (cols, rows) = top_level.get_cols_rows();
 
             let mut binding = self.imp().tmux.borrow_mut();

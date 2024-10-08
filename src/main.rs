@@ -7,6 +7,7 @@ mod helpers;
 mod keyboard;
 mod normal_widgets;
 mod settings;
+mod tmux_api;
 mod tmux_widgets;
 
 fn main() -> glib::ExitCode {

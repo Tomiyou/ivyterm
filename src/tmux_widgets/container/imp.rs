@@ -6,7 +6,7 @@ use libadwaita::{glib, prelude::*};
 
 use crate::tmux_widgets::IvyTmuxWindow;
 
-use super::{layout_tmux::TmuxLayout};
+use super::{layout::TmuxLayout};
 
 // Object holding the state
 #[derive(glib::Properties)]

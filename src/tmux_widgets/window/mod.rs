@@ -11,7 +11,7 @@ use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
     application::IvyApplication,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI,
     // terminal::Terminal,
     // toplevel::TopLevel,
 };
@@ -88,6 +88,17 @@ impl IvyTmuxWindow {
         window_box.append(&window_handle);
         window_box.append(&tab_view);
         window.set_content(Some(&window_box));
+
+        // Initialize Tmux API
+        let tmux = TmuxAPI::new(tmux_session, &window).unwrap();
+        window.imp().tmux.replace(Some(tmux));
+
+        // Get initial Tmux layout
+        {
+            let binding = window.imp().tmux.borrow();
+            let tmux = binding.as_ref().unwrap();
+            tmux.get_initial_layout();
+        }
 
         window
     }

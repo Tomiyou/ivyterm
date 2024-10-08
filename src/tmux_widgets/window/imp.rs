@@ -5,14 +5,14 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
 use crate::helpers::SortedVec;
-use crate::tmux_widgets::api::Tmux;
+use crate::tmux_api::TmuxAPI;
 use crate::tmux_widgets::terminal::TmuxTerminal;
 use crate::tmux_widgets::toplevel::TmuxTopLevel;
 
 // Object holding the state
 #[derive(Default)]
 pub struct IvyWindowPriv {
-    pub tmux: RefCell<Option<Tmux>>,
+    pub tmux: RefCell<Option<TmuxAPI>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub tabs: RefCell<Vec<TmuxTopLevel>>,
     pub terminals: RefCell<SortedVec<TmuxTerminal>>,
