@@ -12,8 +12,6 @@ use crate::{
     mux::{pane::close_pane, toplevel::TopLevel},
 };
 
-use super::pane::split_pane;
-
 fn default_colors() -> (RGBA, RGBA) {
     let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
     let background = RGBA::new(0.0, 0.0, 0.0, 1.0);
@@ -37,6 +35,8 @@ fn cast_parent(parent: Widget) -> ParentType {
 }
 
 pub fn create_terminal(top_level: &TopLevel) -> Terminal {
+    let top_level = top_level.clone();
+
     // Get terminal font
     let font_desc = {
         let reader = GLOBAL_SETTINGS.read().unwrap();
@@ -50,7 +50,7 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         .build();
 
     // Add terminal to top level terminal list
-    top_level.new_terminal(&terminal);
+    top_level.register_terminal(&terminal);
 
     // Close terminal + pane/tab when the child (shell) exits
     let _top_level = top_level.clone();
@@ -62,7 +62,7 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         let parent = terminal.parent().unwrap();
         match cast_parent(parent) {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => close_pane(paned, terminal.clone(), &_top_level),
+            ParentType::ParentPaned(paned) => close_pane(paned, &terminal, &_top_level),
         }
     });
 
@@ -71,9 +71,9 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     terminal.set_colors(Some(&foreground), Some(&background), &[]);
 
     let eventctl = EventControllerKey::new();
-    let top_level = top_level.clone();
+    let _terminal = terminal.clone();
     eventctl.connect_key_pressed(move |eventctl, _keyval, key, state| {
-        handle_keyboard(eventctl, key, state, &top_level)
+        handle_keyboard(eventctl, key, state, &_terminal, &top_level)
     });
     terminal.add_controller(eventctl);
 
@@ -107,6 +107,7 @@ fn handle_keyboard(
     eventctl: &EventControllerKey,
     keycode: u32,
     state: ModifierType,
+    terminal: &Terminal,
     top_level: &TopLevel,
 ) -> Propagation {
     // Handle terminal splits
@@ -125,15 +126,12 @@ fn handle_keyboard(
             } else {
                 Orientation::Horizontal
             };
-            match cast_parent(eventctl.widget().parent().unwrap()) {
-                ParentType::ParentTopLevel(top_level) => top_level.split(orientation),
-                ParentType::ParentPaned(paned) => split_pane(paned, orientation, top_level),
-            }
+
+            top_level.split_pane(terminal, orientation);
         }
         Some(Keybinding::PaneClose) => match cast_parent(eventctl.widget().parent().unwrap()) {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
             ParentType::ParentPaned(paned) => {
-                let terminal = eventctl.widget().downcast::<Terminal>().unwrap();
                 close_pane(paned, terminal, top_level);
             }
         },

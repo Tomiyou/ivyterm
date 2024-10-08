@@ -2,7 +2,7 @@ use gtk4::{Orientation, Paned, Widget};
 use libadwaita::prelude::*;
 use vte4::Terminal;
 
-use crate::{keyboard::Direction, mux::terminal::create_terminal};
+use crate::keyboard::Direction;
 
 use super::toplevel::TopLevel;
 
@@ -25,45 +25,13 @@ pub fn new_paned(
     paned
 }
 
-pub fn split_pane(paned: Paned, orientation: Orientation, top_level: &TopLevel) {
-    let start_child = paned.start_child().unwrap();
-    if start_child.has_focus() {
-        // Replace first child
-        paned.set_start_child(None::<&Widget>);
-
-        let terminal = create_terminal(top_level);
-        let new_paned = new_paned(orientation, start_child, terminal);
-        paned.set_start_child(Some(&new_paned));
-
-        // Re-calculate panes divider position
-        let size = paned.size(paned.orientation());
-        paned.set_position(size / 2);
-        return;
-    }
-
-    let end_child = paned.end_child().unwrap();
-    if end_child.has_focus() {
-        // Replace end child
-        paned.set_end_child(None::<&Widget>);
-
-        let terminal = create_terminal(top_level);
-        let new_paned = new_paned(orientation, end_child, terminal);
-        paned.set_end_child(Some(&new_paned));
-
-        // Re-calculate panes divider position
-        let size = paned.size(paned.orientation());
-        paned.set_position(size / 2);
-        return;
-    }
-}
-
 // TODO: Move all of this into top_level, since it can check top_level directly using pointers
-pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal, top_level: &TopLevel) {
+pub fn close_pane(closing_paned: Paned, closing_terminal: &Terminal, top_level: &TopLevel) {
     // Paned always has 2 children present, if not, then it would have been deleted
     let start_child = closing_paned.start_child().unwrap();
     let end_child = closing_paned.end_child().unwrap();
 
-    let (retained_child, direction) = if start_child == closing_terminal {
+    let (retained_child, direction) = if start_child.eq(closing_terminal) {
         // Remove start child, keep last child
         let direction = match closing_paned.orientation() {
             Orientation::Horizontal => Direction::Right,
@@ -71,7 +39,7 @@ pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal, top_level: &
             _ => panic!("Orientation not horizontal or vertical"),
         };
         (end_child, direction)
-    } else if end_child == closing_terminal {
+    } else if end_child.eq(closing_terminal) {
         // Remove last child, keep first child
         let direction = match closing_paned.orientation() {
             Orientation::Horizontal => Direction::Left,

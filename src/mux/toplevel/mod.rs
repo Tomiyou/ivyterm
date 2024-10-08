@@ -1,7 +1,7 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation};
+use gtk4::{graphene::Rect, Orientation, Paned, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 use vte4::{Terminal, WidgetExt};
 
@@ -52,16 +52,52 @@ impl TopLevel {
         tab_view.close_page(&page);
     }
 
-    pub fn split(&self, orientation: Orientation) {
-        let old_terminal = self.child().unwrap();
+    pub fn split_pane(&self, terminal: &Terminal, orientation: Orientation) {
         let new_terminal = create_terminal(&self);
 
-        self.set_child(None::<&Self>);
-        let new_paned = new_paned(orientation, old_terminal, new_terminal);
-        self.set_child(Some(&new_paned));
+        let parent = terminal.parent().unwrap();
+        if parent.eq(self) {
+            // Terminal's parent is myself
+            let old_terminal = self.child().unwrap();
+
+            self.set_child(None::<&Self>);
+            let new_paned = new_paned(orientation, old_terminal, new_terminal);
+            self.set_child(Some(&new_paned));
+            return;
+        }
+        // Terminal's parent is a Paned widget
+
+        let paned: Paned = parent.downcast().unwrap();
+        let start_child = paned.start_child().unwrap();
+        if start_child.eq(terminal) {
+            // Replace first child
+            paned.set_start_child(None::<&Widget>);
+
+            let new_paned = new_paned(orientation, start_child, new_terminal);
+            paned.set_start_child(Some(&new_paned));
+
+            // Re-calculate panes divider position
+            let size = paned.size(paned.orientation());
+            paned.set_position(size / 2);
+            return;
+        }
+
+        let end_child = paned.end_child().unwrap();
+        if end_child.eq(terminal) {
+            // Replace end child
+            paned.set_end_child(None::<&Widget>);
+
+            let new_paned = new_paned(orientation, end_child, new_terminal);
+            paned.set_end_child(Some(&new_paned));
+
+            // Re-calculate panes divider position
+            let size = paned.size(paned.orientation());
+            paned.set_position(size / 2);
+            return;
+        }
     }
 
-    pub fn new_terminal(&self, terminal: &Terminal) {
+    pub fn register_terminal(&self, terminal: &Terminal) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.push(terminal.clone());
     }
