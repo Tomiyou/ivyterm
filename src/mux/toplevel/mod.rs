@@ -79,6 +79,9 @@ impl TopLevel {
 
         const PAD: f32 = SPLIT_HANDLE_WIDTH as f32 + 5.0;
 
+        // We will use Rect intersection to find a matching neighbor. For this to work, the Rect
+        // used for calculating the intersection must be slightly larger in the direction we
+        // wish to find a neighbor.
         let (_, _, width, height) = terminal.bounds().unwrap();
         let terminal_rect = match direction {
             Direction::Up => Rect::new(0.0, -PAD, width as f32, height as f32 + PAD),
@@ -87,11 +90,15 @@ impl TopLevel {
             Direction::Right => Rect::new(0.0, 0.0, width as f32 + PAD, height as f32),
         };
 
+        // Loop through all the terminals in the window and find a suitable neighbor
         for neighbor in binding.iter() {
             if neighbor == terminal {
                 continue;
             }
 
+            // terminal.compute_bounds(&target_terminal) calculates the distance between terminals
+            // and returns a Rect graphene struct which contains x and y distance from the target
+            // terminal, and width and height of the neighbor
             let bounds = neighbor.compute_bounds(terminal).unwrap();
             let intersection = terminal_rect.intersection(&bounds);
             if intersection.is_some() {
