@@ -18,6 +18,7 @@ mod layout;
 pub struct Tmux {
     stdin_stream: ChildStdin,
     command_queue: Sender<TmuxCommand>,
+    window_size: (u32, u32),
 }
 
 impl Tmux {
@@ -33,20 +34,27 @@ impl Tmux {
                     .write_all(b"list-windows -F \"#{window_layout},#{history_size}\"\n")
                     .unwrap();
             }
-            TmuxCommand::ChangeSize(cols, rows) => {
-                debug!("Resizing Tmux client to {}x{}", cols, rows);
-                let cmd = format!("refresh-client -C {},{}\n", cols, rows);
-                command_queue.send_blocking(command).unwrap();
-                stdin_stream.write_all(cmd.as_bytes()).unwrap();
-            }
             TmuxCommand::InitialOutput(pane_id) => {
                 debug!("Getting initial output of pane {}", pane_id);
                 let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream.write_all(cmd.as_bytes()).unwrap();
             }
-            _ => {}
+            _ => {
+                panic!("Don't know how to handle command {:?}", command);
+            }
         }
+    }
+
+    pub fn change_size(&mut self, cols: u32, rows: u32) {
+        self.window_size = (cols, rows);
+
+        let command = TmuxCommand::ChangeSize(cols, rows);
+
+        debug!("Resizing Tmux client to {}x{}", cols, rows);
+        let cmd = format!("refresh-client -C {},{}\n", cols, rows);
+        self.command_queue.send_blocking(command).unwrap();
+        self.stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 
     pub fn send_keypress(&self, pane_id: u32, c: char, prefix: String, movement: Option<&str>) {
@@ -92,7 +100,7 @@ pub enum TmuxCommand {
     Init,
     InitialLayout,
     Keypress,
-    ChangeSize(i64, i64),
+    ChangeSize(u32, u32),
     InitialOutput(u32),
 }
 
@@ -139,6 +147,7 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
     let tmux = Tmux {
         stdin_stream: stdin_stream,
         command_queue: cmd_queue_sender,
+        window_size: (0, 0),
     };
 
     Ok(tmux)

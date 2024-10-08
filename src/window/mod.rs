@@ -203,9 +203,9 @@ impl IvyWindow {
     // }
 
     pub fn tmux_resize_window(&self) {
-        let binding = self.imp().tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
-        tmux.send_command(TmuxCommand::ChangeSize(80, 24));
+        let mut binding = self.imp().tmux.borrow_mut();
+        let tmux = binding.as_mut().unwrap();
+        tmux.change_size(80, 24);
     }
 
     pub fn tmux_inital_output(&self) {
