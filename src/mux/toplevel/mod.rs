@@ -1,11 +1,15 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::Orientation;
+use gtk4::{graphene::Rect, Orientation, Paned};
 use libadwaita::{glib, prelude::*, TabView};
 use vte4::{Terminal, WidgetExt};
 
-use crate::mux::{pane::new_paned, terminal::create_terminal};
+use crate::{
+    global_state::SPLIT_HANDLE_WIDTH,
+    keyboard::Direction,
+    mux::{pane::new_paned, terminal::create_terminal},
+};
 
 use super::create_tab;
 
@@ -55,28 +59,43 @@ impl TopLevel {
         self.set_child(None::<&Self>);
         let new_paned = new_paned(orientation, old_terminal, new_terminal);
         self.set_child(Some(&new_paned));
-
-        println!("New PANE {:?}", new_paned.as_ptr())
     }
 
     pub fn new_terminal(&self, terminal: &Terminal) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.push(terminal.clone());
-        println!("Added terminal, number of terminals in vec {}", binding.len());
     }
 
     pub fn close_terminal(&self, terminal: &Terminal) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.retain(|t| t != terminal);
-        println!("Removed terminal, number of terminals in vec {}", binding.len());
     }
 
-    pub fn find_neighbor(&self, terminal: &Terminal) -> Option<Terminal> {
+    pub fn find_neighbor(&self, terminal: &Terminal, direction: Direction) -> Option<Terminal> {
         let binding = self.imp().terminals.borrow();
-        for terminal in binding.iter() {
-            let bounds = terminal.bounds();
-            if let Some((x, y, width, height)) = bounds {
-                println!("Bounds: {}:{}:{}:{}", x, y, width, height);
+        if binding.len() < 2 {
+            return None;
+        }
+
+        const PAD: f32 = SPLIT_HANDLE_WIDTH as f32 + 5.0;
+
+        let (_, _, width, height) = terminal.bounds().unwrap();
+        let terminal_rect = match direction {
+            Direction::Up => Rect::new(0.0, -PAD, width as f32, height as f32 + PAD),
+            Direction::Down => Rect::new(0.0, 0.0, width as f32, height as f32 + PAD),
+            Direction::Left => Rect::new(-PAD, 0.0, width as f32 + PAD, height as f32),
+            Direction::Right => Rect::new(0.0, 0.0, width as f32 + PAD, height as f32),
+        };
+
+        for neighbor in binding.iter() {
+            if neighbor == terminal {
+                continue;
+            }
+
+            let bounds = neighbor.compute_bounds(terminal).unwrap();
+            let intersection = terminal_rect.intersection(&bounds);
+            if intersection.is_some() {
+                return Some(neighbor.clone());
             }
         }
 

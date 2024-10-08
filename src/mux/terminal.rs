@@ -63,18 +63,25 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         println!("Terminal {} exited!", terminal_id);
 
         // First find the terminal that will be focused since this one has exited
-        let new_focus = _top_level.find_neighbor(terminal);
-
-        terminal.unrealize();
-
-        let parent = terminal.parent().unwrap();
-        match cast_parent(parent) {
-            ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => close_pane(paned),
-        }
+        // let new_focus = _top_level.find_neighbor(terminal);
 
         // Remove terminal from top level terminal list
         _top_level.close_terminal(terminal);
+
+        // Now we can unrealize the terminal
+        terminal.unrealize();
+
+        // Now close the pane/tab
+        let parent = terminal.parent().unwrap();
+        match cast_parent(parent) {
+            ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
+            ParentType::ParentPaned(paned) => close_pane(paned, terminal.clone()),
+        }
+
+        // if let Some(new_focus) = new_focus {
+        //     println!("Terminal AAA is grabbing focus");
+        //     new_focus.grab_focus();
+        // }
     });
 
     // Set terminal colors
@@ -105,7 +112,7 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         -1,
         gtk4::gio::Cancellable::NONE,
         move |_result| {
-            println!("Terminal {} spawned, grabbing focus", terminal_id);
+            // println!("Terminal {} spawned, grabbing focus", terminal_id);
             _terminal.grab_focus();
         },
     );
@@ -143,7 +150,10 @@ fn handle_keyboard(
         }
         Some(Keybinding::PaneClose) => match cast_parent(eventctl.widget().parent().unwrap()) {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => close_pane(paned),
+            ParentType::ParentPaned(paned) => {
+                let terminal = eventctl.widget().downcast::<Terminal>().unwrap();
+                close_pane(paned, terminal);
+            },
         },
         Some(Keybinding::TabNew) => {
             top_level.create_tab();
@@ -152,36 +162,13 @@ fn handle_keyboard(
             top_level.close_tab();
         }
         Some(Keybinding::SelectPane(direction)) => {
-            match cast_parent(eventctl.widget().parent().unwrap()) {
-                ParentType::ParentPaned(paned) => move_pane_focus(paned, direction),
-                ParentType::ParentTopLevel(_) => {},
-            };
+            let terminal = eventctl.widget().downcast::<Terminal>().unwrap();
+            if let Some(new_focus) = top_level.find_neighbor(&terminal, direction) {
+                new_focus.grab_focus();
+            }
         }
         None => return Propagation::Proceed,
     };
 
     Propagation::Stop
-}
-
-fn move_pane_focus(parent: Paned, direction: Direction) {
-    match (parent.orientation(), direction) {
-        (Orientation::Horizontal, Direction::Left) => if parent.last_child().unwrap().has_focus() {
-            parent.emit_cycle_child_focus(true);
-            return;
-        },
-        (Orientation::Horizontal, Direction::Right) => if parent.start_child().unwrap().has_focus() {
-            parent.emit_cycle_child_focus(false);
-            return;
-        },
-        (Orientation::Vertical, Direction::Up) => if parent.last_child().unwrap().has_focus() {
-            parent.emit_cycle_child_focus(true);
-            return;
-        },
-        (Orientation::Vertical, Direction::Down) => if parent.start_child().unwrap().has_focus() {
-            parent.emit_cycle_child_focus(false);
-            return;
-        },
-        _ => {},
-    };
-
 }

@@ -1,5 +1,6 @@
 use gtk4::{Orientation, Paned, Widget};
 use libadwaita::prelude::*;
+use vte4::Terminal;
 
 use crate::mux::terminal::create_terminal;
 
@@ -14,6 +15,7 @@ pub fn new_paned(
         .focusable(true)
         .vexpand(true)
         .hexpand(true)
+        .wide_handle(true)
         .css_classes(vec!["terminal-pane"])
         .orientation(orientation)
         .start_child(&start_child)
@@ -56,20 +58,19 @@ pub fn split_pane(paned: Paned, orientation: Orientation, top_level: &TopLevel) 
 }
 
 // TODO: Move all of this into top_level, since it can check top_level directly using pointers
-pub fn close_pane(closing_paned: Paned) {
+pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal) {
     // Paned always has 2 children present, if not, then it would have been deleted
     let start_child = closing_paned.start_child().unwrap();
     let end_child = closing_paned.end_child().unwrap();
 
-    // TODO: Do this using pointer comparison not using focus
-    let retained_child = if start_child.has_focus() {
+    let retained_child = if start_child == closing_terminal {
         // Remove start child, keep last child
         end_child
-    } else if end_child.has_focus() {
+    } else if end_child == closing_terminal {
         // Remove last child, keep first child
         start_child
     } else {
-        panic!("Trying to close pane, but none of the children is focused");
+        panic!("Trying to close pane, but none of the children is the closed terminal");
     };
 
     closing_paned.set_start_child(None::<&Widget>);

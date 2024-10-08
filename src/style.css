@@ -2,10 +2,8 @@
     padding-right: 7px;
 }
 
-.terminal-pane {
-    color: white;
-}
-
-.alkwlwaeg {
-    background-color: black;
+paned separator {
+    background-color: white;
+    min-width: 2px;
+    min-height: 2px;
 }

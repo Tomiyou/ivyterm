@@ -30,22 +30,10 @@ pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
 
     if state.contains(ModifierType::ALT_MASK) {
         match keycode {
-            111 => {
-                println!("Move up");
-                return Some(Keybinding::SelectPane(Direction::Up));
-            }
-            113 => {
-                println!("Move left");
-                return Some(Keybinding::SelectPane(Direction::Left));
-            }
-            114 => {
-                println!("Move right");
-                return Some(Keybinding::SelectPane(Direction::Right));
-            }
-            116 => {
-                println!("Move down");
-                return Some(Keybinding::SelectPane(Direction::Down));
-            }
+            111 => return Some(Keybinding::SelectPane(Direction::Up)),
+            113 => return Some(Keybinding::SelectPane(Direction::Left)),
+            114 => return Some(Keybinding::SelectPane(Direction::Right)),
+            116 => return Some(Keybinding::SelectPane(Direction::Down)),
             _ => {}
         }
     }

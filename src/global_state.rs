@@ -6,10 +6,10 @@ use libadwaita::{prelude::*, HeaderBar};
 use libadwaita::{Application, ApplicationWindow};
 use gtk4::{Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Orientation};
 
-pub const INITIAL_WIDTH: i32 = 800;
-pub const INITIAL_HEIGHT: i32 = 640;
+pub const INITIAL_WIDTH: i32 = 802;
+pub const INITIAL_HEIGHT: i32 = 648;
 pub const APPLICATION_TITLE: &str = "ivyTerm";
-pub const SPLIT_HANDLE_WIDTH: u8 = 1;
+pub const SPLIT_HANDLE_WIDTH: i32 = 1;
 
 pub struct GlobalSettings {
     pub font_desc: FontDescription,
