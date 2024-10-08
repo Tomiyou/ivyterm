@@ -62,26 +62,15 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     terminal.connect_child_exited(move |terminal, _exit_code| {
         println!("Terminal {} exited!", terminal_id);
 
-        // First find the terminal that will be focused since this one has exited
-        // let new_focus = _top_level.find_neighbor(terminal);
-
         // Remove terminal from top level terminal list
         _top_level.close_terminal(terminal);
-
-        // Now we can unrealize the terminal
-        terminal.unrealize();
 
         // Now close the pane/tab
         let parent = terminal.parent().unwrap();
         match cast_parent(parent) {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => close_pane(paned, terminal.clone()),
+            ParentType::ParentPaned(paned) => close_pane(paned, terminal.clone(), &_top_level),
         }
-
-        // if let Some(new_focus) = new_focus {
-        //     println!("Terminal AAA is grabbing focus");
-        //     new_focus.grab_focus();
-        // }
     });
 
     // Set terminal colors
@@ -152,8 +141,8 @@ fn handle_keyboard(
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
             ParentType::ParentPaned(paned) => {
                 let terminal = eventctl.widget().downcast::<Terminal>().unwrap();
-                close_pane(paned, terminal);
-            },
+                close_pane(paned, terminal, top_level);
+            }
         },
         Some(Keybinding::TabNew) => {
             top_level.create_tab();

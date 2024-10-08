@@ -2,7 +2,7 @@ use gtk4::{Orientation, Paned, Widget};
 use libadwaita::prelude::*;
 use vte4::Terminal;
 
-use crate::mux::terminal::create_terminal;
+use crate::{keyboard::Direction, mux::terminal::create_terminal};
 
 use super::toplevel::TopLevel;
 
@@ -58,20 +58,37 @@ pub fn split_pane(paned: Paned, orientation: Orientation, top_level: &TopLevel) 
 }
 
 // TODO: Move all of this into top_level, since it can check top_level directly using pointers
-pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal) {
+pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal, top_level: &TopLevel) {
     // Paned always has 2 children present, if not, then it would have been deleted
     let start_child = closing_paned.start_child().unwrap();
     let end_child = closing_paned.end_child().unwrap();
 
-    let retained_child = if start_child == closing_terminal {
+    let (retained_child, direction) = if start_child == closing_terminal {
         // Remove start child, keep last child
-        end_child
+        let direction = match closing_paned.orientation() {
+            Orientation::Horizontal => Direction::Right,
+            Orientation::Vertical => Direction::Down,
+            _ => panic!("Orientation not horizontal or vertical"),
+        };
+        (end_child, direction)
     } else if end_child == closing_terminal {
         // Remove last child, keep first child
-        start_child
+        let direction = match closing_paned.orientation() {
+            Orientation::Horizontal => Direction::Left,
+            Orientation::Vertical => Direction::Up,
+            _ => panic!("Orientation not horizontal or vertical"),
+        };
+        (start_child, direction)
     } else {
         panic!("Trying to close pane, but none of the children is the closed terminal");
     };
+
+    // Find terminal to focus after the closing terminal is unrealized
+    let new_focus = top_level
+        .find_neighbor(&closing_terminal, direction)
+        .or_else(|| Some(retained_child.clone().downcast::<Terminal>().unwrap()))
+        .unwrap();
+    new_focus.grab_focus();
 
     closing_paned.set_start_child(None::<&Widget>);
     closing_paned.set_end_child(None::<&Widget>);
@@ -82,7 +99,7 @@ pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal) {
     if let Ok(parent) = parent.clone().downcast::<TopLevel>() {
         // Parent is TopLevel
         parent.set_child(Some(&retained_child));
-        retained_child.grab_focus();
+        new_focus.grab_focus();
         return;
     }
 
@@ -107,8 +124,9 @@ pub fn close_pane(closing_paned: Paned, closing_terminal: Terminal) {
         let size = parent.size(parent.orientation());
         parent.set_position(size / 2);
 
-        // TODO: We need for another terminal to grab focus
-        parent.emit_cycle_child_focus(true);
+        // Grab focus for a new terminal
+        new_focus.grab_focus();
+
         return;
     }
 
