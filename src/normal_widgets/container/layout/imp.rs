@@ -139,18 +139,21 @@ impl ContainerLayoutPriv {
 
         let mut next_child = paned.first_child();
         while let Some(child) = next_child {
-            // let container: Container = parent.downcast();
-            if let Ok(separator) = child.clone().downcast::<Bin>() {
-                let (_, handle_size, _, _) = separator.measure(orientation, -1);
-                minimum += handle_size;
-                natural += handle_size;
-            } else {
-                let (child_min, child_nat, _, _) = child.measure(orientation, for_size);
-                minimum += child_min;
-                natural += child_nat;
-            }
-
+            // We do this here to avoid cloning on downcast()
             next_child = child.next_sibling();
+
+            match child.downcast::<Bin>() {
+                Ok(separator) => {
+                    let (_, handle_size, _, _) = separator.measure(orientation, -1);
+                    minimum += handle_size;
+                    natural += handle_size;
+                }
+                Err(child) => {
+                    let (child_min, child_nat, _, _) = child.measure(orientation, for_size);
+                    minimum += child_min;
+                    natural += child_nat;
+                }
+            };
         }
 
         (minimum, natural)
@@ -180,8 +183,7 @@ impl ContainerLayoutPriv {
             let handle_size = separator.get_handle_width();
             let half_handle = handle_size / 2;
 
-            let child_size =
-                separator_position.floor() as i32 - already_used_size - half_handle;
+            let child_size = separator_position.floor() as i32 - already_used_size - half_handle;
             children_sizes.push(child_size);
             children_sizes.push(handle_size);
 

@@ -279,11 +279,8 @@ impl TmuxTopLevel {
         );
 
         if let Some(child) = self.child() {
-            match child.downcast::<TmuxContainer>() {
-                Ok(container) => {
-                    container.recursive_separator_adjust(x_diff, y_diff);
-                }
-                _ => {}
+            if let Ok(container) = child.downcast::<TmuxContainer>() {
+                container.recursive_separator_adjust(x_diff, y_diff);
             }
         }
     }

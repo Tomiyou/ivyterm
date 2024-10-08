@@ -138,18 +138,21 @@ impl TmuxLayoutPriv {
 
         let mut next_child = paned.first_child();
         while let Some(child) = next_child {
-            // let container: Container = parent.downcast();
-            if let Ok(separator) = child.clone().downcast::<Bin>() {
-                let (_, handle_size, _, _) = separator.measure(orientation, -1);
-                minimum += handle_size;
-                natural += handle_size;
-            } else {
-                let (child_min, child_nat, _, _) = child.measure(orientation, for_size);
-                minimum += child_min;
-                natural += child_nat;
-            }
-
+            // We do this here to avoid cloning on downcast()
             next_child = child.next_sibling();
+
+            match child.downcast::<Bin>() {
+                Ok(separator) => {
+                    let (_, handle_size, _, _) = separator.measure(orientation, -1);
+                    minimum += handle_size;
+                    natural += handle_size;
+                }
+                Err(child) => {
+                    let (child_min, child_nat, _, _) = child.measure(orientation, for_size);
+                    minimum += child_min;
+                    natural += child_nat;
+                }
+            }
         }
 
         (minimum, natural)
@@ -160,12 +163,15 @@ impl TmuxLayoutPriv {
         let mut children_sizes = Vec::with_capacity(16);
         let mut already_used_size = 0;
 
-        while let Some(child) = &next_child {
+        while let Some(child) = next_child {
+            // We do this here to avoid cloning on downcast()
+            next_child = child.next_sibling();
+
             // Check if child is TmuxSeparator
             if size < 0 {
                 children_sizes.push(-1);
             // TODO: Optimize this cast (if needed)
-            } else if let Ok(separator) = child.clone().downcast::<TmuxSeparator>() {
+            } else if let Ok(separator) = child.downcast::<TmuxSeparator>() {
                 let handle_size = separator.get_handle_width();
 
                 // cell_size is size of handle + 2 (1px of padding on each side)
@@ -177,8 +183,6 @@ impl TmuxLayoutPriv {
 
                 already_used_size += child_size + handle_size;
             }
-
-            next_child = child.next_sibling();
         }
         // !(size < 0)
         if size >= 0 {

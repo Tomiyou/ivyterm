@@ -105,12 +105,9 @@ impl TmuxContainer {
             };
 
             // We now know this child is not a Separator, it might be a Container
-            match child.downcast::<TmuxContainer>() {
-                Ok(container) => {
-                    container.recursive_separator_adjust(x_diff, y_diff);
-                }
-                Err(_) => {}
-            };
+            if let Ok(container) = child.downcast::<TmuxContainer>() {
+                container.recursive_separator_adjust(x_diff, y_diff);
+            }
         }
     }
 }

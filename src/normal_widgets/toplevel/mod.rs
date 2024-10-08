@@ -5,9 +5,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
-use crate::{
-    helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH,
-};
+use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
 
 use self::imp::Zoomed;
 
@@ -124,13 +122,18 @@ impl TopLevel {
         // Determine if parent is type Bin or Container
         let parent = container.parent().unwrap();
 
-        if let Ok(parent) = parent.clone().downcast::<TopLevel>() {
-            // Parent is TopLevel
-            parent.set_child(Some(&retained_child));
-            // Since retained_child is the only terminal remaining, focus it
-            last_focused_terminal.grab_focus();
-            return;
-        }
+        // TODO: Swap TopLevel and Container (since Container is more common)
+        let parent = match parent.downcast::<TopLevel>() {
+            Ok(parent) => {
+                // Parent is TopLevel
+                parent.set_child(Some(&retained_child));
+                // Since retained_child is the only terminal remaining, focus it
+                last_focused_terminal.grab_focus();
+                return;
+            }
+            // Fall-through
+            Err(parent) => parent,
+        };
 
         if let Ok(parent) = parent.downcast::<Container>() {
             // Parent is another Container
@@ -211,10 +214,13 @@ impl TopLevel {
         terminals_vec.push(terminal.clone());
 
         let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        lru_terminals.insert(0, WithId {
-            id: pane_id,
-            terminal: terminal.clone(),
-        });
+        lru_terminals.insert(
+            0,
+            WithId {
+                id: pane_id,
+                terminal: terminal.clone(),
+            },
+        );
 
         // Also update global terminal hashmap
         let window = imp.window.borrow();
@@ -263,7 +269,13 @@ impl TopLevel {
         }
 
         // Insert at the beginning
-        lru_terminals.insert(0, WithId { id: id, terminal: terminal.clone() });
+        lru_terminals.insert(
+            0,
+            WithId {
+                id: id,
+                terminal: terminal.clone(),
+            },
+        );
     }
 
     pub fn lru_terminal(&self) -> Option<Terminal> {
