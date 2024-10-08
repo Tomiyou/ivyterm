@@ -26,15 +26,18 @@ impl Tmux {
         match command {
             TmuxCommand::InitialLayout => {
                 println!("Getting initial layout");
-                command_queue
-                    .send_blocking(TmuxCommand::InitialLayout)
-                    .unwrap();
+                command_queue.send_blocking(command).unwrap();
                 stdin_stream
                     .write_all(b"list-windows -F \"#{window_layout}\"\n")
                     .unwrap();
             }
             TmuxCommand::ChangeSize(cols, rows) => {
                 let cmd = format!("refresh-client -C {},{}\n", cols, rows);
+                command_queue.send_blocking(command).unwrap();
+                stdin_stream.write_all(cmd.as_bytes()).unwrap();
+            }
+            TmuxCommand::InitialOutput(pane_id) => {
+                let cmd = format!("capture-pane -J -p -t {} -eC -S - -E -\n", pane_id);
                 command_queue.send_blocking(command).unwrap();
                 stdin_stream.write_all(cmd.as_bytes()).unwrap();
             }
@@ -70,6 +73,7 @@ pub enum TmuxCommand {
     InitialLayout,
     Keypress,
     ChangeSize(i64, i64),
+    InitialOutput(u32),
 }
 
 pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyError> {
@@ -122,14 +126,16 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
 
 #[inline]
 fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
+    // This future runs on main thread of GTK application
+    // It receives Tmux events from separate thread and runs GTK functions
     match event {
         TmuxEvent::Attached => {}
         TmuxEvent::LayoutChanged(layout) => {
-            println!("Resizing TMUX");
-            window.todo_resize_tmux();
+            // println!("Resizing TMUX");
+            window.tmux_resize_window();
+            window.tmux_inital_output();
         }
         TmuxEvent::Output(pane_id, output) => {
-            println!("EMITTING OUTPUT ON PANE {}", pane_id);
             window.output_on_pane(pane_id, output);
         }
         TmuxEvent::Exit => {
@@ -139,10 +145,15 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     }
 }
 
-#[inline]
-fn parse_escaped_output(input: &[u8]) -> Vec<u8> {
+// #[inline]
+fn parse_escaped_output(input: &[u8], prepend_newline: bool) -> Vec<u8> {
     let input_len = input.len();
     let mut output = Vec::with_capacity(input_len);
+
+    if prepend_newline {
+        output.push(b'\r');
+        output.push(b'\n');
+    }
 
     let mut i = 0;
     while i < input_len {
@@ -174,66 +185,98 @@ fn parse_escaped_output(input: &[u8]) -> Vec<u8> {
 }
 
 #[inline]
+fn buffer_starts_with(buffer: &Vec<u8>, prefix: &str) -> bool {
+    if prefix.len() > buffer.len() {
+        return false;
+    }
+
+    let buffer = &buffer[..prefix.len()];
+    let prefix = prefix.as_bytes();
+
+    buffer == prefix
+}
+
+#[inline]
 fn tmux_read_stdout(
     stdout_stream: ChildStdout,
     event_channel: Sender<TmuxEvent>,
     command_queue: Receiver<TmuxCommand>,
 ) {
     let mut buffer = Vec::with_capacity(65534);
-    let mut command_output = String::new();
     let mut reader = BufReader::new(stdout_stream);
 
+    // Variable containing Tmux state
     let mut current_command = None;
+    let mut output_line = 0;
+    let mut is_error = false;
 
     // TODO: Handle output larger than 65534 bytes
     while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
+        // All output from Tmux is ASCII, except %output which we handle separately
         if bytes_read == 0 {
             continue;
         }
 
-        // All output from Tmux is acutally ASCII, except %output which we handle separately
-        // TODO: Replace starts_with() with a custom method, this is shit
-        let line = unsafe { from_utf8_unchecked(&buffer) };
+        // Since we read until (and including) '\n', it will always be at the
+        // end of the buffer. We should strip it here.
+        buffer.pop();
+        if buffer.is_empty() {
+            continue;
+        }
 
-        if buffer[0] == b'%' {
+        if buffer[0] != b'%' {
+            // This is output from a command we ran
+            if is_error {
+                let error = from_utf8(&buffer).unwrap();
+                println!("Error: ({:?}) {}", current_command, error);
+            } else {
+                if let Some(command) = &current_command {
+                    handle_tmux_output(command, &buffer, output_line, &event_channel);
+                }
+            }
+
+            output_line += 1;
+        } else {
             // This is a notification
-            if line.starts_with("%output") {
+            if buffer_starts_with(&buffer, "%output") {
                 // We were given output, we can assume that up until pane_id, output is ASCII
                 let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
-                let output = parse_escaped_output(&buffer[9 + chars_read..bytes_read - 1]);
+                let output = parse_escaped_output(&buffer[9 + chars_read..], false);
 
                 event_channel
                     .send_blocking(TmuxEvent::Output(pane_id, output))
                     .expect("Event channel closed!");
-            } else if line.starts_with("%begin") {
+                buffer.clear();
+            } else if buffer_starts_with(&buffer, "%begin") {
+                // Beginning of output from a command we executed
                 current_command = Some(command_queue.recv_blocking().unwrap());
-            } else if line.starts_with("%layout-change") {
-                // println!("Someone else is messing with our ")
-            } else if line.starts_with("%end") {
-                println!(
-                    "----- Given command: {:?}\n{}-----\n",
-                    current_command, command_output
-                );
-                if let Some(command) = current_command {
-                    handle_tmux_output(command, &command_output, &event_channel);
-                }
+            } else if buffer_starts_with(&buffer, "%end") {
+                // End of output from a command we executed
                 current_command = None;
-            } else if line.starts_with("%error") {
-                println!("Error: ({:?}) {}", current_command, command_output);
-                current_command = None;
-            } else if line.starts_with("%session-changed") {
-                println!("Session changed: {}", &line[17..]);
-            } else if line.starts_with("%exit") {
-                println!("Exit: {}", &line[6..]);
+                output_line = 0;
+                is_error = false;
+            } else if buffer_starts_with(&buffer, "%layout-change") {
+                // Layout has changed
+            } else if buffer_starts_with(&buffer, "%error") {
+                // Command we executed produced an error
+                current_command = Some(command_queue.recv_blocking().unwrap());
+                is_error = true;
+            } else if buffer_starts_with(&buffer, "%session-changed") {
+                // Session has changed
+                let session = from_utf8(&buffer[17..]).unwrap();
+                println!("Session changed: {}", session);
+            } else if buffer_starts_with(&buffer, "%exit") {
+                // Tmux client has exited
+                let reason = from_utf8(&buffer[6..]).unwrap();
+                println!("Exit: {}", reason);
                 event_channel
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
             } else {
-                print!("Unknown notification: {}", line)
+                // Unsupported notification
+                let notification = from_utf8(&buffer).unwrap();
+                print!("Unknown notification: {}", notification)
             }
-        } else {
-            // This is output from a command we ran
-            command_output.push_str(line);
         }
 
         buffer.clear();
@@ -241,12 +284,31 @@ fn tmux_read_stdout(
     buffer.clear();
 }
 
-fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sender<TmuxEvent>) {
+fn handle_tmux_output(
+    command: &TmuxCommand,
+    buffer: &[u8],
+    line: u32,
+    event_channel: &Sender<TmuxEvent>,
+) {
     match command {
         TmuxCommand::InitialLayout => {
             // let bytes = output.as_bytes();
             // parse_tmux_layout(bytes);
-            event_channel.send_blocking(TmuxEvent::LayoutChanged(output.clone())).unwrap();
+            let layout = String::from_utf8(buffer.to_vec()).unwrap();
+            event_channel
+                .send_blocking(TmuxEvent::LayoutChanged(layout))
+                .unwrap();
+        }
+        TmuxCommand::InitialOutput(pane_id) => {
+            // Skip the first line of output
+            if line == 0 {
+                return;
+            }
+
+            let output = parse_escaped_output(buffer, line >= 2);
+            event_channel
+                .send_blocking(TmuxEvent::Output(*pane_id, output))
+                .expect("Event channel closed!");
         }
         _ => {}
     }

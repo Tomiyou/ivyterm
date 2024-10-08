@@ -183,9 +183,20 @@ impl IvyWindow {
     //     // let terminal = binding.iter
     // }
 
-    pub fn todo_resize_tmux(&self) {
+    pub fn tmux_resize_window(&self) {
         let binding = self.imp().tmux.borrow();
         let tmux = binding.as_ref().unwrap();
         tmux.send_command(TmuxCommand::ChangeSize(80, 24));
+    }
+
+    pub fn tmux_inital_output(&self) {
+        let imp = self.imp();
+        let binding = imp.tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+
+        let terminals = imp.terminals.borrow();
+        for (pane_id, _) in terminals.iter() {
+            tmux.send_command(TmuxCommand::InitialOutput(*pane_id));
+        }
     }
 }
