@@ -10,8 +10,9 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
 use crate::{
     global_state::GLOBAL_SETTINGS,
-    keyboard::{matches_keybinding, Keybinding},
-    mux::{pane::close_pane, toplevel::TopLevel}, GLOBAL_TERMINAL_ID,
+    keyboard::{handle_input, Keybinding},
+    mux::{pane::close_pane, toplevel::TopLevel},
+    GLOBAL_TERMINAL_ID,
 };
 
 use super::pane::split_pane;
@@ -71,8 +72,8 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
 
     let eventctl = EventControllerKey::new();
     let top_level = top_level.clone();
-    eventctl.connect_key_pressed(move |eventctl, keyval, key, state| {
-        handle_keyboard(eventctl, keyval, key, state, &top_level)
+    eventctl.connect_key_pressed(move |eventctl, _keyval, key, state| {
+        handle_keyboard(eventctl, key, state, &top_level)
     });
     terminal.add_controller(eventctl);
 
@@ -104,56 +105,48 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
 #[inline]
 fn handle_keyboard(
     eventctl: &EventControllerKey,
-    keyval: Key,
     keycode: u32,
     state: ModifierType,
     top_level: &TopLevel,
 ) -> Propagation {
     // Handle terminal splits
-    if !state.contains(ModifierType::CONTROL_MASK) || !state.contains(ModifierType::SHIFT_MASK) {
+    if !state.contains(ModifierType::CONTROL_MASK)
+        && !state.contains(ModifierType::SHIFT_MASK)
+        && !state.contains(ModifierType::ALT_MASK)
+    {
         return Propagation::Proceed;
     }
 
-    println!("Terminal has keycode {}", keycode);
-
-    // Split vertical
-    if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(true)) {
-        match cast_parent(eventctl.widget().parent().unwrap()) {
-            ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Vertical),
-            ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Vertical, top_level),
+    let keyboard_action = handle_input(keycode, state);
+    match keyboard_action {
+        Some(Keybinding::PaneSplit(vertical)) => {
+            let orientation = if vertical {
+                Orientation::Vertical
+            } else {
+                Orientation::Horizontal
+            };
+            match cast_parent(eventctl.widget().parent().unwrap()) {
+                ParentType::ParentTopLevel(top_level) => top_level.split(orientation),
+                ParentType::ParentPaned(paned) => split_pane(paned, orientation, top_level),
+            }
         }
-        return Propagation::Stop;
-    }
-
-    // Split horizontal
-    if matches_keybinding(keyval, keycode, state, Keybinding::PaneSplit(false)) {
-        match cast_parent(eventctl.widget().parent().unwrap()) {
-            ParentType::ParentTopLevel(top_level) => top_level.split(Orientation::Horizontal),
-            ParentType::ParentPaned(paned) => split_pane(paned, Orientation::Horizontal, top_level),
-        }
-        return Propagation::Stop;
-    }
-
-    // Close pane
-    if matches_keybinding(keyval, keycode, state, Keybinding::PaneClose) {
-        match cast_parent(eventctl.widget().parent().unwrap()) {
+        Some(Keybinding::PaneClose) => match cast_parent(eventctl.widget().parent().unwrap()) {
             ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
             ParentType::ParentPaned(paned) => close_pane(paned),
+        },
+        Some(Keybinding::TabNew) => {
+            top_level.create_tab();
         }
-        return Propagation::Stop;
-    }
+        Some(Keybinding::TabClose) => {
+            top_level.close_tab();
+        }
+        Some(Keybinding::SelectPane(direction)) => {
+            // TODO
+        }
+        None => {
+            return Propagation::Proceed
+        },
+    };
 
-    // Create tab
-    if matches_keybinding(keyval, keycode, state, Keybinding::TabNew) {
-        top_level.create_tab();
-        return Propagation::Stop;
-    }
-
-    // Close tab
-    if matches_keybinding(keyval, keycode, state, Keybinding::TabClose) {
-        top_level.close_tab();
-        return Propagation::Stop;
-    }
-
-    Propagation::Proceed
+    Propagation::Stop
 }

@@ -1,47 +1,53 @@
-use gtk4::gdk::{Key, ModifierType};
+use gtk4::gdk::ModifierType;
+
+pub enum Direction {
+    Left,
+    Up,
+    Right,
+    Down,
+}
 
 pub enum Keybinding {
     TabNew,
     TabClose,
     PaneSplit(bool),
     PaneClose,
+    SelectPane(Direction),
 }
 
-pub fn matches_keybinding(
-    keyval: Key,
-    keycode: u32,
-    state: ModifierType,
-    keybinding: Keybinding,
-) -> bool {
+pub fn handle_input(keycode: u32, state: ModifierType) -> Option<Keybinding> {
     if state.contains(ModifierType::CONTROL_MASK) && state.contains(ModifierType::SHIFT_MASK) {
-        let matches = match (keybinding, keycode) {
-            (Keybinding::TabNew, 28) => {
-                println!("Keybinding::TabNew");
-                true
-            }
-            (Keybinding::TabClose, 25) => {
-                println!("Keybinding::TabClose");
-                true
-            }
-            (Keybinding::PaneSplit(true), 32) => {
-                println!("Keybinding::PaneSplit");
-                true
-            }
-            (Keybinding::PaneSplit(false), 46) => {
-                println!("Keybinding::PaneSplit");
-                true
-            }
-            (Keybinding::PaneClose, 26) => {
-                println!("Keybinding::PaneClose");
-                true
-            }
-            _ => false,
+        match keycode {
+            28 => return Some(Keybinding::TabNew),
+            25 => return Some(Keybinding::TabClose),
+            32 => return Some(Keybinding::PaneSplit(true)),
+            46 => return Some(Keybinding::PaneSplit(false)),
+            26 => return Some(Keybinding::PaneClose),
+            _ => {}
         };
+    }
 
-        if matches {
-            return true;
+    if state.contains(ModifierType::ALT_MASK) {
+        match keycode {
+            111 => {
+                println!("Move up");
+                return Some(Keybinding::SelectPane(Direction::Up));
+            }
+            113 => {
+                println!("Move left");
+                return Some(Keybinding::SelectPane(Direction::Left));
+            }
+            114 => {
+                println!("Move right");
+                return Some(Keybinding::SelectPane(Direction::Right));
+            }
+            116 => {
+                println!("Move down");
+                return Some(Keybinding::SelectPane(Direction::Down));
+            }
+            _ => {}
         }
     }
 
-    false
+    None
 }
