@@ -31,6 +31,7 @@ impl GlobalSettings {
         let foreground = RGBA::new(1.0, 1.0, 1.0, 1.0);
         let background = RGBA::new(0.0, 0.0, 0.0, 1.0);
         let ambience_colors = [
+            // Standard colors
             RGBA::parse("#2e3436").unwrap(),
             RGBA::parse("#cc0000").unwrap(),
             RGBA::parse("#4e9a06").unwrap(),
@@ -39,6 +40,7 @@ impl GlobalSettings {
             RGBA::parse("#75507b").unwrap(),
             RGBA::parse("#06989a").unwrap(),
             RGBA::parse("#d3d7cf").unwrap(),
+            // Bright colors
             RGBA::parse("#555753").unwrap(),
             RGBA::parse("#ef2929").unwrap(),
             RGBA::parse("#8ae234").unwrap(),
