@@ -4,6 +4,8 @@ use gtk4::{Orientation, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*};
 
+use crate::window::IvyWindow;
+
 use super::layout::ContainerLayout;
 use super::separator::Separator;
 
@@ -11,6 +13,7 @@ use super::separator::Separator;
 #[derive(Debug, glib::Properties)]
 #[properties(wrapper_type = super::Container)]
 pub struct ContainerPriv {
+    pub window: RefCell<Option<IvyWindow>>,
     separators: RefCell<Vec<Separator>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
@@ -32,6 +35,7 @@ impl ObjectSubclass for ContainerPriv {
     fn new() -> Self {
         // Here we set the default orientation.
         Self {
+            window: RefCell::new(None),
             separators: RefCell::new(Vec::new()),
             orientation: RefCell::new(Orientation::Horizontal),
         }
@@ -55,7 +59,7 @@ impl ContainerPriv {
         self.separators.borrow().len() + 1
     }
 
-    pub fn add_separator(&self) -> Separator {
+    pub fn add_separator(&self, handle_size: Option<i32>) -> Separator {
         let mut separators = self.separators.borrow_mut();
         // There is always 1 more child than there is separators
         let old_len = separators.len() + 1;
@@ -71,7 +75,7 @@ impl ContainerPriv {
         // Create a new Separator
         let orientation = self.orientation.borrow();
         let _self = self.obj();
-        let separator = Separator::new(&_self, &orientation, 1.0 - new_percentage);
+        let separator = Separator::new(&_self, &orientation, 1.0 - new_percentage, handle_size);
         separators.push(separator.clone());
 
         separator

@@ -15,7 +15,7 @@ glib::wrapper! {
 }
 
 impl Separator {
-    pub fn new(container: &Container, orientation: &Orientation, percentage: f64) -> Self {
+    pub fn new(container: &Container, orientation: &Orientation, percentage: f64, handle_size: Option<i32>) -> Self {
         let (separator_orientation, cursor) = match orientation {
             Orientation::Horizontal => (Orientation::Vertical, "col-resize"),
             Orientation::Vertical => (Orientation::Horizontal, "row-resize"),
@@ -32,7 +32,10 @@ impl Separator {
         bin.set_percentage(percentage);
 
         // Calculate Handle size and apply margins
-        let margin_size = SPLIT_HANDLE_WIDTH - SPLIT_VISUAL_WIDTH;
+        // Since each VTE widget also has a fixed padding of 1 px for each direction,
+        // we subtract 2
+        let handle_size = handle_size.unwrap_or(SPLIT_HANDLE_WIDTH) - 2;
+        let margin_size = handle_size - SPLIT_VISUAL_WIDTH;
         let first_half = margin_size / 2;
         let second_half = margin_size - first_half;
         if separator_orientation == Orientation::Horizontal {

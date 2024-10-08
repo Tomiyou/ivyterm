@@ -6,7 +6,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
 use libadwaita::{glib, prelude::*};
 
-use crate::terminal::Terminal;
+use crate::{terminal::Terminal, window::IvyWindow};
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -15,18 +15,37 @@ glib::wrapper! {
 }
 
 impl Container {
-    pub fn new(orientation: Orientation, _spacing: u32) -> Self {
+    pub fn new(orientation: Orientation, window: &IvyWindow) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);
         container.set_hexpand(true);
+
+        container.imp().window.replace(Some(window.clone()));
 
         container
     }
 
     pub fn append(&self, child: &impl IsA<Widget>) {
         if let Some(last_child) = self.last_child() {
-            let new_separator = self.imp().add_separator();
+            let last_child: Terminal = last_child.downcast().unwrap();
+
+            // If tmux session is active, Separator's width should be the same as Terminal char width/height
+            let binding = self.imp().window.borrow();
+            let window = binding.as_ref().unwrap();
+            let handle_size = if window.is_tmux() {
+                let orientation = self.orientation();
+                let (char_width, char_height) = last_child.get_char_width_height();
+
+                match orientation {
+                    Orientation::Horizontal => Some(char_width as i32),
+                    _ => Some(char_height as i32),
+                }
+            } else {
+                None
+            };
+
+            let new_separator = self.imp().add_separator(handle_size);
             new_separator.insert_after(self, Some(&last_child));
             child.insert_after(self, Some(&new_separator));
         } else {

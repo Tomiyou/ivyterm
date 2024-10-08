@@ -189,6 +189,12 @@ impl Terminal {
         let rows = vte.row_count();
         (cols, rows)
     }
+
+    pub fn get_char_width_height(&self) -> (i64, i64) {
+        let binding = self.imp().vte.borrow();
+        let vte = binding.as_ref().unwrap();
+        (vte.char_width(), vte.char_height())
+    }
 }
 
 #[inline]

@@ -101,7 +101,7 @@ fn parse_layout_recursive(
             };
 
             // TODO: What if already exists
-            let new_container = Container::new(orientation, 0);
+            let new_container = Container::new(orientation, window);
             if let Some(parent) = parent {
                 parent.append(&new_container);
             } else {

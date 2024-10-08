@@ -22,8 +22,8 @@ fn main() -> glib::ExitCode {
     });
 
     application.connect_activate(move |app| {
-        app.new_window(None);
-        // create_window(app, Some("blabla"));
+        // app.new_window(None);
+        app.new_window(Some("blabla"));
     });
     application.run()
 }
