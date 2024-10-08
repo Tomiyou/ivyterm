@@ -28,7 +28,7 @@ impl Default for ContainerLayoutPriv {
 // The central trait for subclassing a GObject
 #[glib::object_subclass]
 impl ObjectSubclass for ContainerLayoutPriv {
-    const NAME: &'static str = "MyGtkAppCustomButton";
+    const NAME: &'static str = "IvyTerminalContainerLayout";
     type Type = super::ContainerLayout;
     type ParentType = LayoutManager;
 }

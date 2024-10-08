@@ -1,4 +1,5 @@
 mod imp;
+mod layout;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
@@ -282,5 +283,10 @@ impl TopLevel {
         }
 
         (0, 0)
+    }
+
+    pub fn layout_alloc_changed(&self) {
+        let window = self.imp().window.borrow();
+        window.as_ref().unwrap().resync_tmux_size();
     }
 }

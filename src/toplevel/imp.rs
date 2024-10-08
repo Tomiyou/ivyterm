@@ -5,6 +5,8 @@ use libadwaita::{glib, subclass::prelude::*, TabView};
 
 use crate::{container::Container, terminal::Terminal, window::IvyWindow};
 
+use super::layout::TopLevelLayout;
+
 pub struct Zoomed {
     pub terminal: Terminal,
     pub root_container: Container,
@@ -29,6 +31,11 @@ impl ObjectSubclass for TopLevelPriv {
     const NAME: &'static str = "ivyTerminalPage";
     type Type = super::TopLevel;
     type ParentType = libadwaita::Bin;
+
+    fn class_init(gtk_class: &mut Self::Class) {
+        // The layout manager determines how child widgets are laid out.
+        gtk_class.set_layout_manager_type::<TopLevelLayout>();
+    }
 }
 
 // Trait shared by all GObjects

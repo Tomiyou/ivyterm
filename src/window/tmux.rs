@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::{
     keyboard::keycode_to_arrow_key,
-    tmux::{Tmux, TmuxCommand, TmuxEvent},
+    tmux::{Tmux, TmuxEvent},
     toplevel::TopLevel,
     window::layout::parse_tmux_layout,
 };
@@ -22,17 +22,6 @@ impl IvyWindow {
 
         // First store Tmux
         imp.tmux.replace(Some(tmux));
-
-        // Connect window resize signals
-        self.connect_maximized_notify(|window| {
-            window.spawn_resize_future();
-        });
-        self.connect_default_width_notify(|window| {
-            window.spawn_resize_future();
-        });
-        self.connect_default_height_notify(|window| {
-            window.spawn_resize_future();
-        });
 
         // Then get initial layout - this order to prevent a possible race condition
         let binding = imp.tmux.borrow();
@@ -104,7 +93,7 @@ impl IvyWindow {
         }
     }
 
-    fn spawn_resize_future(&self) {
+    pub fn resync_tmux_size(&self) {
         // First check if a future is already running
         let mut binding = self.imp().tmux.borrow_mut();
         let tmux = binding.as_mut().unwrap();
@@ -130,8 +119,8 @@ impl IvyWindow {
                 println!("Given layout: {}", std::str::from_utf8(&layout).unwrap());
                 parse_tmux_layout(&layout[1..], &self);
 
-                // Sync Window size to Tmux
-                self.spawn_resize_future();
+                // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
+                // Also only get initial output when size + layout is OK
             }
             TmuxEvent::InitialOutputFinished() => {
                 let mut binding = imp.tmux.borrow_mut();
