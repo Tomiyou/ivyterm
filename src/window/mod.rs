@@ -2,13 +2,12 @@ mod imp;
 mod layout;
 mod tmux;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
-use libadwaita::{gio, glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
+use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
+use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
+use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 
 use crate::{
-    global_state::show_settings_window, next_unique_tab_id, terminal::Terminal,
-    toplevel::TopLevel,
+    application::IvyApplication, global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, next_unique_tab_id, terminal::Terminal, toplevel::TopLevel
 };
 
 glib::wrapper! {
@@ -18,12 +17,12 @@ glib::wrapper! {
 }
 
 impl IvyWindow {
-    pub fn new(app: &Application, title: &str, default_width: i32, default_height: i32) -> Self {
+    pub fn new(app: &IvyApplication, css_provider: &CssProvider) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));
-        window.set_title(Some(title));
-        window.set_default_width(default_width);
-        window.set_default_height(default_height);
+        window.set_title(Some(APPLICATION_TITLE));
+        window.set_default_width(INITIAL_WIDTH);
+        window.set_default_height(INITIAL_HEIGHT);
 
         println!("Created new window!");
 
@@ -32,9 +31,7 @@ impl IvyWindow {
 
         // View stack holds all panes
         let tab_view = TabView::new();
-        let mut binding = window.imp().tab_view.borrow_mut();
-        binding.replace(tab_view.clone());
-        drop(binding);
+        window.imp().initialize(&tab_view, css_provider);
 
         // Close the tab_view when 0 tabs remain
         let _window = window.clone();
@@ -42,7 +39,7 @@ impl IvyWindow {
             if tab_view.n_pages() < 2 {
                 _window.close();
             }
-            false
+            Propagation::Proceed
         });
 
         // Terminal settings
@@ -150,5 +147,9 @@ impl IvyWindow {
         }
 
         None
+    }
+
+    pub fn change_color(&self) {
+        let app = self.application();
     }
 }

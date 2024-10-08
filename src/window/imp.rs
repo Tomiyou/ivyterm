@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
@@ -15,6 +16,7 @@ pub struct IvyWindowPriv {
     pub tab_view: RefCell<Option<TabView>>,
     pub tabs: RefCell<Vec<TopLevel>>,
     pub terminals: RefCell<HashMap<u32, Terminal>>,
+    pub css_provider: RefCell<CssProvider>,
 }
 
 // The central trait for subclassing a GObject
@@ -39,3 +41,12 @@ impl ApplicationWindowImpl for IvyWindowPriv {}
 
 // Trait shared by all Adwaita application windows
 impl AdwApplicationWindowImpl for IvyWindowPriv {}
+
+impl IvyWindowPriv {
+    pub fn initialize(&self, tab_view: &TabView, css_provider: &CssProvider) {
+        let mut binding = self.tab_view.borrow_mut();
+        binding.replace(tab_view.clone());
+
+        self.css_provider.replace(css_provider.clone());
+    }
+}

@@ -2,10 +2,12 @@ use std::sync::RwLock;
 
 use gtk4::gdk::RGBA;
 use gtk4::pango::FontDescription;
-use lazy_static::lazy_static;
-use libadwaita::{prelude::*, HeaderBar};
-use libadwaita::{Application, ApplicationWindow};
 use gtk4::{Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Orientation};
+use lazy_static::lazy_static;
+use libadwaita::ApplicationWindow;
+use libadwaita::{prelude::*, HeaderBar};
+
+use crate::application::IvyApplication;
 
 pub const INITIAL_WIDTH: i32 = 802;
 pub const INITIAL_HEIGHT: i32 = 648;
@@ -62,7 +64,7 @@ impl GlobalSettings {
     }
 }
 
-pub fn show_settings_window(app: Application) {
+pub fn show_settings_window(app: IvyApplication) {
     let window_box = Box::new(Orientation::Vertical, 0);
 
     // Window handle and buttons
@@ -73,16 +75,15 @@ pub fn show_settings_window(app: Application) {
     let font_dialog_button = FontDialogButton::new(Some(font_dialog));
     font_dialog_button.connect_font_desc_notify(|button| {
         let font_description = button.font_desc().unwrap();
-        println!("connect_font_desc_notify executed {:?}", font_description.to_string());
+        println!(
+            "connect_font_desc_notify executed {:?}",
+            font_description.to_string()
+        );
     });
 
     // Color picker
     let color_dialog = ColorDialog::new();
     let color_dialog_button = ColorDialogButton::new(Some(color_dialog));
-    color_dialog_button.connect_rgba_notify(|button| {
-        let rgba = button.rgba();
-        println!("connect_rgba_notify executed {:?}", rgba);
-    });
 
     window_box.append(&header_bar);
     window_box.append(&font_dialog_button);
@@ -98,4 +99,14 @@ pub fn show_settings_window(app: Application) {
         .build();
 
     window.present();
+
+    color_dialog_button.connect_rgba_notify(move |button| {
+        let rgba = button.rgba();
+        println!("connect_rgba_notify executed {:?}", rgba);
+        let app = window.application();
+        if let Some(app) = app {
+            let app: IvyApplication = app.downcast().unwrap();
+            app.change_background_color(rgba);
+        }
+    });
 }

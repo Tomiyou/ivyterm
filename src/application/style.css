@@ -10,12 +10,12 @@ paned separator {
 
 .separator_cont_vertical {
     padding: 0px 3px;
-    background-color: black;
+    background-color: #000000;
 }
 
 .separator_cont_horizontal {
     padding: 3px 0px;
-    background-color: black;
+    background-color: #000000;
 }
 
 separator {
