@@ -13,7 +13,6 @@ mod keyboard;
 mod mux;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
-static GLOBAL_TERMINAL_ID: AtomicU32 = AtomicU32::new(0);
 
 fn load_css() {
     // Load the CSS file and add it to the provider

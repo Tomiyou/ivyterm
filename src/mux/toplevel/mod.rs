@@ -1,7 +1,7 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation, Paned};
+use gtk4::{graphene::Rect, Orientation};
 use libadwaita::{glib, prelude::*, TabView};
 use vte4::{Terminal, WidgetExt};
 
