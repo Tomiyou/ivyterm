@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::RefCell;
 
 use gtk4::{Allocation, LayoutManager, Orientation};
 use libadwaita::subclass::prelude::*;
@@ -9,20 +9,9 @@ use crate::container::separator::Separator;
 use crate::container::Container;
 
 // Object holding the state
+#[derive(Default)]
 pub struct ContainerLayoutPriv {
-    pub percentage: Cell<f64>,
-    pub last_combined_size: Cell<i32>,
-    pub current_first_child_size: Cell<i32>,
-}
-
-impl Default for ContainerLayoutPriv {
-    fn default() -> Self {
-        Self {
-            percentage: Cell::new(0.5),
-            last_combined_size: Cell::new(-1),
-            current_first_child_size: Cell::new(-1),
-        }
-    }
+    pub separators: RefCell<Vec<Separator>>,
 }
 
 // The central trait for subclassing a GObject
@@ -86,28 +75,12 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
                 .collect()
         };
 
-        let mut i = 0;
-        let mut next_child = paned.first_child();
-        while let Some(child) = next_child {
-            let allocation = allocations[i];
+        let mut children_iter = paned.first_child();
+        let mut allocation_iter = allocations.iter();
+        while let Some(child) = children_iter {
+            let allocation = allocation_iter.next().unwrap();
             child.size_allocate(&allocation, -1);
-
-            // Remember allocation position for Separators
-            if i % 2 == 1 {
-                let separator: Separator = child.downcast().unwrap();
-                let pos = if orientation == Orientation::Horizontal {
-                    allocation.x()
-                } else {
-                    allocation.y()
-                };
-                separator.set_current_position(pos);
-
-                next_child = separator.next_sibling();
-            } else {
-                next_child = child.next_sibling();
-            }
-
-            i += 1;
+            children_iter = child.next_sibling();
         }
     }
 
@@ -184,48 +157,49 @@ impl ContainerLayoutPriv {
     }
 
     #[inline]
-    fn get_children_sizes(&self, container: &Container, size: i32) -> Vec<i32> {
-        // Percentages might be floats, but sizes are integer pixels
-        let child_count = container.children_count();
-        let mut children_sizes = Vec::with_capacity((child_count * 2) - 1);
+    fn get_children_sizes(&self, container: &Container, given_size: i32) -> Vec<i32> {
+        let separators = self.separators.borrow();
+        let separator_count = separators.len();
+        let child_count = separator_count * 2 + 1;
+        let mut children_sizes = Vec::with_capacity(child_count);
 
-        let mut remaining_size = size;
-        // Debt tracks half of previous handle size
-        let mut handle_debt = 0;
+        // Handle being given size less than 0 (usually when not initialized yet or error)
+        if given_size < 0 {
+            for _ in 0..child_count {
+                children_sizes.push(-1);
+            }
+            return children_sizes;
+        }
+
+        // We can assume that all Separators have the same handle width
+        let handle_size = match separators.first() {
+            Some(separator) => separator.get_handle_width(),
+            None => 0
+        };
+        // From this point on, sizes of all Separator's handles have been removed from given_size
+        let mut remaining_size = given_size;
+        let given_size = given_size - (handle_size * separator_count as i32);
+        let given_size = given_size as f64;
 
         let mut next_child = container.first_child();
         while let Some(child) = next_child {
             if let Some(separator) = child.next_sibling() {
                 let separator: Separator = separator.downcast().unwrap();
-                if size > -1 {
-                    // We stil have a sibling, we take half of the separator size
-                    let percentage = separator.get_percentage();
+                let percentage = separator.get_percentage();
 
-                    // Get handle size first
-                    let handle_size = separator.get_handle_width();
-                    let half_handle = (handle_size as f64 * 0.5).round() as i32;
-
-                    // Take handle size into accout (each child owns half of it), both previous
-                    // (handle_debt) and current (half_handle)
-                    let percentaged_size = (size as f64 * percentage).round() as i32;
-                    let child_size = percentaged_size - handle_debt - half_handle;
-                    children_sizes.push(child_size);
-                    children_sizes.push(handle_size);
-
-                    remaining_size -= percentaged_size;
-                    handle_debt = handle_size - half_handle;
-                } else {
-                    children_sizes.push(size);
-                    children_sizes.push(-1);
+                if handle_size != separator.get_handle_width() {
+                    eprintln!("Separator's have different handle sizes!");
                 }
+
+                let child_size = (given_size * percentage).round() as i32;
+                children_sizes.push(child_size);
+                children_sizes.push(handle_size);
+
+                remaining_size -= child_size + handle_size;
                 next_child = separator.next_sibling();
             } else {
-                if size > -1 {
-                    // No siblings left, we take all of the remaining size
-                    children_sizes.push(remaining_size - handle_debt);
-                } else {
-                    children_sizes.push(size);
-                }
+                // No siblings left, we take all of the remaining size
+                children_sizes.push(remaining_size);
                 break;
             };
         }

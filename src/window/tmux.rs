@@ -82,6 +82,7 @@ impl IvyWindow {
 
         if let Some(selected_page) = selected_page {
             let top_level: TopLevel = selected_page.child().downcast().unwrap();
+            println!("Top Level width {} height {}", top_level.width(), top_level.height());
             let (cols, rows) = top_level.get_cols_rows();
 
             let mut binding = self.imp().tmux.borrow_mut();

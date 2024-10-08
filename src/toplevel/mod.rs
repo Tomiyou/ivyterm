@@ -105,14 +105,14 @@ impl TopLevel {
 
         // Parent of the closing terminal is a Container widget
         let container: Container = parent.downcast().unwrap();
-        container.remove(closing_terminal);
+        let remaining_count = container.remove(closing_terminal);
 
         // At this point we know there is at least 1 remaining terminal
         let last_focused_terminal = self.lru_terminal().unwrap();
 
         // If the conatiner has more than 1 child left, we are done. Otherwise remove the container
         // and leave the 1 child in its place.
-        if container.children_count() > 1 {
+        if remaining_count > 1 {
             last_focused_terminal.grab_focus();
             return;
         }

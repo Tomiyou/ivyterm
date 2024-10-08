@@ -5,10 +5,16 @@ mod separator;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Type};
 use gtk4::{Orientation, Widget};
+use layout_default::ContainerLayout;
 use layout_tmux::TmuxLayout;
 use libadwaita::{glib, prelude::*};
 
 use crate::{terminal::Terminal, window::IvyWindow};
+
+enum Layout {
+    Default(ContainerLayout),
+    Tmux(TmuxLayout),
+}
 
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
@@ -23,36 +29,31 @@ impl Container {
         container.set_vexpand(true);
         container.set_hexpand(true);
 
-        container.imp().window.replace(Some(window.clone()));
+        let imp = container.imp();
+        imp.window.replace(Some(window.clone()));
 
-        if window.is_tmux() {
+        let layout = if window.is_tmux() {
             let tmux_layout = TmuxLayout::new();
-            container.set_layout_manager(Some(tmux_layout));
-        }
+            container.set_layout_manager(Some(tmux_layout.clone()));
+            Layout::Tmux(tmux_layout)
+        } else {
+            let default_layout: ContainerLayout = container.layout_manager().unwrap().downcast().unwrap();
+            Layout::Default(default_layout)
+        };
+        imp.layout.replace(Some(layout));
 
         container
     }
 
     pub fn append(&self, child: &impl IsA<Widget>) {
         if let Some(last_child) = self.last_child() {
-            let last_child: Terminal = last_child.downcast().unwrap();
-
-            // If tmux session is active, Separator's width should be the same as Terminal char width/height
-            let binding = self.imp().window.borrow();
-            let window = binding.as_ref().unwrap();
-            let handle_size = if window.is_tmux() {
-                let orientation = self.orientation();
-                let (char_width, char_height) = last_child.get_char_width_height();
-
-                match orientation {
-                    Orientation::Horizontal => Some(char_width as i32),
-                    _ => Some(char_height as i32),
-                }
-            } else {
-                None
+            let layout = self.imp().layout.borrow();
+            let new_separator = match layout.as_ref().unwrap() {
+                Layout::Default(layout) => layout.add_separator(self),
+                Layout::Tmux(layout) => layout.add_separator(self),
             };
 
-            let new_separator = self.imp().add_separator(handle_size);
+            let last_child: Terminal = last_child.downcast().unwrap();
             new_separator.insert_after(self, Some(&last_child));
             child.insert_after(self, Some(&new_separator));
         } else {
@@ -65,17 +66,20 @@ impl Container {
         old.unparent();
     }
 
-    pub fn remove(&self, child: &impl IsA<Widget>) {
+    pub fn remove(&self, child: &impl IsA<Widget>) -> usize {
         // We also need to remove a Separator, if it exists
         let separator = child.next_sibling();
-        self.imp().remove_separator(separator);
+
+        let layout = self.imp().layout.borrow();
+        let len = match layout.as_ref().unwrap() {
+            Layout::Default(layout) => layout.remove_separator(separator),
+            Layout::Tmux(layout) => layout.remove_separator(separator),
+        };
 
         // Now remove the child
         child.unparent();
-    }
 
-    pub fn children_count(&self) -> usize {
-        self.imp().get_children_count()
+        len
     }
 
     pub fn recursive_size_measure(&self) -> (i64, i64) {

@@ -4,7 +4,7 @@ use libadwaita::{glib, prelude::*};
 
 use crate::settings::{SPLIT_HANDLE_WIDTH, SPLIT_VISUAL_WIDTH};
 
-use super::{layout_default::ContainerLayout, layout_tmux::TmuxLayout, Container};
+use super::Container;
 
 mod imp;
 
@@ -14,13 +14,13 @@ glib::wrapper! {
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Orientable;
 }
 
-enum Layout {
-    Default(ContainerLayout),
-    Tmux(TmuxLayout),
-}
-
 impl Separator {
-    pub fn new(container: &Container, orientation: &Orientation, percentage: f64, handle_size: Option<i32>) -> Self {
+    pub fn new(
+        container: &Container,
+        orientation: &Orientation,
+        percentage: f64,
+        handle_size: Option<i32>,
+    ) -> Self {
         let (separator_orientation, cursor) = match orientation {
             Orientation::Horizontal => (Orientation::Vertical, "col-resize"),
             Orientation::Vertical => (Orientation::Horizontal, "row-resize"),
@@ -57,31 +57,6 @@ impl Separator {
             bin.set_cursor(Some(&cursor));
         }
 
-        // Add ability to drag
-        let layout = container.layout_manager().unwrap();
-        let layout = match layout.downcast::<ContainerLayout>() {
-            Ok(layout) => Layout::Default(layout),
-            Err(layout) => {
-                let layout: TmuxLayout = layout.downcast().unwrap();
-                Layout::Tmux(layout)
-            }
-        };
-
-        let drag = GestureDrag::new();
-        let container = container.clone();
-        drag.connect_drag_update(glib::clone!(
-            #[strong]
-            bin,
-            move |drag, offset_x, offset_y| {
-                let (start_x, start_y) = drag.start_point().unwrap();
-                match &layout {
-                    Layout::Default(layout) => layout.drag_update(&container, &bin, start_x + offset_x, start_y + offset_y),
-                    Layout::Tmux(layout) => layout.drag_update(&container, &bin, start_x + offset_x, start_y + offset_y),
-                }
-            }
-        ));
-        bin.add_controller(drag);
-
         bin
     }
 
@@ -99,12 +74,12 @@ impl Separator {
         handle_size
     }
 
-    pub fn get_current_position(&self) -> i32 {
-        self.imp().current_position.get()
+    pub fn get_prev_sibling_size(&self) -> i32 {
+        self.imp().prev_sibling_size.get()
     }
 
-    pub fn set_current_position(&self, pos: i32) {
-        self.imp().current_position.replace(pos);
+    pub fn set_prev_sibling_size(&self, pos: i32) {
+        self.imp().prev_sibling_size.replace(pos);
     }
 }
 
