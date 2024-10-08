@@ -1,5 +1,6 @@
 use gtk4::gdk::ModifierType;
 
+#[derive(PartialEq)]
 pub enum Direction {
     Left,
     Up,

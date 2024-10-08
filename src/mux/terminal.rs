@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use glib::{Propagation, SpawnFlags};
 use gtk4::{
-    gdk::{Key, ModifierType, RGBA},
+    gdk::{ModifierType, RGBA},
     EventControllerKey, Orientation, Paned, Widget,
 };
 use libadwaita::prelude::*;
@@ -10,7 +10,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
 use crate::{
     global_state::GLOBAL_SETTINGS,
-    keyboard::{handle_input, Keybinding},
+    keyboard::{handle_input, Direction, Keybinding},
     mux::{pane::close_pane, toplevel::TopLevel},
     GLOBAL_TERMINAL_ID,
 };
@@ -141,12 +141,36 @@ fn handle_keyboard(
             top_level.close_tab();
         }
         Some(Keybinding::SelectPane(direction)) => {
-            // TODO
+            match cast_parent(eventctl.widget().parent().unwrap()) {
+                ParentType::ParentPaned(paned) => move_pane_focus(paned, direction),
+                ParentType::ParentTopLevel(_) => {},
+            };
         }
-        None => {
-            return Propagation::Proceed
-        },
+        None => return Propagation::Proceed,
     };
 
     Propagation::Stop
+}
+
+fn move_pane_focus(parent: Paned, direction: Direction) {
+    match (parent.orientation(), direction) {
+        (Orientation::Horizontal, Direction::Left) => if parent.last_child().unwrap().has_focus() {
+            parent.emit_cycle_child_focus(true);
+            return;
+        },
+        (Orientation::Horizontal, Direction::Right) => if parent.start_child().unwrap().has_focus() {
+            parent.emit_cycle_child_focus(false);
+            return;
+        },
+        (Orientation::Vertical, Direction::Up) => if parent.last_child().unwrap().has_focus() {
+            parent.emit_cycle_child_focus(true);
+            return;
+        },
+        (Orientation::Vertical, Direction::Down) => if parent.start_child().unwrap().has_focus() {
+            parent.emit_cycle_child_focus(false);
+            return;
+        },
+        _ => {},
+    };
+
 }
