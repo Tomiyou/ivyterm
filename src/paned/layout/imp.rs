@@ -16,7 +16,7 @@ pub struct IvyLayoutPriv {
 impl Default for IvyLayoutPriv {
     fn default() -> Self {
         Self {
-            percentage: Cell::new(0.75),
+            percentage: Cell::new(0.5),
             last_combined_size: Cell::new(-1),
         }
     }
@@ -51,7 +51,7 @@ impl LayoutManagerImpl for IvyLayoutPriv {
         (minimum, natural, -1, -1)
     }
 
-    fn allocate(&self, widget: &gtk4::Widget, width: i32, height: i32, baseline: i32) {
+    fn allocate(&self, widget: &gtk4::Widget, width: i32, height: i32, _baseline: i32) {
         let paned: IvyPaned = widget.clone().downcast().unwrap();
 
         let start_child = paned.start_child();
@@ -66,7 +66,7 @@ impl LayoutManagerImpl for IvyLayoutPriv {
             let end_child = end_child.unwrap();
             let orientation = paned.orientation();
 
-            let (lala, handle_size, _, _) = separator.measure(orientation, -1);
+            let (_, handle_size, _, _) = separator.measure(orientation, -1);
 
             let (handle_alloc, start_alloc, end_alloc) = if orientation == Orientation::Horizontal {
                 let start_child_width = self.get_start_child_size(width - handle_size);
