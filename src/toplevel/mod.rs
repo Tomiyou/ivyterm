@@ -38,10 +38,10 @@ impl TopLevel {
         top_level
     }
 
-    pub fn create_tab(&self) {
+    pub fn create_tab(&self, id: Option<u32>) {
         let binding = self.imp().tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
-        create_tab(tab_view);
+        create_tab(tab_view, id);
     }
 
     pub fn close_tab(&self) {
@@ -315,8 +315,12 @@ impl TopLevel {
     }
 }
 
-pub fn create_tab(tab_view: &TabView) {
-    let tab_id = GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed);
+pub fn create_tab(tab_view: &TabView, id: Option<u32>) {
+    let tab_id = if let Some(id) = id {
+        id
+    } else {
+        GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
+    };
     let top_level = TopLevel::new(tab_view);
 
     // Add pane as a page

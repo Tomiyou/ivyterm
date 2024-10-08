@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
-use crate::{paned::IvyPaned, terminal::IvyTerminal};
+use crate::{global_state::WindowState, paned::IvyPaned, terminal::IvyTerminal};
 
 pub struct Zoomed {
     pub terminal: IvyTerminal,
@@ -15,6 +15,7 @@ pub struct Zoomed {
 // Object holding the state
 #[derive(Default)]
 pub struct TopLevel {
+    pub window_state: RefCell<Option<WindowState>>,
     pub tab_view: RefCell<Option<TabView>>,
     pub terminals: RefCell<Vec<IvyTerminal>>,
     pub zoomed: RefCell<Option<Zoomed>>,

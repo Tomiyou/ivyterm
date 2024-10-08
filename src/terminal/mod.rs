@@ -134,7 +134,7 @@ fn handle_keyboard(
             top_level.close_pane(terminal);
         }
         Some(Keybinding::TabNew) => {
-            top_level.create_tab();
+            top_level.create_tab(None);
         }
         Some(Keybinding::TabClose) => {
             top_level.close_tab();

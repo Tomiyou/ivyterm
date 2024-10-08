@@ -1,4 +1,5 @@
 use std::sync::atomic::AtomicU32;
+use std::sync::{Arc, Mutex};
 
 use gtk4::gdk::Display;
 use gtk4::gio::ApplicationFlags;
@@ -8,9 +9,8 @@ use gtk4::{
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, TabBar, TabView};
 
-use global_state::{show_settings_window, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
+use global_state::{show_settings_window, WindowState, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH};
 use tmux::attach_tmux;
-use toplevel::create_tab;
 
 mod error;
 mod global_state;
@@ -35,7 +35,7 @@ fn load_css() {
     );
 }
 
-fn create_window(app: &Application, tmux_session: Option<&str>) {
+fn create_window(app: &Application /* , tmux_session: Option<&str> */) {
     // Create a new window
     let window = ApplicationWindow::builder()
         .application(app)
@@ -45,10 +45,6 @@ fn create_window(app: &Application, tmux_session: Option<&str>) {
         .build();
 
     println!("create_window called");
-    if let Some(session_name) = tmux_session {
-        println!("Starting TMUX");
-        attach_tmux(session_name);
-    }
 
     // Window content box holds title bar and panes
     let window_box = GtkBox::new(Orientation::Vertical, 0);
@@ -65,8 +61,22 @@ fn create_window(app: &Application, tmux_session: Option<&str>) {
         false
     });
 
-    // Create initial Tab
-    create_tab(&tab_view);
+    // Create instance of WindowState kept inside Mutex
+    let window_state = WindowState {
+        window: window.clone(),
+        tab_view: tab_view.clone(),
+        tabs: Vec::new(),
+        tmux: false,
+    };
+    let window_state = Arc::new(Mutex::new(window_state));
+
+    // if let Some(session_name) = tmux_session {
+    //     println!("Starting TMUX");
+    attach_tmux("terminator", &window_state);
+    // } else {
+    //     // Create initial Tab
+    //     create_tab(&tab_view);
+    // }
 
     // Terminal settings
     let settings_button = Button::with_label("Settings");
@@ -113,33 +123,34 @@ fn create_window(app: &Application, tmux_session: Option<&str>) {
 fn main() -> glib::ExitCode {
     let application = Application::builder()
         .application_id("com.tomiyou.ivyTerm")
-        .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
+        // .flags(ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
 
-    application.connect_command_line(move |app, cli| {
-        let mut tmux_mode: Option<&str> = None;
+    // application.connect_command_line(move |app, cli| {
+    //     let mut tmux_mode: Option<&str> = None;
 
-        let args = cli.arguments();
-        let mut iterator = args.iter();
-        while let Some(arg) = iterator.next() {
-            if arg.eq_ignore_ascii_case("--tmux") {
-                // println!("Launching as tmux");
-                tmux_mode = if let Some(ssh) = iterator.next() {
-                    println!("Attaching TMUX remote on {:?}", ssh);
-                    ssh.to_str()
-                } else {
-                    println!("Attaching TMUX locally");
-                    Some("")
-                };
-            }
-        }
+    //     let args = cli.arguments();
+    //     let mut iterator = args.iter();
+    //     while let Some(arg) = iterator.next() {
+    //         if arg.eq_ignore_ascii_case("--tmux") {
+    //             // println!("Launching as tmux");
+    //             tmux_mode = if let Some(ssh) = iterator.next() {
+    //                 println!("Attaching TMUX remote on {:?}", ssh);
+    //                 ssh.to_str()
+    //             } else {
+    //                 println!("Attaching TMUX locally");
+    //                 Some("")
+    //             };
+    //         }
+    //     }
 
-        // Handle this better
-        create_window(app, tmux_mode);
+    //     // Handle this better
+    //     create_window(app, tmux_mode);
 
-        0
-    });
+    //     0
+    // });
 
     application.connect_startup(|_| load_css());
+    application.connect_activate(create_window);
     application.run()
 }
