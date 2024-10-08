@@ -2,10 +2,11 @@ use std::cell::RefCell;
 
 use gtk4::Paned;
 use libadwaita::{glib, subclass::prelude::*, TabView};
-use vte4::Terminal;
+
+use crate::terminal::IvyTerminal;
 
 pub struct Zoomed {
-    pub terminal: Terminal,
+    pub terminal: IvyTerminal,
     pub root_paned: Paned,
     pub terminal_paned: Paned,
     pub is_start_child: bool,
@@ -15,8 +16,8 @@ pub struct Zoomed {
 #[derive(Default)]
 pub struct TopLevel {
     pub tab_view: RefCell<Option<TabView>>,
-    pub terminals: RefCell<Vec<Terminal>>,
-    pub zoomed: RefCell<Option<Zoomed>>
+    pub terminals: RefCell<Vec<IvyTerminal>>,
+    pub zoomed: RefCell<Option<Zoomed>>,
 }
 
 // The central trait for subclassing a GObject

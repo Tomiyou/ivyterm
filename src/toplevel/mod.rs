@@ -3,10 +3,9 @@ mod imp;
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Paned, Widget};
 use libadwaita::{glib, prelude::*, TabView};
-use vte4::{Terminal, WidgetExt};
 
 use crate::{
-    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, mux::new_paned, terminal::create_terminal
+    global_state::SPLIT_HANDLE_WIDTH, keyboard::Direction, mux::new_paned, terminal::IvyTerminal,
 };
 
 use self::imp::Zoomed;
@@ -29,7 +28,7 @@ impl TopLevel {
             .borrow_mut()
             .replace(tab_view.clone());
 
-        let terminal = create_terminal(&top_level);
+        let terminal = IvyTerminal::new(&top_level);
 
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
@@ -52,10 +51,10 @@ impl TopLevel {
         tab_view.close_page(&page);
     }
 
-    pub fn split_pane(&self, terminal: &Terminal, orientation: Orientation) {
+    pub fn split_pane(&self, terminal: &IvyTerminal, orientation: Orientation) {
         self.unzoom();
 
-        let new_terminal = create_terminal(&self);
+        let new_terminal = IvyTerminal::new(&self);
 
         let parent = terminal.parent().unwrap();
         if parent.eq(self) {
@@ -99,7 +98,7 @@ impl TopLevel {
         }
     }
 
-    pub fn close_pane(&self, closing_terminal: &Terminal) {
+    pub fn close_pane(&self, closing_terminal: &IvyTerminal) {
         self.unzoom();
 
         let parent = closing_terminal.parent().unwrap();
@@ -139,7 +138,7 @@ impl TopLevel {
         // Find terminal to focus after the closing terminal is unrealized
         let new_focus = self
             .find_neighbor(&closing_terminal, direction)
-            .or_else(|| Some(retained_child.clone().downcast::<Terminal>().unwrap()))
+            .or_else(|| Some(retained_child.clone().downcast::<IvyTerminal>().unwrap()))
             .unwrap();
         new_focus.grab_focus();
 
@@ -186,7 +185,7 @@ impl TopLevel {
         panic!("Parent is neither Bin nor Paned");
     }
 
-    pub fn toggle_zoom(&self, terminal: &Terminal) {
+    pub fn toggle_zoom(&self, terminal: &IvyTerminal) {
         let imp = self.imp();
         let binding = imp.terminals.borrow();
         if binding.len() < 2 {
@@ -199,7 +198,9 @@ impl TopLevel {
             // Unzoom the terminal
             self.set_child(None::<&Widget>);
             if zoomed.is_start_child {
-                zoomed.terminal_paned.set_start_child(Some(&zoomed.terminal));
+                zoomed
+                    .terminal_paned
+                    .set_start_child(Some(&zoomed.terminal));
             } else {
                 zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
             }
@@ -229,24 +230,19 @@ impl TopLevel {
             terminal: terminal.clone(),
             root_paned,
             terminal_paned,
-            is_start_child
+            is_start_child,
         };
         binding.replace(zoomed);
     }
 
     pub fn unzoom(&self) {
-        let imp = self.imp();
-        let binding = imp.terminals.borrow();
-        if binding.len() < 2 {
-            // There is only 1 terminal present, no need for any unzooming
-            return;
-        }
-
-        let mut binding = imp.zoomed.borrow_mut();
+        let mut binding = self.imp().zoomed.borrow_mut();
         if let Some(zoomed) = binding.take() {
             self.set_child(None::<&Widget>);
             if zoomed.is_start_child {
-                zoomed.terminal_paned.set_start_child(Some(&zoomed.terminal));
+                zoomed
+                    .terminal_paned
+                    .set_start_child(Some(&zoomed.terminal));
             } else {
                 zoomed.terminal_paned.set_end_child(Some(&zoomed.terminal));
             }
@@ -256,17 +252,21 @@ impl TopLevel {
         }
     }
 
-    pub fn register_terminal(&self, terminal: &Terminal) {
+    pub fn register_terminal(&self, terminal: &IvyTerminal) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.push(terminal.clone());
     }
 
-    pub fn unregister_terminal(&self, terminal: &Terminal) {
+    pub fn unregister_terminal(&self, terminal: &IvyTerminal) {
         let mut binding = self.imp().terminals.borrow_mut();
         binding.retain(|t| t != terminal);
     }
 
-    pub fn find_neighbor(&self, terminal: &Terminal, direction: Direction) -> Option<Terminal> {
+    pub fn find_neighbor(
+        &self,
+        terminal: &IvyTerminal,
+        direction: Direction,
+    ) -> Option<IvyTerminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
             return None;
@@ -285,6 +285,8 @@ impl TopLevel {
             Direction::Right => Rect::new(0.0, 0.0, width as f32 + PAD, height as f32),
         };
 
+        // TODO: it can be NULL when widget is being unzoomed
+        // println!("Terminal rect {:?}", terminal_rect);
         // Loop through all the terminals in the window and find a suitable neighbor
         for neighbor in binding.iter() {
             if neighbor == terminal {
@@ -295,6 +297,7 @@ impl TopLevel {
             // and returns a Rect graphene struct which contains x and y distance from the target
             // terminal, and width and height of the neighbor
             let bounds = neighbor.compute_bounds(terminal).unwrap();
+            // println!("Bounds are {:?}", bounds);
             let intersection = terminal_rect.intersection(&bounds);
             if intersection.is_some() {
                 return Some(neighbor.clone());
