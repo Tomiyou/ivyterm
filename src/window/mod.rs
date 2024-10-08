@@ -6,7 +6,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
-use crate::{global_state::show_settings_window, tmux::Tmux, toplevel::TopLevel, GLOBAL_TAB_ID};
+use crate::{global_state::show_settings_window, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel, GLOBAL_TAB_ID};
 
 glib::wrapper! {
     pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
@@ -86,6 +86,8 @@ impl IvyWindow {
     }
 
     pub fn init_tmux(&self, tmux: Tmux) {
+        // Get the initial layout
+        tmux.send_command(TmuxCommand::InitialLayout);
         self.imp().tmux.replace(Some(tmux));
     }
 

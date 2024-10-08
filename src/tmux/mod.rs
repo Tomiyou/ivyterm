@@ -12,6 +12,7 @@ use crate::window::IvyWindow;
 
 mod layout;
 
+// TODO: Implement command queue using channels
 pub struct Tmux {
     stdin_stream: ChildStdin,
 }
@@ -35,6 +36,7 @@ enum TmuxEvent {
     Exit,
 }
 
+#[derive(Debug)]
 pub enum TmuxCommand {
     InitialLayout,
 }
@@ -90,21 +92,13 @@ fn tmux_event_future(event: TmuxEvent, window: &IvyWindow) {
     }
 }
 
-#[derive(Debug)]
-enum CurrentCommand {
-    None,
-    ReadingBlock,
-    Success,
-    Error,
-}
-
 #[inline]
 fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>) {
     let mut buffer = Vec::with_capacity(65534);
     let mut command_output = String::new();
     let mut reader = BufReader::new(stdout_stream);
 
-    let mut state = CurrentCommand::None;
+    let mut current_command = TmuxCommand::InitialLayout;
 
     // TODO: Handle output larger than 65534 bytes
     while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
@@ -126,11 +120,9 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
             } else if line.starts_with("%layout-change") {
                 // println!("Someone else is messing with our ")
             } else if line.starts_with("%end") {
-                println!("Given command: ({:?}) ====\n{}", state, command_output);
-                state = CurrentCommand::None;
+                println!("Given command: ({:?}) ====\n{}", current_command, command_output);
             } else if line.starts_with("%error") {
-                println!("Error: ({:?}) {}", state, command_output);
-                state = CurrentCommand::None;
+                println!("Error: ({:?}) {}", current_command, command_output);
             } else if line.starts_with("%session-changed") {
                 println!("Session changed: {}", &line[17..]);
             } else if line.starts_with("%exit") {

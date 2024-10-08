@@ -3,13 +3,9 @@ use std::sync::RwLock;
 use gtk4::gdk::RGBA;
 use gtk4::pango::FontDescription;
 use lazy_static::lazy_static;
-use libadwaita::{prelude::*, HeaderBar, TabView};
+use libadwaita::{prelude::*, HeaderBar};
 use libadwaita::{Application, ApplicationWindow};
 use gtk4::{Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Orientation};
-
-use crate::tmux::Tmux;
-use crate::toplevel::TopLevel;
-use crate::window::IvyWindow;
 
 pub const INITIAL_WIDTH: i32 = 802;
 pub const INITIAL_HEIGHT: i32 = 648;
@@ -102,11 +98,4 @@ pub fn show_settings_window(app: Application) {
         .build();
 
     window.present();
-}
-
-pub struct WindowState {
-    pub window: IvyWindow,
-    pub tab_view: TabView,
-    pub tabs: Vec<TopLevel>,
-    pub tmux: Option<Tmux>,
 }

@@ -1,7 +1,5 @@
 mod imp;
 
-use std::{cell::RefCell, rc::Rc};
-
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
 use gtk4::{
     gdk::{ModifierType, RGBA},
@@ -11,9 +9,10 @@ use libadwaita::{glib, prelude::*};
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 
 use crate::{
-    global_state::{WindowState, GLOBAL_SETTINGS},
+    global_state::GLOBAL_SETTINGS,
     keyboard::{handle_input, Keybinding},
-    toplevel::TopLevel, window::IvyWindow,
+    toplevel::TopLevel,
+    window::IvyWindow,
 };
 
 glib::wrapper! {
