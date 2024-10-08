@@ -1,12 +1,15 @@
 mod imp;
 
-use std::sync::atomic::Ordering;
-
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{gdk::Key, Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{glib, prelude::*, Application, ApplicationWindow, TabBar, TabView};
 
-use crate::{global_state::show_settings_window, tmux::{Tmux, TmuxCommand}, toplevel::TopLevel, GLOBAL_TAB_ID};
+use crate::{
+    global_state::show_settings_window,
+    next_unique_tab_id,
+    tmux::{Tmux, TmuxCommand},
+    toplevel::TopLevel,
+};
 
 glib::wrapper! {
     pub struct IvyWindow(ObjectSubclass<imp::IvyWindowPriv>)
@@ -95,7 +98,7 @@ impl IvyWindow {
         let tab_id = if let Some(id) = id {
             id
         } else {
-            GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
+            next_unique_tab_id()
         };
 
         let binding = self.imp().tab_view.borrow();
@@ -103,10 +106,10 @@ impl IvyWindow {
 
         // Create new TopLevel widget
         let top_level = TopLevel::new(tab_view, self);
-    
+
         // Add pane as a page
         let page = tab_view.append(&top_level);
-    
+
         let text = format!("Terminal {}", tab_id);
         page.set_title(&text);
         tab_view.set_selected_page(&page);
@@ -117,5 +120,30 @@ impl IvyWindow {
         let tab_view = binding.as_ref().unwrap();
         let page = tab_view.page(child);
         tab_view.close_page(&page);
+    }
+
+    pub fn is_tmux(&self) -> bool {
+        let binding = self.imp().tmux.borrow();
+        binding.is_some()
+    }
+
+    pub fn tmux_keypress(&self, pane_id: u32, key: u32, keyval: Key) {
+        let binding = self.imp().tmux.borrow();
+        let tmux = binding.as_ref().unwrap();
+
+        match key {
+            // Ignore Ctrl, Shift, Super
+            37 | 50 | 133 => {}
+            // Handle Enter separately
+            36 => {
+                tmux.send_keypress(0, '\n');
+            }
+            // Handle the rest
+            c => {
+                if let Some(c) = keyval.to_unicode() {
+                    tmux.send_keypress(0, c);
+                }
+            }
+        }
     }
 }

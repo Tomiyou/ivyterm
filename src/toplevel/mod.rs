@@ -23,7 +23,7 @@ impl TopLevel {
 
         top_level.imp().init_values(tab_view, window);
 
-        let terminal = Pane::new(&top_level, window);
+        let terminal = Pane::new(&top_level, window, None);
 
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
@@ -50,7 +50,7 @@ impl TopLevel {
 
         let binding = self.imp().window.borrow();
         let window = binding.as_ref().unwrap();
-        let new_terminal = Pane::new(&self, window);
+        let new_terminal = Pane::new(&self, window, None);
         let new_separator = new_separator(orientation);
 
         let parent = terminal.parent().unwrap();

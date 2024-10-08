@@ -11,6 +11,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 use crate::{
     global_state::GLOBAL_SETTINGS,
     keyboard::{handle_input, Keybinding},
+    next_unique_pane_id,
     toplevel::TopLevel,
     window::IvyWindow,
 };
@@ -22,7 +23,13 @@ glib::wrapper! {
 }
 
 impl Pane {
-    pub fn new(top_level: &TopLevel, window: &IvyWindow) -> Self {
+    pub fn new(top_level: &TopLevel, window: &IvyWindow, pane_id: Option<u32>) -> Self {
+        let pane_id = match pane_id {
+            Some(pane_id) => pane_id,
+            None => next_unique_pane_id(),
+        };
+
+        let is_tmux = window.is_tmux();
         let top_level = top_level.clone();
 
         // Get terminal font
@@ -75,8 +82,14 @@ impl Pane {
 
         let eventctl = EventControllerKey::new();
         let _terminal = terminal.clone();
-        eventctl.connect_key_pressed(move |_eventctl, _keyval, key, state| {
-            handle_keyboard(key, state, &_terminal, &top_level)
+        let _window = window.clone();
+        eventctl.connect_key_pressed(move |_eventctl, keyval, key, state| {
+            if is_tmux {
+                _window.tmux_keypress(pane_id, key, keyval);
+                Propagation::Stop
+            } else {
+                handle_keyboard(key, state, &_terminal, &top_level)
+            }
         });
         vte.add_controller(eventctl);
 

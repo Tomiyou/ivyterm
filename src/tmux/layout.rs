@@ -5,6 +5,10 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> usize {
     // We can assume that layout is purse ASCII text
     let mut total_bytes_read = 0;
 
+    // Skip the initial whatever
+    let bytes_read = read_until_char(buffer, ',' as u8);
+    total_bytes_read += bytes_read;
+
     // Read width
     let (width, bytes_read) = read_first_u32(&buffer[total_bytes_read..]);
     total_bytes_read += bytes_read;
@@ -47,4 +51,13 @@ pub fn read_first_u32(buffer: &[u8]) -> (u32, usize) {
         i += 1;
     }
     (number, i + 1)
+}
+
+#[inline]
+pub fn read_until_char(buffer: &[u8], c: u8) -> usize {
+    let mut i = 0;
+    while buffer[i] != c {
+        i += 1;
+    }
+    i + 1
 }

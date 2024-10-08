@@ -26,7 +26,20 @@ impl Tmux {
                     .write_all(b"list-windows -F \"#{window_layout}\"\n")
                     .unwrap();
             }
+            _ => {}
         }
+    }
+
+    pub fn send_keypress(&self, pane_id: u32, c: char) {
+        let mut stdin_stream = &self.stdin_stream;
+        let cmd = if c == '\n' {
+            format!("send-keys -t {} -l \\n\n", pane_id)
+        } else {
+            format!("send-keys -t {} -l {}\n", pane_id, c)
+        };
+        stdin_stream
+            .write_all(cmd.as_bytes())
+            .unwrap();
     }
 }
 
@@ -38,6 +51,7 @@ enum TmuxEvent {
 
 #[derive(Debug)]
 pub enum TmuxCommand {
+    None,
     InitialLayout,
 }
 
@@ -77,6 +91,10 @@ pub fn attach_tmux(session_name: &str, window: &IvyWindow) -> Result<Tmux, IvyEr
     let stdin_stream = process.stdin.take().expect("Failed to open stdin");
     let tmux = Tmux { stdin_stream };
 
+    tmux.send_keypress(0, 'l');
+    tmux.send_keypress(0, 's');
+    tmux.send_keypress(0, '\n');
+
     Ok(tmux)
 }
 
@@ -98,7 +116,7 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
     let mut command_output = String::new();
     let mut reader = BufReader::new(stdout_stream);
 
-    let mut current_command = TmuxCommand::InitialLayout;
+    let mut current_command = Some(TmuxCommand::None);
 
     // TODO: Handle output larger than 65534 bytes
     while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
@@ -120,9 +138,17 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
             } else if line.starts_with("%layout-change") {
                 // println!("Someone else is messing with our ")
             } else if line.starts_with("%end") {
-                println!("Given command: ({:?}) ====\n{}", current_command, command_output);
+                println!(
+                    "Given command: ({:?}) ====\n{}",
+                    current_command, command_output
+                );
+                if let Some(command) = current_command {
+                    handle_tmux_output(command, &command_output, &event_channel);
+                }
+                current_command = None;
             } else if line.starts_with("%error") {
                 println!("Error: ({:?}) {}", current_command, command_output);
+                current_command = None;
             } else if line.starts_with("%session-changed") {
                 println!("Session changed: {}", &line[17..]);
             } else if line.starts_with("%exit") {
@@ -141,4 +167,14 @@ fn tmux_read_stdout(stdout_stream: ChildStdout, event_channel: Sender<TmuxEvent>
         buffer.clear();
     }
     buffer.clear();
+}
+
+fn handle_tmux_output(command: TmuxCommand, output: &String, event_channel: &Sender<TmuxEvent>) {
+    match command {
+        TmuxCommand::InitialLayout => {
+            // let bytes = output.as_bytes();
+            // parse_tmux_layout(bytes);
+        }
+        _ => {}
+    }
 }

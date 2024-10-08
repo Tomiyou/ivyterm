@@ -1,4 +1,5 @@
 use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 
 use gtk4::gdk::Display;
 use gtk4::CssProvider;
@@ -19,6 +20,14 @@ mod toplevel;
 mod window;
 
 static GLOBAL_TAB_ID: AtomicU32 = AtomicU32::new(0);
+pub fn next_unique_tab_id() -> u32 {
+    GLOBAL_TAB_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+static GLOBAL_PANE_ID: AtomicU32 = AtomicU32::new(0);
+pub fn next_unique_pane_id() -> u32 {
+    GLOBAL_PANE_ID.fetch_add(1, Ordering::Relaxed)
+}
 
 fn load_css() {
     // Load the CSS file and add it to the provider
@@ -56,8 +65,8 @@ fn main() -> glib::ExitCode {
 
     application.connect_startup(|_| load_css());
     application.connect_activate(|app| {
-        create_window(app, None);
-        // create_window(app, Some("terminator"));
+        // create_window(app, None);
+        create_window(app, Some("blabla"));
     });
     application.run()
 }
