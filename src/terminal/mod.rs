@@ -25,12 +25,13 @@ impl IvyTerminal {
         let top_level = top_level.clone();
 
         // Get terminal font
-        let (font_desc, [foreground, background], palette) = {
+        let (font_desc, [foreground, background], palette, scrollback_lines) = {
             let reader = GLOBAL_SETTINGS.read().unwrap();
             (
                 reader.font_desc.clone(),
                 reader.main_colors.clone(),
                 reader.palette_colors.clone(),
+                reader.scrollback_lines,
             )
         };
 
@@ -38,7 +39,7 @@ impl IvyTerminal {
             .vexpand(true)
             .hexpand(true)
             .font_desc(&font_desc)
-            .scrollback_lines(5000)
+            .scrollback_lines(scrollback_lines)
             .build();
 
         // Add scrollbar

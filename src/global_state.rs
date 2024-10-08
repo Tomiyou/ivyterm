@@ -16,6 +16,7 @@ pub struct GlobalSettings {
     pub font_desc: FontDescription,
     pub main_colors: [RGBA; 2],
     pub palette_colors: [RGBA; 16],
+    pub scrollback_lines: u32,
 }
 
 lazy_static! {
@@ -56,6 +57,7 @@ impl GlobalSettings {
             font_desc,
             main_colors: [foreground, background],
             palette_colors: ambience_colors,
+            scrollback_lines: 2000,
         }
     }
 }
