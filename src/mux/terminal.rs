@@ -1,7 +1,7 @@
 use glib::{Propagation, SpawnFlags};
 use gtk4::{
     gdk::{ModifierType, RGBA},
-    EventControllerKey, Orientation, Paned, Widget,
+    EventControllerKey, Orientation,
 };
 use libadwaita::prelude::*;
 use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
@@ -9,7 +9,7 @@ use vte4::{PtyFlags, Terminal, TerminalExt, TerminalExtManual};
 use crate::{
     global_state::GLOBAL_SETTINGS,
     keyboard::{handle_input, Keybinding},
-    mux::{pane::close_pane, toplevel::TopLevel},
+    mux::toplevel::TopLevel,
 };
 
 fn default_colors() -> (RGBA, RGBA) {
@@ -17,21 +17,6 @@ fn default_colors() -> (RGBA, RGBA) {
     let background = RGBA::new(0.0, 0.0, 0.0, 1.0);
 
     (foreground, background)
-}
-
-enum ParentType {
-    ParentPaned(Paned),
-    ParentTopLevel(TopLevel),
-}
-
-fn cast_parent(parent: Widget) -> ParentType {
-    if let Ok(paned) = parent.clone().downcast::<Paned>() {
-        return ParentType::ParentPaned(paned);
-    } else if let Ok(top_level) = parent.downcast::<TopLevel>() {
-        return ParentType::ParentTopLevel(top_level);
-    }
-
-    panic!("Parent is neither Bin nor Paned")
 }
 
 pub fn create_terminal(top_level: &TopLevel) -> Terminal {
@@ -56,14 +41,10 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
     let _top_level = top_level.clone();
     terminal.connect_child_exited(move |terminal, _exit_code| {
         // Remove terminal from top level terminal list
-        _top_level.close_terminal(terminal);
+        _top_level.unregister_terminal(terminal);
 
         // Now close the pane/tab
-        let parent = terminal.parent().unwrap();
-        match cast_parent(parent) {
-            ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => close_pane(paned, &terminal, &_top_level),
-        }
+        _top_level.close_pane(terminal);
     });
 
     // Set terminal colors
@@ -94,7 +75,6 @@ pub fn create_terminal(top_level: &TopLevel) -> Terminal {
         -1,
         gtk4::gio::Cancellable::NONE,
         move |_result| {
-            // println!("Terminal {} spawned, grabbing focus", terminal_id);
             _terminal.grab_focus();
         },
     );
@@ -129,12 +109,9 @@ fn handle_keyboard(
 
             top_level.split_pane(terminal, orientation);
         }
-        Some(Keybinding::PaneClose) => match cast_parent(eventctl.widget().parent().unwrap()) {
-            ParentType::ParentTopLevel(top_level) => top_level.close_tab(),
-            ParentType::ParentPaned(paned) => {
-                close_pane(paned, terminal, top_level);
-            }
-        },
+        Some(Keybinding::PaneClose) => {
+            top_level.close_pane(terminal);
+        }
         Some(Keybinding::TabNew) => {
             top_level.create_tab();
         }
