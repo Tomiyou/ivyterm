@@ -11,8 +11,7 @@ use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 
 use crate::{
-    application::IvyApplication,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    application::IvyApplication, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};
@@ -50,11 +49,27 @@ impl IvyNormalWindow {
         });
 
         // Terminal settings
+        let tmux_button = Button::with_label("Tmux");
+        tmux_button.connect_clicked(glib::clone!(
+            #[strong]
+            window,
+            move |_| {
+                spawn_new_tmux_modal(window.upcast_ref());
+            }
+        ));
+        // Tmux session spawn
         let settings_button = Button::with_label("Settings");
-        let app = app.clone();
-        settings_button.connect_clicked(move |_button| {
-            app.show_settings();
-        });
+        settings_button.connect_clicked(glib::clone!(
+            #[strong]
+            app,
+            move |_| {
+                app.show_settings();
+            }
+        ));
+        // HeaderBar end widgets
+        let end_widgets = Box::new(Orientation::Horizontal, 3);
+        end_widgets.append(&tmux_button);
+        end_widgets.append(&settings_button);
 
         // View switcher for switching between open tabs
         let tab_bar = TabBar::builder()
@@ -67,7 +82,7 @@ impl IvyNormalWindow {
             .can_focus(false)
             .expand_tabs(false)
             .view(&tab_view)
-            .end_action_widget(&settings_button)
+            .end_action_widget(&end_widgets)
             .build();
 
         // Header box holding tabs and window controls
