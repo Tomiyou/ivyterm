@@ -30,8 +30,6 @@ impl IvyNormalWindow {
         window.set_default_width(INITIAL_WIDTH);
         window.set_default_height(INITIAL_HEIGHT);
 
-        println!("Created new window!");
-
         // Window content box holds title bar and panes
         let window_box = Box::new(Orientation::Vertical, 0);
 

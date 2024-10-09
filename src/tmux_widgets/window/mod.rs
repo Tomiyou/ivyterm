@@ -10,9 +10,7 @@ use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
 
 use crate::{
-    application::IvyApplication,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    tmux_api::TmuxAPI,
+    application::IvyApplication, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI
     // terminal::Terminal,
     // toplevel::TopLevel,
 };
@@ -38,8 +36,6 @@ impl IvyTmuxWindow {
         window.set_default_width(INITIAL_WIDTH);
         window.set_default_height(INITIAL_HEIGHT);
 
-        println!("Created new window!");
-
         // Window content box holds title bar and panes
         let window_box = Box::new(Orientation::Vertical, 0);
 
@@ -57,11 +53,27 @@ impl IvyTmuxWindow {
         });
 
         // Terminal settings
+        let tmux_button = Button::with_label("Tmux");
+        tmux_button.connect_clicked(glib::clone!(
+            #[strong]
+            window,
+            move |_| {
+                spawn_new_tmux_modal(window.upcast_ref());
+            }
+        ));
+        // Tmux session spawn
         let settings_button = Button::with_label("Settings");
-        let app = app.clone();
-        settings_button.connect_clicked(move |_button| {
-            app.show_settings();
-        });
+        settings_button.connect_clicked(glib::clone!(
+            #[strong]
+            app,
+            move |_| {
+                app.show_settings();
+            }
+        ));
+        // HeaderBar end widgets
+        let end_widgets = Box::new(Orientation::Horizontal, 3);
+        end_widgets.append(&tmux_button);
+        end_widgets.append(&settings_button);
 
         // View switcher for switching between open tabs
         let tab_bar = TabBar::builder()
@@ -74,7 +86,7 @@ impl IvyTmuxWindow {
             .can_focus(false)
             .expand_tabs(false)
             .view(&tab_view)
-            .end_action_widget(&settings_button)
+            .end_action_widget(&end_widgets)
             .build();
 
         // Header box holding tabs and window controls
