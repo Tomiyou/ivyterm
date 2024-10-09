@@ -341,19 +341,21 @@ impl TopLevel {
     }
 
     pub fn open_rename_modal(&self) {
-        let binding = self.imp().window.borrow();
-        let parent = binding.as_ref().unwrap();
+        // Get TabView Page first
+        let binding = self.imp().tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+        let page = tab_view.page(self);
+        let current_name = page.title();
 
         let callback = glib::closure_local!(
-            #[strong]
-            parent,
-            #[strong(rename_to = top_level)]
-            self,
             move |new_name: &str| {
-                parent.rename_tab(&top_level, new_name);
+                page.set_title(new_name);
             }
         );
 
-        spawn_rename_modal(parent.upcast_ref(), "Kekw", callback);
+        // We need the "parent" Window for modal
+        let binding = self.imp().window.borrow();
+        let parent = binding.as_ref().unwrap();
+        spawn_rename_modal(parent.upcast_ref(), &current_name, callback);
     }
 }

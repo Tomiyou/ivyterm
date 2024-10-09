@@ -148,13 +148,6 @@ impl IvyNormalWindow {
         tab_view.close_page(&page);
     }
 
-    pub fn rename_tab(&self, child: &TopLevel, name: &str) {
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        let page = tab_view.page(child);
-        page.set_title(name);
-    }
-
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
         let imp = self.imp();
         let mut terminals = imp.terminals.borrow_mut();
