@@ -184,5 +184,8 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
         KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
         }
+        KeyboardAction::TabRename => {
+            top_level.open_rename_modal();
+        }
     }
 }

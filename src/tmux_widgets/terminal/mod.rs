@@ -170,6 +170,9 @@ fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, window
         KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
         }
+        KeyboardAction::TabRename => {
+            todo!();
+        }
         _ => {
             window.tmux_handle_keybinding(action, pane_id);
         }

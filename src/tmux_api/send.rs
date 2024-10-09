@@ -118,6 +118,10 @@ impl TmuxAPI {
                 command_queue.send_blocking(TmuxCommand::TabClose).unwrap();
                 String::from("kill-window\n")
             }
+            KeyboardAction::TabRename => {
+                // We do nothing, since Tab renaming is handled separately
+                return;
+            }
             KeyboardAction::SelectPane(direction) => {
                 let cmd = format!(
                     "select-pane {}\n",

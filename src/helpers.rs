@@ -1,5 +1,3 @@
-// use crate::terminal::Terminal;
-
 #[derive(Debug)]
 pub enum IvyError {
     TmuxSpawnError(String),

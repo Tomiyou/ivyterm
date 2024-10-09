@@ -14,6 +14,7 @@ pub enum Direction {
 pub enum KeyboardAction {
     TabNew,
     TabClose,
+    TabRename,
     PaneSplit(bool),
     PaneClose,
     SelectPane(Direction),

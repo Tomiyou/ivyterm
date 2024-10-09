@@ -48,6 +48,8 @@ pub struct Keybindings {
     move_up: String,
     #[serde(default = "default_move_down")]
     move_down: String,
+    #[serde(default = "default_rename_tab")]
+    rename_tab: String,
 }
 
 impl Keybindings {
@@ -112,6 +114,11 @@ impl Keybindings {
             KeyboardAction::PaneClose,
             "Close the current Pane",
         ));
+        keybindings.push(Keybinding::new(
+            &self.rename_tab,
+            KeyboardAction::TabRename,
+            "Rename the current Tab",
+        ));
 
         keybindings
     }
@@ -133,6 +140,7 @@ impl Keybindings {
             KeyboardAction::CopySelected => self.copy_selection = trigger,
             KeyboardAction::TabNew => self.new_tab = trigger,
             KeyboardAction::TabClose => self.close_tab = trigger,
+            KeyboardAction::TabRename => self.rename_tab = trigger,
             KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
             KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
             KeyboardAction::PaneClose => self.close_pane = trigger,
@@ -179,6 +187,7 @@ impl Default for Keybindings {
             move_left: default_move_left(),
             move_up: default_move_up(),
             move_down: default_move_down(),
+            rename_tab: default_rename_tab(),
         }
     }
 }
@@ -215,4 +224,7 @@ fn default_move_up() -> String {
 }
 fn default_move_down() -> String {
     "<Alt>Down".to_string()
+}
+fn default_rename_tab() -> String {
+    "<Ctrl><Alt>A".to_string()
 }

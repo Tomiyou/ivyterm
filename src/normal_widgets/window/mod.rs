@@ -7,7 +7,7 @@ use gtk4::{
     gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType,
     WindowControls, WindowHandle,
 };
-use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
+use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 
 use crate::{
@@ -19,7 +19,7 @@ use super::{terminal::Terminal, toplevel::TopLevel};
 
 glib::wrapper! {
     pub struct IvyNormalWindow(ObjectSubclass<imp::IvyWindowPriv>)
-        @extends ApplicationWindow, gtk4::Window, gtk4::Widget,
+        @extends libadwaita::ApplicationWindow, gtk4::ApplicationWindow, gtk4::Window, gtk4::Widget,
         @implements gio::ActionGroup, gio::ActionMap, gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget, gtk4::Native, gtk4::Root, gtk4::ShortcutManager;
 }
 
@@ -131,6 +131,13 @@ impl IvyNormalWindow {
         let tab_view = binding.as_ref().unwrap();
         let page = tab_view.page(child);
         tab_view.close_page(&page);
+    }
+
+    pub fn rename_tab(&self, child: &TopLevel, name: &str) {
+        let binding = self.imp().tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+        let page = tab_view.page(child);
+        page.set_title(name);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {

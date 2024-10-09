@@ -5,7 +5,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
-use crate::{helpers::WithId, keyboard::Direction, settings::SPLIT_HANDLE_WIDTH};
+use crate::{helpers::WithId, keyboard::Direction, modals::spawn_rename_modal, settings::SPLIT_HANDLE_WIDTH};
 
 use self::imp::Zoomed;
 
@@ -338,5 +338,22 @@ impl TopLevel {
         }
 
         None
+    }
+
+    pub fn open_rename_modal(&self) {
+        let binding = self.imp().window.borrow();
+        let parent = binding.as_ref().unwrap();
+
+        let callback = glib::closure_local!(
+            #[strong]
+            parent,
+            #[strong(rename_to = top_level)]
+            self,
+            move |new_name: &str| {
+                parent.rename_tab(&top_level, new_name);
+            }
+        );
+
+        spawn_rename_modal(parent.upcast_ref(), "Kekw", callback);
     }
 }

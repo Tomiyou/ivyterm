@@ -5,6 +5,7 @@ use libadwaita::prelude::*;
 mod application;
 mod helpers;
 mod keyboard;
+mod modals;
 mod normal_widgets;
 mod settings;
 mod tmux_api;
