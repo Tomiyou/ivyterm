@@ -7,6 +7,7 @@ use gtk4::{
     WindowControls, WindowHandle,
 };
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
+use log::debug;
 
 use crate::{
     application::IvyApplication,
@@ -156,7 +157,7 @@ impl IvyTmuxWindow {
         let imp = self.imp();
         let mut terminals = imp.terminals.borrow_mut();
         terminals.insert(pane_id, &terminal);
-        println!("Terminal with ID {} registered", pane_id);
+        debug!("Terminal with ID {} registered", pane_id);
 
         let char_size = terminal.get_char_width_height();
         imp.char_size.replace(char_size);
@@ -165,7 +166,7 @@ impl IvyTmuxWindow {
     pub fn unregister_terminal(&self, pane_id: u32) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
-        println!("Terminal with ID {} unregistered", pane_id);
+        debug!("Terminal with ID {} unregistered", pane_id);
     }
 
     fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {

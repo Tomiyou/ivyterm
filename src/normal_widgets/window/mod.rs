@@ -8,6 +8,7 @@ use gtk4::{
     WindowControls, WindowHandle,
 };
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
+use log::debug;
 
 use crate::{
     application::IvyApplication,
@@ -136,13 +137,13 @@ impl IvyNormalWindow {
         let imp = self.imp();
         let mut terminals = imp.terminals.borrow_mut();
         terminals.insert(pane_id, &terminal);
-        println!("Terminal with ID {} registered", pane_id);
+        debug!("Terminal with ID {} registered", pane_id);
     }
 
     pub fn unregister_terminal(&self, pane_id: u32) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
-        println!("Terminal with ID {} unregistered", pane_id);
+        debug!("Terminal with ID {} unregistered", pane_id);
     }
 
     pub fn update_terminal_config(
