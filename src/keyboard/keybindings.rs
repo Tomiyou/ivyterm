@@ -5,24 +5,7 @@ use gtk4::{
 use serde::{Deserialize, Serialize};
 use vte4::ShortcutTriggerExt;
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum Direction {
-    Left,
-    Up,
-    Right,
-    Down,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum KeyboardAction {
-    TabNew,
-    TabClose,
-    PaneSplit(bool),
-    PaneClose,
-    SelectPane(Direction),
-    ToggleZoom,
-    CopySelected,
-}
+use super::{Direction, KeyboardAction};
 
 #[derive(Clone)]
 pub struct Keybinding {
@@ -43,35 +26,28 @@ impl Keybinding {
 
 #[derive(Deserialize, Serialize)]
 pub struct Keybindings {
+    #[serde(default = "default_new_tab")]
     new_tab: String,
+    #[serde(default = "default_close_tab")]
     close_tab: String,
+    #[serde(default = "default_split_horizontal")]
     split_horizontal: String,
+    #[serde(default = "default_split_vertical")]
     split_vertical: String,
+    #[serde(default = "default_close_pane")]
     close_pane: String,
+    #[serde(default = "default_toggle_zoom")]
     toggle_zoom: String,
+    #[serde(default = "default_copy_selection")]
     copy_selection: String,
+    #[serde(default = "default_move_right")]
     move_right: String,
+    #[serde(default = "default_move_left")]
     move_left: String,
+    #[serde(default = "default_move_up")]
     move_up: String,
+    #[serde(default = "default_move_down")]
     move_down: String,
-}
-
-impl Default for Keybindings {
-    fn default() -> Self {
-        Self {
-            new_tab: "<Ctrl><Shift>t".to_string(),
-            close_tab: "<Ctrl><Shift>w".to_string(),
-            split_horizontal: "<Ctrl><Shift>o".to_string(),
-            split_vertical: "<Ctrl><Shift>l".to_string(),
-            close_pane: "<Ctrl><Shift>d".to_string(),
-            toggle_zoom: "<Ctrl><Shift>x".to_string(),
-            copy_selection: "<Ctrl><Shift>c".to_string(),
-            move_right: "<Alt>Right".to_string(),
-            move_left: "<Alt>Left".to_string(),
-            move_up: "<Alt>Up".to_string(),
-            move_down: "<Alt>Down".to_string(),
-        }
-    }
 }
 
 impl Keybindings {
@@ -164,16 +140,6 @@ impl Keybindings {
     }
 }
 
-pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {
-    match keycode {
-        111 => Some(Direction::Up),
-        113 => Some(Direction::Left),
-        114 => Some(Direction::Right),
-        116 => Some(Direction::Down),
-        _ => None,
-    }
-}
-
 #[inline]
 pub fn check_keybinding_match(
     keybindings: &Vec<Keybinding>,
@@ -196,4 +162,57 @@ pub fn check_keybinding_match(
     }
 
     None
+}
+
+// Default Keybindings
+impl Default for Keybindings {
+    fn default() -> Self {
+        Self {
+            new_tab: default_new_tab(),
+            close_tab: default_close_tab(),
+            split_horizontal: default_split_horizontal(),
+            split_vertical: default_split_vertical(),
+            close_pane: default_close_pane(),
+            toggle_zoom: default_toggle_zoom(),
+            copy_selection: default_copy_selection(),
+            move_right: default_move_right(),
+            move_left: default_move_left(),
+            move_up: default_move_up(),
+            move_down: default_move_down(),
+        }
+    }
+}
+
+fn default_new_tab() -> String {
+    "<Ctrl><Shift>t".to_string()
+}
+fn default_close_tab() -> String {
+    "<Ctrl><Shift>w".to_string()
+}
+fn default_split_horizontal() -> String {
+    "<Ctrl><Shift>o".to_string()
+}
+fn default_split_vertical() -> String {
+    "<Ctrl><Shift>l".to_string()
+}
+fn default_close_pane() -> String {
+    "<Ctrl><Shift>d".to_string()
+}
+fn default_toggle_zoom() -> String {
+    "<Ctrl><Shift>x".to_string()
+}
+fn default_copy_selection() -> String {
+    "<Ctrl><Shift>c".to_string()
+}
+fn default_move_right() -> String {
+    "<Alt>Right".to_string()
+}
+fn default_move_left() -> String {
+    "<Alt>Left".to_string()
+}
+fn default_move_up() -> String {
+    "<Alt>Up".to_string()
+}
+fn default_move_down() -> String {
+    "<Alt>Down".to_string()
 }
