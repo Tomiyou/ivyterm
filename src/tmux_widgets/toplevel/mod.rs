@@ -193,6 +193,10 @@ impl TmuxTopLevel {
     }
 
     pub fn adjust_separator_positions(&self, x_diff: f64, y_diff: f64) {
+        if x_diff == 1f64 && y_diff == 1f64 {
+            return;
+        }
+
         println!(
             "Temporarily adjusting Separator positions (x: {}, y: {})",
             x_diff, y_diff
