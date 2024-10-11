@@ -134,7 +134,6 @@ impl IvyTmuxWindow {
 
         // Add pane as a page
         let page = tab_view.append(&top_level);
-
         page.connect_selected_notify(glib::clone!(
             #[weak(rename_to = window)]
             self,

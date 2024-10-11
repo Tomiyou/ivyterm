@@ -122,9 +122,6 @@ impl TmuxAPI {
                 // We do nothing, since Tab renaming is handled separately
                 return;
             }
-            KeyboardAction::TabSelect(previous) => {
-                panic!("This even should reach this point!");
-            }
             KeyboardAction::SelectPane(direction) => {
                 let cmd = format!(
                     "select-pane {}\n",

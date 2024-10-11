@@ -15,9 +15,9 @@ pub enum KeyboardAction {
     TabNew,
     TabClose,
     TabRename,
-    TabSelect(bool),
     PaneSplit(bool),
     PaneClose,
+    // TODO: Correct naming
     SelectPane(Direction),
     ToggleZoom,
     CopySelected,

@@ -4,7 +4,7 @@ use std::sync::atomic::Ordering;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
-    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType, ShortcutController, WindowControls, WindowHandle
+    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle
 };
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
@@ -34,19 +34,6 @@ impl IvyNormalWindow {
 
         // View stack holds all panes
         let tab_view = TabView::new();
-        // Remove default Shortcut Controller
-        {
-            let controllers = tab_view.observe_controllers();
-            let mut i = 0;
-            while let Some(ctrl) = controllers.item(i) {
-                if let Ok(ctrl) = ctrl.downcast::<ShortcutController>() {
-                    println!("Removing Shortcut controller!");
-                    tab_view.remove_controller(&ctrl);
-                } else {
-                    i += 1;
-                }
-            }
-        }
         window.imp().initialize(&tab_view, css_provider);
 
         // Close the tab_view when 0 tabs remain
