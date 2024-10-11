@@ -19,6 +19,7 @@ pub struct TmuxAPI {
     window_size: (i32, i32),
     resize_future: bool,
     pub initial_output: TmuxTristate,
+    pub session: Option<(u32, String)>,
 }
 
 #[derive(PartialEq)]
@@ -57,6 +58,7 @@ pub enum TmuxEvent {
     TabFocusChanged(u32),
     TabNew(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     TabClosed(u32),
+    SessionChanged(u32, String),
     Exit,
 }
 
@@ -144,6 +146,7 @@ impl TmuxAPI {
             window_size: (0, 0),
             resize_future: false,
             initial_output: TmuxTristate::Uninitialized,
+            session: None,
         };
 
         Ok(tmux)

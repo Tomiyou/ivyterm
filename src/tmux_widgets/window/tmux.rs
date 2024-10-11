@@ -200,6 +200,15 @@ impl IvyTmuxWindow {
                     pane.scroll_view(empty_lines);
                 }
             }
+            TmuxEvent::SessionChanged(id, name) => {
+                let mut binding = imp.tmux.borrow_mut();
+                let tmux = binding.as_mut().unwrap();
+
+                if tmux.session.is_none() {
+                    println!("Session {} with name {} initialized", id, name);
+                    tmux.session = Some((id, name));
+                }
+            }
         }
     }
 

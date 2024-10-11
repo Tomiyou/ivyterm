@@ -209,8 +209,13 @@ pub fn tmux_read_stdout(
                 is_error = true;
             } else if buffer_starts_with(&buffer, "%session-changed") {
                 // Session has changed
-                let session = from_utf8(&buffer[17..]).unwrap();
-                println!("Tmux event: Session changed: {}", session);
+                let (id, bytes_read) = read_first_u32(&buffer[18..]);
+                let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
+                println!("Tmux event: Session changed ({}): {}", id, name);
+
+                event_channel
+                    .send_blocking(TmuxEvent::SessionChanged(id, name))
+                    .unwrap();
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();
