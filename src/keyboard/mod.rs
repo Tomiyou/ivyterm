@@ -15,6 +15,7 @@ pub enum KeyboardAction {
     TabNew,
     TabClose,
     TabRename,
+    TabSelect(bool),
     PaneSplit(bool),
     PaneClose,
     SelectPane(Direction),

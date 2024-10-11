@@ -344,6 +344,7 @@ impl TopLevel {
         // Get TabView Page first
         let binding = self.imp().tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
+        // TODO: Just store the Page directly instead of tab_view
         let page = tab_view.page(self);
         let current_name = page.title();
 
@@ -357,5 +358,16 @@ impl TopLevel {
         let binding = self.imp().window.borrow();
         let parent = binding.as_ref().unwrap();
         spawn_rename_modal(parent.upcast_ref(), &current_name, callback);
+    }
+
+    pub fn select_tab(&self, previous: bool) {
+        let binding = self.imp().tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+
+        if previous {
+            tab_view.select_previous_page();
+        } else {
+            tab_view.select_next_page();
+        }
     }
 }

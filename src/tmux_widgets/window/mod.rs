@@ -135,6 +135,19 @@ impl IvyTmuxWindow {
         // Add pane as a page
         let page = tab_view.append(&top_level);
 
+        page.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            move |page| {
+                if page.is_selected() {
+                    println!("Tab {} was selected", id);
+                    let binding = window.imp().tmux.borrow();
+                    let tmux = binding.as_ref().unwrap();
+                    tmux.select_tab(id);
+                }
+            }
+        ));
+
         let text = format!("Terminal {}", id);
         page.set_title(&text);
         tab_view.set_selected_page(&page);

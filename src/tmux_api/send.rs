@@ -122,6 +122,9 @@ impl TmuxAPI {
                 // We do nothing, since Tab renaming is handled separately
                 return;
             }
+            KeyboardAction::TabSelect(previous) => {
+                panic!("This even should reach this point!");
+            }
             KeyboardAction::SelectPane(direction) => {
                 let cmd = format!(
                     "select-pane {}\n",
@@ -149,6 +152,18 @@ impl TmuxAPI {
             }
         };
 
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
+    }
+
+    pub fn select_tab(&self, tab_id: u32) {
+        let command_queue = &self.command_queue;
+        let mut stdin_stream = &self.stdin_stream;
+
+        command_queue
+            .send_blocking(TmuxCommand::TabSelect(tab_id))
+            .unwrap();
+
+        let cmd = format!("select-window -t {}\n", tab_id);
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 

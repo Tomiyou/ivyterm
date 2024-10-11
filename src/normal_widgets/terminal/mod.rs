@@ -187,5 +187,9 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
         KeyboardAction::TabRename => {
             top_level.open_rename_modal();
         }
+        KeyboardAction::TabSelect(previous) => {
+            println!("Selecting Tab {}", previous);
+            top_level.select_tab(previous);
+        }
     }
 }

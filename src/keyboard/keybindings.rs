@@ -50,6 +50,10 @@ pub struct Keybindings {
     move_down: String,
     #[serde(default = "default_rename_tab")]
     rename_tab: String,
+    #[serde(default = "default_next_tab")]
+    next_tab: String,
+    #[serde(default = "default_previous_tab")]
+    previous_tab: String,
 }
 
 impl Keybindings {
@@ -119,6 +123,18 @@ impl Keybindings {
             KeyboardAction::TabRename,
             "Rename the current Tab",
         ));
+        keybindings.push(Keybinding::new(
+            &self.next_tab,
+            KeyboardAction::TabSelect(false),
+            "Switch to next Tab",
+        ));
+        keybindings.push(Keybinding::new(
+            &self.previous_tab,
+            KeyboardAction::TabSelect(true),
+            "Switch to previous Tab",
+        ));
+
+        println!("Hey ho {}", self.next_tab);
 
         keybindings
     }
@@ -144,6 +160,8 @@ impl Keybindings {
             KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
             KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
             KeyboardAction::PaneClose => self.close_pane = trigger,
+            KeyboardAction::TabSelect(false) => self.next_tab = trigger,
+            KeyboardAction::TabSelect(true) => self.previous_tab = trigger,
         }
     }
 }
@@ -188,6 +206,8 @@ impl Default for Keybindings {
             move_up: default_move_up(),
             move_down: default_move_down(),
             rename_tab: default_rename_tab(),
+            next_tab: default_next_tab(),
+            previous_tab: default_previous_tab(),
         }
     }
 }
@@ -227,4 +247,11 @@ fn default_move_down() -> String {
 }
 fn default_rename_tab() -> String {
     "<Ctrl><Alt>A".to_string()
+}
+fn default_next_tab() -> String {
+    println!("What the fuck");
+    "<Ctrl>i".to_string()
+}
+fn default_previous_tab() -> String {
+    "<Ctrl>Page_Up".to_string()
 }

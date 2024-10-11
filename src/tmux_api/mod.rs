@@ -36,6 +36,7 @@ pub enum TmuxCommand {
     Keypress,
     TabNew,
     TabClose,
+    TabSelect(u32),
     PaneSplit(bool),
     PaneClose(u32),
     PaneSelect(Direction),
