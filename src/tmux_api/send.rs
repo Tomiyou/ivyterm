@@ -160,7 +160,7 @@ impl TmuxAPI {
             .send_blocking(TmuxCommand::TabSelect(tab_id))
             .unwrap();
 
-        let cmd = format!("select-window -t {}\n", tab_id);
+        let cmd = format!("select-window -t @{}\n", tab_id);
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 

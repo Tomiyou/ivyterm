@@ -208,4 +208,12 @@ impl TmuxTopLevel {
             }
         }
     }
+
+    pub fn set_initialized(&self) {
+        self.imp().initialized.replace(true);
+    }
+
+    pub fn get_initialized(&self) -> bool {
+        self.imp().initialized.get()
+    }
 }

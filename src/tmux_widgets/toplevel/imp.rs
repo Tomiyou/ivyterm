@@ -28,6 +28,7 @@ pub struct TopLevelPriv {
     pub zoomed: RefCell<Option<Zoomed>>,
     pub tab_id: Cell<u32>,
     pub focused_terminal: Cell<u32>,
+    pub initialized: Cell<bool>,
 }
 
 // The central trait for subclassing a GObject

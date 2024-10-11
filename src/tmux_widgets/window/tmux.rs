@@ -158,9 +158,13 @@ impl IvyTmuxWindow {
             TmuxEvent::InitialLayout(tab_id, layout, visible_layout) => {
                 println!("\n---------- Initial layout ----------");
                 self.sync_tmux_layout(tab_id, layout, visible_layout);
+                if let Some(top_level) = self.get_top_level(tab_id) {
+                    top_level.set_initialized();
+                }
 
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
+                // We can calculate TopLevel size: TotalSize - HeaderBar?
             }
             TmuxEvent::InitialOutputFinished() => {
                 let mut binding = imp.tmux.borrow_mut();
@@ -198,8 +202,6 @@ impl IvyTmuxWindow {
             }
         }
     }
-
-    pub fn tmux_layout_callback() {}
 
     #[inline]
     pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {

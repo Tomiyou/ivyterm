@@ -47,7 +47,6 @@ impl IvyApplication {
         let css_provider = binding.as_ref().unwrap();
 
         if let Some(session_name) = tmux_session {
-            println!("Attaching to TMUX session {}", session_name);
             let window = IvyTmuxWindow::new(self, css_provider, session_name, ssh_target);
             window.present();
         } else {
