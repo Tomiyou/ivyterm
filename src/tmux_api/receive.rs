@@ -211,7 +211,7 @@ pub fn tmux_read_stdout(
                 // Session has changed
                 let (id, bytes_read) = read_first_u32(&buffer[18..]);
                 let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
-                println!("Tmux event: Session changed ({}): {}", id, name);
+                debug!("Tmux event: Session changed ({}): {}", id, name);
 
                 event_channel
                     .send_blocking(TmuxEvent::SessionChanged(id, name))
@@ -219,10 +219,12 @@ pub fn tmux_read_stdout(
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();
-                println!("Tmux event: Exit received, reason:{}", reason);
+                println!("Tmux event: Exit received, reason: {}", reason);
                 event_channel
                     .send_blocking(TmuxEvent::Exit)
                     .expect("Event channel closed!");
+                // Stop receiving events
+                return;
             } else if buffer_starts_with(&buffer, "%client-session-changed") {
             } else {
                 // Unsupported notification

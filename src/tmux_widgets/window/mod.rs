@@ -122,6 +122,26 @@ impl IvyTmuxWindow {
         window
     }
 
+    pub fn close_tmux_window(&self) {
+        let imp = self.imp();
+
+        // Stop Tmux API
+        imp.tmux.replace(None);
+
+        // Drop all children
+        self.set_content(None::<&gtk4::Widget>);
+
+        // Remove all Tab
+        let mut tabs = imp.tabs.borrow_mut();
+        tabs.clear();
+
+        // Remove all Terminals
+        let mut terminals = imp.terminals.borrow_mut();
+        terminals.clear();
+
+        self.close();
+    }
+
     pub fn new_tab(&self, id: u32) -> TmuxTopLevel {
         let imp = self.imp();
 

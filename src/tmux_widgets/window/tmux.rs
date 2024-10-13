@@ -28,7 +28,10 @@ impl IvyTmuxWindow {
 
     pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
         let binding = self.imp().tmux.borrow();
-        let tmux = binding.as_ref().unwrap();
+        let tmux = match binding.as_ref() {
+            Some(tmux) => tmux,
+            None => return,
+        };
 
         let mut prefix = String::new();
         let mut shift_relevant = false;
@@ -82,10 +85,11 @@ impl IvyTmuxWindow {
             let (cols, rows) = top_level.get_cols_rows();
 
             let mut binding = self.imp().tmux.borrow_mut();
-            let tmux = binding.as_mut().unwrap();
-            // Tell Tmux resize future is no longer running
-            tmux.update_resize_future(false);
-            tmux.change_size(cols, rows);
+            if let Some(tmux) = binding.as_mut() {
+                // Tell Tmux resize future is no longer running
+                tmux.update_resize_future(false);
+                tmux.change_size(cols, rows);
+            }
         }
     }
 
@@ -120,6 +124,11 @@ impl IvyTmuxWindow {
 
     pub fn tmux_event_callback(&self, event: TmuxEvent) {
         let imp = self.imp();
+
+        // If Tmux API is finished, we are not doing anything
+        if imp.tmux.borrow().is_none() {
+            return;
+        }
 
         // This future runs on main thread of GTK application
         // It receives Tmux events from separate thread and runs GTK functions
@@ -179,22 +188,23 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::SizeChanged() => {
                 if imp.init_layout_finished.get() == TmuxTristate::Uninitialized {
-                    imp.init_layout_finished.replace(TmuxTristate::WaitingResponse);
+                    imp.init_layout_finished
+                        .replace(TmuxTristate::WaitingResponse);
 
                     let mut binding = imp.tmux.borrow_mut();
-                    let tmux = binding.as_mut().unwrap();
-    
-                    // If initial output has not been captured yet, now is the time
-                    println!("Getting initial output");
-                    let terminals = imp.terminals.borrow();
-                    for sorted in terminals.iter() {
-                        tmux.get_initial_output(sorted.id);
+                    if let Some(tmux) = binding.as_mut() {
+                        // If initial output has not been captured yet, now is the time
+                        println!("Getting initial output");
+                        let terminals = imp.terminals.borrow();
+                        for sorted in terminals.iter() {
+                            tmux.get_initial_output(sorted.id);
+                        }
                     }
                 }
             }
             TmuxEvent::Exit => {
                 println!("Received EXIT event, closing window!");
-                self.close();
+                self.close_tmux_window();
             }
             TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
                 let binding = &self.imp().terminals;
@@ -211,11 +221,12 @@ impl IvyTmuxWindow {
                 if let Some(old) = old {
                     if old != new {
                         println!("Session {} changed underneath us, closing Window", old.1);
-                        self.close();
+                        self.close_tmux_window();
                     }
                 }
 
                 println!("Session {} with name {} initialized", new.0, new.1);
+                self.close_tmux_window();
             }
         }
     }
@@ -223,6 +234,8 @@ impl IvyTmuxWindow {
     #[inline]
     pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
         let tmux = self.imp().tmux.borrow();
-        tmux.as_ref().unwrap().send_keybinding(action, pane_id);
+        if let Some(tmux) = tmux.as_ref() {
+            tmux.send_keybinding(action, pane_id);
+        }
     }
 }

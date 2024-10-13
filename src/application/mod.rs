@@ -6,6 +6,7 @@ use gtk4::gdk::Display;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib};
+use log::debug;
 // TODO: This should be libadwaita::prelude::*
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
@@ -29,7 +30,7 @@ impl IvyApplication {
     pub fn init_css_provider(&self) {
         let css_provider = load_css();
         self.imp().css_provider.replace(Some(css_provider));
-        println!("Css provider set!");
+        debug!("Css provider set!");
     }
 
     pub fn init_keybindings(&self) {
