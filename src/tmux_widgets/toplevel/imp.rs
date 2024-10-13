@@ -23,6 +23,7 @@ pub struct Zoomed {
 pub struct TopLevelPriv {
     pub window: RefCell<Option<IvyTmuxWindow>>,
     pub tab_view: RefCell<Option<TabView>>,
+    // TODO: Replace this with SortedVec
     pub terminals: RefCell<Vec<TmuxTerminal>>,
     pub lru_terminals: RefCell<Vec<WithId<TmuxTerminal>>>,
     pub zoomed: RefCell<Option<Zoomed>>,

@@ -189,20 +189,16 @@ impl TmuxTopLevel {
             panic!("Parsed Layout empty")
         }
 
-        // // TODO: Fix this, Tmux currently does not report active Pane
-        // // Ensure the correct Pane is focused
-        // let focused_pane = imp.focused_pane.get();
-        // let registered_terminals = imp.terminals.borrow();
-        // if let Some(terminal) = registered_terminals.get(focused_pane) {
-        //     println!("Grabbing focus for pane {}", focused_pane);
-        //     terminal.grab_focus();
-        // } else {
-        //     println!("Unable to grab focus for pane {}", focused_pane);
-        //     let mut iter = registered_terminals.iter();
-        //     if let Some(terminal) = iter.next() {
-        //         terminal.terminal.grab_focus();
-        //     }
-        // }
+        // TODO: Fix this, Tmux currently does not report active Pane
+        // Ensure the correct Pane is focused
+        let focused_terminal = imp.focused_terminal.get();
+        let registered_terminals = imp.terminals.borrow();
+        for terminal in registered_terminals.iter() {
+            if terminal.pane_id() == focused_terminal {
+                terminal.grab_focus();
+                break;
+            }
+        }
     }
 }
 
