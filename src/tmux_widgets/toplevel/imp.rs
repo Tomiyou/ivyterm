@@ -25,7 +25,6 @@ pub struct TopLevelPriv {
     pub tab_view: RefCell<Option<TabView>>,
     // TODO: Replace this with SortedVec
     pub terminals: RefCell<Vec<TmuxTerminal>>,
-    pub lru_terminals: RefCell<Vec<WithId<TmuxTerminal>>>,
     pub zoomed: RefCell<Option<Zoomed>>,
     pub tab_id: Cell<u32>,
     pub focused_terminal: Cell<u32>,

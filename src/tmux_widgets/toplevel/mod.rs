@@ -102,15 +102,6 @@ impl TmuxTopLevel {
         let mut terminals_vec = imp.terminals.borrow_mut();
         terminals_vec.push(terminal.clone());
 
-        let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        lru_terminals.insert(
-            0,
-            WithId {
-                id: pane_id,
-                terminal: terminal.clone(),
-            },
-        );
-
         // Also update global terminal hashmap
         let window = imp.window.borrow();
         window
@@ -125,14 +116,6 @@ impl TmuxTopLevel {
 
         let mut terminals_vec = imp.terminals.borrow_mut();
         terminals_vec.retain(|t| t != terminal);
-
-        let mut lru_terminals = imp.lru_terminals.borrow_mut();
-        for (index, sorted) in lru_terminals.iter_mut().enumerate() {
-            if sorted.id == pane_id {
-                lru_terminals.remove(index);
-                break;
-            }
-        }
 
         // Also update global terminal hashmap
         let window = imp.window.borrow();
@@ -150,14 +133,6 @@ impl TmuxTopLevel {
                 terminal.grab_focus();
                 break;
             }
-        }
-    }
-
-    pub fn lru_terminal(&self) -> Option<TmuxTerminal> {
-        let lru_terminals = self.imp().lru_terminals.borrow();
-        match lru_terminals.first() {
-            Some(id_terminal) => Some(id_terminal.terminal.clone()),
-            None => None,
         }
     }
 
