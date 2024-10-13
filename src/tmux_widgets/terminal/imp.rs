@@ -11,6 +11,7 @@ pub struct TerminalPriv {
     pub vte: RefCell<Option<Vte>>,
     window: RefCell<Option<IvyTmuxWindow>>,
     pub id: Cell<u32>,
+    initial_output: Cell<bool>,
 }
 
 // The central trait for subclassing a GObject
@@ -41,5 +42,13 @@ impl TerminalPriv {
         self.id.replace(id);
         self.vte.borrow_mut().replace(terminal.clone());
         self.window.borrow_mut().replace(window.clone());
+    }
+
+    pub fn is_synced(&self) -> bool {
+        self.initial_output.get()
+    }
+
+    pub fn set_synced(&self) {
+        self.initial_output.replace(true);
     }
 }

@@ -50,17 +50,6 @@ impl TmuxTerminal {
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);
 
-        // Close terminal + pane/tab when the child (shell) exits
-        // vte.connect_child_exited(glib::clone!(
-        //     #[weak]
-        //     top_level,
-        //     #[weak]
-        //     terminal,
-        //     move |_, _| {
-        //         top_level.close_pane(&terminal);
-        //     }
-        // ));
-
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
@@ -121,10 +110,21 @@ impl TmuxTerminal {
         vte.set_scrollback_lines(scrollback_lines as i64);
     }
 
-    pub fn feed_output(&self, output: Vec<u8>) {
+    pub fn feed_output(&self, output: Vec<u8>, initial: bool) {
+        let imp = self.imp();
+
+        if initial == false && imp.is_synced() == false {
+            // Regular output, but we are NOT yet synced!
+            return;
+        }
+
         let binding = self.imp().vte.borrow();
         let vte = binding.as_ref().unwrap();
         vte.feed(&output);
+    }
+
+    pub fn initial_output_finished(&self) {
+        self.imp().set_synced();
     }
 
     pub fn scroll_view(&self, empty_lines: usize) {
@@ -145,7 +145,7 @@ impl TmuxTerminal {
         }
         output.push(b'A');
 
-        self.feed_output(output);
+        self.feed_output(output, false);
     }
 
     pub fn get_cols_or_rows(&self) -> (i64, i64) {

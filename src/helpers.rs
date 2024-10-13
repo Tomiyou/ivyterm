@@ -105,4 +105,8 @@ impl<T: Eq + Clone> SortedVec<T> {
     {
         self.terminals.retain(f);
     }
+
+    pub fn clear(&mut self) {
+        self.terminals.clear();
+    }
 }

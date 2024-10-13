@@ -15,6 +15,12 @@ use super::IvyTmuxWindow;
 
 const RESIZE_TIMEOUT: Duration = Duration::from_millis(5);
 
+// Tmux session initialization:
+// 1. TmuxWindow constructor calls tmux.get_initial_layout()
+// 2. We receive initial layout, which is used to construct the hierarchy
+// 3. TopLevel layout.alloc_changed() triggers, which sends Tmux size sync event
+// 4. After we receive Tmux siz sync conformation, we start getting initial output
+
 impl IvyTmuxWindow {
     pub fn get_char_size(&self) -> (i32, i32) {
         self.imp().char_size.get()
@@ -118,16 +124,11 @@ impl IvyTmuxWindow {
         // This future runs on main thread of GTK application
         // It receives Tmux events from separate thread and runs GTK functions
         match event {
-            TmuxEvent::Output(pane_id, output) => {
+            TmuxEvent::Output(pane_id, output, initial) => {
                 // Ignore Output events until initial output has been captured
-                let tmux = imp.tmux.borrow();
-                if tmux.as_ref().unwrap().initial_output == TmuxTristate::Uninitialized {
-                    return;
-                }
-
                 let terminals = imp.terminals.borrow();
                 if let Some(pane) = terminals.get(pane_id) {
-                    pane.feed_output(output);
+                    pane.feed_output(output, initial);
                 }
             }
             TmuxEvent::PaneSplit(tab_id, layout, visible_layout) => {
@@ -166,24 +167,25 @@ impl IvyTmuxWindow {
                 // Also only get initial output when size + layout is OK
                 // We can calculate TopLevel size: TotalSize - HeaderBar?
             }
-            TmuxEvent::InitialOutputFinished() => {
-                let mut binding = imp.tmux.borrow_mut();
-                let tmux = binding.as_mut().unwrap();
-                tmux.initial_output = TmuxTristate::Done;
+            TmuxEvent::InitialOutputFinished(pane_id) => {
+                let terminals = imp.terminals.borrow();
+                if let Some(pane) = terminals.get(pane_id) {
+                    pane.initial_output_finished();
+                }
             }
             TmuxEvent::LayoutChanged(tab_id, layout, visible_layout) => {
                 println!("\n---------- Layout changed ----------");
                 self.sync_tmux_layout(tab_id, layout, visible_layout);
             }
             TmuxEvent::SizeChanged() => {
-                let mut binding = imp.tmux.borrow_mut();
-                let tmux = binding.as_mut().unwrap();
+                if imp.init_layout_finished.get() == TmuxTristate::Uninitialized {
+                    imp.init_layout_finished.replace(TmuxTristate::WaitingResponse);
 
-                // If initial output has not been captured yet, now is the time
-                if tmux.initial_output == TmuxTristate::Uninitialized {
+                    let mut binding = imp.tmux.borrow_mut();
+                    let tmux = binding.as_mut().unwrap();
+    
+                    // If initial output has not been captured yet, now is the time
                     println!("Getting initial output");
-                    tmux.initial_output = TmuxTristate::WaitingResponse;
-
                     let terminals = imp.terminals.borrow();
                     for sorted in terminals.iter() {
                         tmux.get_initial_output(sorted.id);
@@ -201,13 +203,19 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::SessionChanged(id, name) => {
-                let mut binding = imp.tmux.borrow_mut();
-                let tmux = binding.as_mut().unwrap();
+                let new = (id, name.clone());
+                let old = imp.session.replace(Some((id, name)));
 
-                if tmux.session.is_none() {
-                    println!("Session {} with name {} initialized", id, name);
-                    tmux.session = Some((id, name));
+                // If session changes (after it was already initialized), then
+                // something went wrong
+                if let Some(old) = old {
+                    if old != new {
+                        println!("Session {} changed underneath us, closing Window", old.1);
+                        self.close();
+                    }
                 }
+
+                println!("Session {} with name {} initialized", new.0, new.1);
             }
         }
     }

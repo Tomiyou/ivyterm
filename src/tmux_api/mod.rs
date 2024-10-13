@@ -18,15 +18,19 @@ pub struct TmuxAPI {
     command_queue: Sender<TmuxCommand>,
     window_size: (i32, i32),
     resize_future: bool,
-    pub initial_output: TmuxTristate,
-    pub session: Option<(u32, String)>,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum TmuxTristate {
     Uninitialized,
     WaitingResponse,
     Done,
+}
+
+impl Default for TmuxTristate {
+    fn default() -> Self {
+        TmuxTristate::Uninitialized
+    }
 }
 
 #[allow(dead_code)]
@@ -49,9 +53,9 @@ pub enum TmuxCommand {
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
     InitialLayout(u32, Vec<TmuxPane>, Vec<TmuxPane>),
-    InitialOutputFinished(),
+    InitialOutputFinished(u32),
     LayoutChanged(u32, Vec<TmuxPane>, Vec<TmuxPane>),
-    Output(u32, Vec<u8>),
+    Output(u32, Vec<u8>, bool),
     SizeChanged(),
     PaneSplit(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     PaneFocusChanged(u32, u32),
@@ -145,8 +149,6 @@ impl TmuxAPI {
             command_queue: cmd_queue_sender,
             window_size: (0, 0),
             resize_future: false,
-            initial_output: TmuxTristate::Uninitialized,
-            session: None,
         };
 
         Ok(tmux)

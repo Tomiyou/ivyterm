@@ -10,9 +10,10 @@ use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
 
 use crate::{
-    application::IvyApplication, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI
-    // terminal::Terminal,
-    // toplevel::TopLevel,
+    application::IvyApplication,
+    modals::spawn_new_tmux_modal,
+    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    tmux_api::TmuxAPI,
 };
 
 use super::{terminal::TmuxTerminal, toplevel::TmuxTopLevel};

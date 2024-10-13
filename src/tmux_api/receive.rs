@@ -136,7 +136,7 @@ pub fn tmux_read_stdout(
                 let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
 
                 event_channel
-                    .send_blocking(TmuxEvent::Output(pane_id, output))
+                    .send_blocking(TmuxEvent::Output(pane_id, output, false))
                     .expect("Event channel closed!");
             } else if buffer_starts_with(&buffer, "%begin") {
                 // Beginning of output from a command we executed
@@ -150,7 +150,7 @@ pub fn tmux_read_stdout(
                                 .send_blocking(TmuxEvent::ScrollOutput(pane_id, empty_line_count))
                                 .expect("Event channel closed!");
                             event_channel
-                                .send_blocking(TmuxEvent::InitialOutputFinished())
+                                .send_blocking(TmuxEvent::InitialOutputFinished(pane_id))
                                 .expect("Event channel closed!");
                         }
                         TmuxCommand::ChangeSize(_, _) => {
@@ -280,7 +280,7 @@ fn tmux_command_result(
             // println!("Tmux initial output for pane {}: |{}|", pane_id, escaped);
 
             event_channel
-                .send_blocking(TmuxEvent::Output(*pane_id, output))
+                .send_blocking(TmuxEvent::Output(*pane_id, output, true))
                 .expect("Event channel closed!");
         }
         _ => {}
