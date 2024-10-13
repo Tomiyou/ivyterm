@@ -253,12 +253,6 @@ fn tmux_command_result(
                 .send_blocking(TmuxEvent::TabNew(tab_id, layout, visible_layout))
                 .unwrap();
         }
-        TmuxCommand::PaneSplit(_horizontal) => {
-            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
-            event_channel
-                .send_blocking(TmuxEvent::PaneSplit(tab_id, layout, visible_layout))
-                .unwrap();
-        }
         TmuxCommand::InitialLayout => {
             let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
             event_channel

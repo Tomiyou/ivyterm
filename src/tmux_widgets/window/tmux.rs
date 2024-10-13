@@ -153,10 +153,6 @@ impl IvyTmuxWindow {
                     pane.feed_output(output, initial);
                 }
             }
-            TmuxEvent::PaneSplit(tab_id, layout, visible_layout) => {
-                println!("\n---------- Pane split ----------");
-                self.sync_tmux_layout(tab_id, layout, visible_layout);
-            }
             TmuxEvent::PaneFocusChanged(tab_id, term_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     top_level.focus_changed(term_id);

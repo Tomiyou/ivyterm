@@ -44,7 +44,6 @@ pub enum TmuxEvent {
     LayoutChanged(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     Output(u32, Vec<u8>, bool),
     SizeChanged(),
-    PaneSplit(u32, Vec<TmuxPane>, Vec<TmuxPane>),
     PaneFocusChanged(u32, u32),
     TabFocusChanged(u32),
     TabNew(u32, Vec<TmuxPane>, Vec<TmuxPane>),
