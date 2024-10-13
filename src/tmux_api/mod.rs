@@ -35,6 +35,7 @@ pub enum TmuxCommand {
     PaneZoom(u32),
     ChangeSize(i32, i32),
     InitialOutput(u32),
+    ClipboardPaste,
 }
 
 pub enum TmuxEvent {

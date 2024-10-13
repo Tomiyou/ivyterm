@@ -50,6 +50,8 @@ pub struct Keybindings {
     move_down: String,
     #[serde(default = "default_rename_tab")]
     rename_tab: String,
+    #[serde(default = "default_paste_clipboard")]
+    paste_clipboard: String,
 }
 
 impl Keybindings {
@@ -119,6 +121,11 @@ impl Keybindings {
             KeyboardAction::TabRename,
             "Rename the current Tab",
         ));
+        keybindings.push(Keybinding::new(
+            &self.paste_clipboard,
+            KeyboardAction::PasteClipboard,
+            "Paste to Terminal",
+        ));
 
         keybindings
     }
@@ -144,6 +151,7 @@ impl Keybindings {
             KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
             KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
             KeyboardAction::PaneClose => self.close_pane = trigger,
+            KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
         }
     }
 }
@@ -188,6 +196,7 @@ impl Default for Keybindings {
             move_up: default_move_up(),
             move_down: default_move_down(),
             rename_tab: default_rename_tab(),
+            paste_clipboard: default_paste_clipboard(),
         }
     }
 }
@@ -212,6 +221,9 @@ fn default_toggle_zoom() -> String {
 }
 fn default_copy_selection() -> String {
     "<Ctrl><Shift>c".to_string()
+}
+fn default_paste_clipboard() -> String {
+    "<Ctrl><Shift>v".to_string()
 }
 fn default_move_right() -> String {
     "<Alt>Right".to_string()

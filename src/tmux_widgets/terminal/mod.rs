@@ -174,6 +174,9 @@ fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, window
         KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
         }
+        KeyboardAction::PasteClipboard => {
+            window.clipboard_paste_event(pane_id);
+        }
         KeyboardAction::TabRename => {
             todo!();
         }

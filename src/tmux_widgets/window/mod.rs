@@ -251,4 +251,18 @@ impl IvyTmuxWindow {
                 .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
         }
     }
+
+    pub fn clipboard_paste_event(&self, pane_id: u32) {
+        let clipboard = self.primary_clipboard();
+        let future = clipboard.read_text_future();
+        let window = self.clone();
+
+        glib::spawn_future_local(async move {
+            if let Ok(output) = future.await {
+                if let Some(output) = output {
+                    window.send_clipboard(pane_id, output.as_str());
+                }
+            }
+        });
+    }
 }

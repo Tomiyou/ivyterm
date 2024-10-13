@@ -187,5 +187,8 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
         KeyboardAction::TabRename => {
             top_level.open_rename_modal();
         }
+        KeyboardAction::PasteClipboard => {
+            vte.paste_clipboard();
+        }
     }
 }

@@ -81,6 +81,13 @@ impl IvyTmuxWindow {
         }
     }
 
+    pub fn send_clipboard(&self, pane_id: u32, text: &str) {
+        let mut binding = self.imp().tmux.borrow_mut();
+        if let Some(tmux) = binding.as_mut() {
+            tmux.send_clipboard(pane_id, text);
+        }
+    }
+
     fn tmux_sync_size(&self) {
         let imp = self.imp();
 
