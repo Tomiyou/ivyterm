@@ -4,13 +4,16 @@ use std::sync::atomic::Ordering;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
-    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle
+    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType,
+    WindowControls, WindowHandle,
 };
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 
 use crate::{
-    application::IvyApplication, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}
+    application::IvyApplication,
+    modals::spawn_new_tmux_modal,
+    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};

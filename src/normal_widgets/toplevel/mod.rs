@@ -5,7 +5,9 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
-use crate::{helpers::WithId, keyboard::Direction, modals::spawn_rename_modal, settings::SPLIT_HANDLE_WIDTH};
+use crate::{
+    helpers::WithId, keyboard::Direction, modals::spawn_rename_modal, settings::SPLIT_HANDLE_WIDTH,
+};
 
 use self::imp::Zoomed;
 
@@ -348,11 +350,9 @@ impl TopLevel {
         let page = tab_view.page(self);
         let current_name = page.title();
 
-        let callback = glib::closure_local!(
-            move |new_name: &str| {
-                page.set_title(new_name);
-            }
-        );
+        let callback = glib::closure_local!(move |new_name: &str| {
+            page.set_title(new_name);
+        });
 
         // We need the "parent" Window for modal
         let binding = self.imp().window.borrow();

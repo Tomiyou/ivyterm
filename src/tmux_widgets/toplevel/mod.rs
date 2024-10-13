@@ -7,8 +7,6 @@ use gtk4::Widget;
 use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
 
-use crate::helpers::WithId;
-
 use self::imp::Zoomed;
 
 use super::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow};
