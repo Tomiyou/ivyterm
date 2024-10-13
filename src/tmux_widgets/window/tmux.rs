@@ -6,7 +6,7 @@ use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
-    keyboard::{keycode_to_arrow_key, KeyboardAction},
+    keyboard::keycode_to_arrow_key,
     tmux_api::{LayoutFlags, LayoutSync, TmuxEvent},
     tmux_widgets::toplevel::TmuxTopLevel,
 };
@@ -273,34 +273,7 @@ impl IvyTmuxWindow {
         }
     }
 
-    #[inline]
-    pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
-        let tmux = self.imp().tmux.borrow();
-        if let Some(tmux) = tmux.as_ref() {
-            tmux.send_keybinding(action, pane_id);
-        }
-    }
-
     pub fn initial_layout_finished(&self) -> bool {
         self.imp().init_layout_finished.get() == TmuxInitState::Done
-    }
-
-    pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
-        let tmux = self.imp().tmux.borrow();
-        if let Some(tmux) = tmux.as_ref() {
-            tmux.select_terminal(term_id);
-        }
-    }
-
-    pub fn gtk_tab_focus_changed(&self, tab_id: u32) {
-        let imp = self.imp();
-
-        if imp.init_layout_finished.get() == TmuxInitState::Done {
-            imp.focused_tab.replace(tab_id);
-
-            let binding = imp.tmux.borrow();
-            let tmux = binding.as_ref().unwrap();
-            tmux.select_tab(tab_id);
-        }
     }
 }

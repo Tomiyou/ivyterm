@@ -8,12 +8,10 @@ use gtk4::{
 };
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
+use tmux::TmuxInitState;
 
 use crate::{
-    application::IvyApplication,
-    modals::spawn_new_tmux_modal,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    tmux_api::TmuxAPI,
+    application::IvyApplication, keyboard::KeyboardAction, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI
 };
 
 use super::{terminal::TmuxTerminal, toplevel::TmuxTopLevel};
@@ -244,6 +242,33 @@ impl IvyTmuxWindow {
             sorted
                 .terminal
                 .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+        }
+    }
+
+    #[inline]
+    pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
+        let tmux = self.imp().tmux.borrow();
+        if let Some(tmux) = tmux.as_ref() {
+            tmux.send_keybinding(action, pane_id);
+        }
+    }
+
+    pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
+        let tmux = self.imp().tmux.borrow();
+        if let Some(tmux) = tmux.as_ref() {
+            tmux.select_terminal(term_id);
+        }
+    }
+
+    pub fn gtk_tab_focus_changed(&self, tab_id: u32) {
+        let imp = self.imp();
+
+        if imp.init_layout_finished.get() == TmuxInitState::Done {
+            imp.focused_tab.replace(tab_id);
+
+            let binding = imp.tmux.borrow();
+            let tmux = binding.as_ref().unwrap();
+            tmux.select_tab(tab_id);
         }
     }
 
