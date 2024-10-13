@@ -97,7 +97,7 @@ impl IvyTmuxWindow {
 
         if let Some(selected_page) = selected_page {
             let top_level: TmuxTopLevel = selected_page.child().downcast().unwrap();
-            println!(
+            debug!(
                 "Top Level width {} height {}",
                 top_level.width(),
                 top_level.height()
@@ -146,7 +146,7 @@ impl IvyTmuxWindow {
         let flags = layout_sync.flags;
         // If the Tab is focused, we remember that here
         if flags.contains(LayoutFlags::HasFocus) {
-            // TODO
+            self.imp().focused_tab.replace(tab_id);
         }
     }
 
@@ -174,7 +174,19 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::TabFocusChanged(tab_id) => {
-                self.imp().focused_tab.replace(tab_id);
+                debug!("TabFocusChanged {}", tab_id);
+
+                let old = self.imp().focused_tab.replace(tab_id);
+                if old != tab_id {
+                    let top_level = self.get_top_level(tab_id);
+
+                    if let Some(top_level) = top_level {
+                        let binding = self.imp().tab_view.borrow();
+                        let tab_view = binding.as_ref().unwrap();
+                        let page = tab_view.page(&top_level);
+                        tab_view.set_selected_page(&page);
+                    }
+                }
             }
             TmuxEvent::TabNew(layout_sync) => {
                 println!("\n---------- New tab ----------");
@@ -186,19 +198,26 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::InitialLayout(layout_sync) => {
-                let tab_id = layout_sync.tab_id;
+                // TODO: Fix Tmux not reporting which Terminal is selected in Initial Layout
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
                 // We can calculate TopLevel size: TotalSize - HeaderBar?
 
                 println!("\n---------- Initial layout ----------");
                 self.sync_tmux_layout(layout_sync);
-                if let Some(top_level) = self.get_top_level(tab_id) {
-                    top_level.set_initialized();
-                }
-
+            }
+            TmuxEvent::InitialLayoutFinished => {
                 // We have initial layout, meaning we can now calculate cols&rows to sync the
                 // Tmux client size
+                let current_tab = self.imp().focused_tab.get();
+                let top_level = self.get_top_level(current_tab);
+                if let Some(top_level) = top_level {
+                    let binding = self.imp().tab_view.borrow();
+                    let tab_view = binding.as_ref().unwrap();
+                    let page = tab_view.page(&top_level);
+                    tab_view.set_selected_page(&page);
+                }
+
                 imp.init_layout_finished.replace(TmuxInitState::SyncingSize);
             }
             TmuxEvent::InitialOutputFinished(pane_id) => {
@@ -211,7 +230,7 @@ impl IvyTmuxWindow {
                 println!("\n---------- Layout changed ----------");
                 self.sync_tmux_layout(layout_sync);
             }
-            TmuxEvent::SizeChanged() => {
+            TmuxEvent::SizeChanged => {
                 if imp.init_layout_finished.get() == TmuxInitState::SyncingSize {
                     imp.init_layout_finished.replace(TmuxInitState::Done);
 
@@ -262,14 +281,26 @@ impl IvyTmuxWindow {
         }
     }
 
-    pub fn initial_output_finished(&self) -> bool {
+    pub fn initial_layout_finished(&self) -> bool {
         self.imp().init_layout_finished.get() == TmuxInitState::Done
     }
 
-    pub fn focused_terminal_changed(&self, term_id: u32) {
+    pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
         let tmux = self.imp().tmux.borrow();
         if let Some(tmux) = tmux.as_ref() {
             tmux.select_terminal(term_id);
+        }
+    }
+
+    pub fn gtk_tab_focus_changed(&self, tab_id: u32) {
+        let imp = self.imp();
+
+        if imp.init_layout_finished.get() == TmuxInitState::Done {
+            imp.focused_tab.replace(tab_id);
+
+            let binding = imp.tmux.borrow();
+            let tmux = binding.as_ref().unwrap();
+            tmux.select_tab(tab_id);
         }
     }
 }

@@ -45,7 +45,7 @@ impl TmuxTerminal {
         terminal.set_child(Some(&scrolled));
         terminal.imp().init_values(pane_id, &vte, &window);
 
-        if window.initial_output_finished() {
+        if window.initial_layout_finished() {
             terminal.imp().set_synced();
         }
 
@@ -62,7 +62,7 @@ impl TmuxTerminal {
             move |vte| {
                 if vte.has_focus() {
                     // Notify TopLevel that the focused terminal changed
-                    top_level.terminal_focus_changed(pane_id);
+                    top_level.gtk_terminal_focus_changed(pane_id);
                 }
             }
         ));

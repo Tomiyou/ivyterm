@@ -39,7 +39,7 @@ impl TmuxAPI {
 
     pub fn change_size(&mut self, cols: i32, rows: i32) {
         if self.window_size == (cols, rows) {
-            println!(
+            debug!(
                 "Not updating Tmux size to {}x{}, since it did not change",
                 cols, rows
             );

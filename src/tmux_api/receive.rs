@@ -155,7 +155,12 @@ pub fn tmux_read_stdout(
                         }
                         TmuxCommand::ChangeSize(_, _) => {
                             event_channel
-                                .send_blocking(TmuxEvent::SizeChanged())
+                                .send_blocking(TmuxEvent::SizeChanged)
+                                .expect("Event channel closed!");
+                        }
+                        TmuxCommand::InitialLayout => {
+                            event_channel
+                                .send_blocking(TmuxEvent::InitialLayoutFinished)
                                 .expect("Event channel closed!");
                         }
                         _ => {}

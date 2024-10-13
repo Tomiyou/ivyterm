@@ -120,7 +120,7 @@ impl TmuxTopLevel {
         window.as_ref().unwrap().unregister_terminal(pane_id);
     }
 
-    pub fn terminal_focus_changed(&self, term_id: u32) {
+    pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
         let imp = self.imp();
 
         let old_term = imp.focused_terminal.replace(term_id);
@@ -128,7 +128,7 @@ impl TmuxTopLevel {
             // Focused Terminal changed, we should notify Tmux of this
             let binding = imp.window.borrow();
             let window = binding.as_ref().unwrap();
-            window.focused_terminal_changed(term_id);
+            window.gtk_terminal_focus_changed(term_id);
         }
     }
 
@@ -192,14 +192,6 @@ impl TmuxTopLevel {
                 container.recursive_separator_adjust(x_diff, y_diff);
             }
         }
-    }
-
-    pub fn set_initialized(&self) {
-        self.imp().initialized.replace(true);
-    }
-
-    pub fn get_initialized(&self) -> bool {
-        self.imp().initialized.get()
     }
 
     pub fn focus_current_terminal(&self) {

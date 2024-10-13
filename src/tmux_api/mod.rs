@@ -50,10 +50,11 @@ pub enum TmuxCommand {
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
     InitialLayout(LayoutSync),
+    InitialLayoutFinished,
     InitialOutputFinished(u32),
     LayoutChanged(LayoutSync),
     Output(u32, Vec<u8>, bool),
-    SizeChanged(),
+    SizeChanged,
     PaneFocusChanged(u32, u32),
     TabFocusChanged(u32),
     TabNew(LayoutSync),

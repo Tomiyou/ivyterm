@@ -158,14 +158,9 @@ impl IvyTmuxWindow {
         page.connect_selected_notify(glib::clone!(
             #[weak(rename_to = window)]
             self,
-            #[weak]
-            top_level,
             move |page| {
-                if page.is_selected() && top_level.get_initialized() {
-                    println!("Tab {} was selected", id);
-                    let binding = window.imp().tmux.borrow();
-                    let tmux = binding.as_ref().unwrap();
-                    tmux.select_tab(id);
+                if page.is_selected() {
+                    window.gtk_tab_focus_changed(id);
                 }
             }
         ));

@@ -24,7 +24,6 @@ pub struct TopLevelPriv {
     pub terminals: RefCell<Vec<TmuxTerminal>>,
     pub zoomed: RefCell<Option<Zoomed>>,
     pub focused_terminal: Cell<u32>,
-    pub initialized: Cell<bool>,
 }
 
 // The central trait for subclassing a GObject
