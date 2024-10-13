@@ -5,9 +5,11 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
 use crate::helpers::SortedVec;
-use crate::tmux_api::{TmuxAPI, TmuxTristate};
+use crate::tmux_api::TmuxAPI;
 use crate::tmux_widgets::terminal::TmuxTerminal;
 use crate::tmux_widgets::toplevel::TmuxTopLevel;
+
+use super::tmux::TmuxInitState;
 
 // Object holding the state
 #[derive(Default)]
@@ -20,7 +22,7 @@ pub struct IvyWindowPriv {
     pub char_size: Cell<(i32, i32)>,
     pub focused_tab: Cell<u32>,
     pub session: Cell<Option<(u32, String)>>,
-    pub init_layout_finished: Cell<TmuxTristate>,
+    pub init_layout_finished: Cell<TmuxInitState>,
 }
 
 // The central trait for subclassing a GObject

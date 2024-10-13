@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
-    tmux_api::{TmuxEvent, TmuxPane, TmuxTristate},
+    tmux_api::{TmuxEvent, TmuxPane},
     tmux_widgets::toplevel::TmuxTopLevel,
 };
 
@@ -15,11 +15,24 @@ use super::IvyTmuxWindow;
 
 const RESIZE_TIMEOUT: Duration = Duration::from_millis(5);
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum TmuxInitState {
+    SyncingLayout,
+    SyncingSize,
+    Done,
+}
+
+impl Default for TmuxInitState {
+    fn default() -> Self {
+        TmuxInitState::SyncingLayout
+    }
+}
+
 // Tmux session initialization:
 // 1. TmuxWindow constructor calls tmux.get_initial_layout()
 // 2. We receive initial layout, which is used to construct the hierarchy
 // 3. TopLevel layout.alloc_changed() triggers, which sends Tmux size sync event
-// 4. After we receive Tmux siz sync conformation, we start getting initial output
+// 4. After we receive Tmux size sync conformation, we start getting initial output
 
 impl IvyTmuxWindow {
     pub fn get_char_size(&self) -> (i32, i32) {
@@ -166,15 +179,19 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::InitialLayout(tab_id, layout, visible_layout) => {
+                // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
+                // Also only get initial output when size + layout is OK
+                // We can calculate TopLevel size: TotalSize - HeaderBar?
+
                 println!("\n---------- Initial layout ----------");
                 self.sync_tmux_layout(tab_id, layout, visible_layout);
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     top_level.set_initialized();
                 }
 
-                // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
-                // Also only get initial output when size + layout is OK
-                // We can calculate TopLevel size: TotalSize - HeaderBar?
+                // We have initial layout, meaning we can now calculate cols&rows to sync the
+                // Tmux client size
+                imp.init_layout_finished.replace(TmuxInitState::SyncingSize);
             }
             TmuxEvent::InitialOutputFinished(pane_id) => {
                 let terminals = imp.terminals.borrow();
@@ -187,9 +204,8 @@ impl IvyTmuxWindow {
                 self.sync_tmux_layout(tab_id, layout, visible_layout);
             }
             TmuxEvent::SizeChanged() => {
-                if imp.init_layout_finished.get() == TmuxTristate::Uninitialized {
-                    imp.init_layout_finished
-                        .replace(TmuxTristate::WaitingResponse);
+                if imp.init_layout_finished.get() == TmuxInitState::SyncingSize {
+                    imp.init_layout_finished.replace(TmuxInitState::Done);
 
                     let mut binding = imp.tmux.borrow_mut();
                     if let Some(tmux) = binding.as_mut() {
@@ -226,7 +242,6 @@ impl IvyTmuxWindow {
                 }
 
                 println!("Session {} with name {} initialized", new.0, new.1);
-                self.close_tmux_window();
             }
         }
     }
@@ -237,5 +252,9 @@ impl IvyTmuxWindow {
         if let Some(tmux) = tmux.as_ref() {
             tmux.send_keybinding(action, pane_id);
         }
+    }
+
+    pub fn initial_output_finished(&self) -> bool {
+        self.imp().init_layout_finished.get() == TmuxInitState::Done
     }
 }

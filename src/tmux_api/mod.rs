@@ -20,19 +20,6 @@ pub struct TmuxAPI {
     resize_future: bool,
 }
 
-#[derive(PartialEq, Clone, Copy)]
-pub enum TmuxTristate {
-    Uninitialized,
-    WaitingResponse,
-    Done,
-}
-
-impl Default for TmuxTristate {
-    fn default() -> Self {
-        TmuxTristate::Uninitialized
-    }
-}
-
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum TmuxCommand {

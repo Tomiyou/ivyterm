@@ -47,6 +47,10 @@ impl TmuxTerminal {
         terminal.set_child(Some(&scrolled));
         terminal.imp().init_values(pane_id, &vte, &window);
 
+        if window.initial_output_finished() {
+            terminal.imp().set_synced();
+        }
+
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);
 
