@@ -61,22 +61,22 @@ impl Keybindings {
         // Put the most common keybindings first (for optimization)
         keybindings.push(Keybinding::new(
             &self.move_right,
-            KeyboardAction::SelectPane(Direction::Right),
+            KeyboardAction::MoveFocus(Direction::Right),
             "Move focus to the Pane on the right",
         ));
         keybindings.push(Keybinding::new(
             &self.move_left,
-            KeyboardAction::SelectPane(Direction::Left),
+            KeyboardAction::MoveFocus(Direction::Left),
             "Move focus to the Pane on the left",
         ));
         keybindings.push(Keybinding::new(
             &self.move_up,
-            KeyboardAction::SelectPane(Direction::Up),
+            KeyboardAction::MoveFocus(Direction::Up),
             "Move focus to the Pane on the up",
         ));
         keybindings.push(Keybinding::new(
             &self.move_down,
-            KeyboardAction::SelectPane(Direction::Down),
+            KeyboardAction::MoveFocus(Direction::Down),
             "Move focus to the Pane on the down",
         ));
 
@@ -139,10 +139,10 @@ impl Keybindings {
         };
 
         match keybinding.action {
-            KeyboardAction::SelectPane(Direction::Right) => self.move_right = trigger,
-            KeyboardAction::SelectPane(Direction::Left) => self.move_left = trigger,
-            KeyboardAction::SelectPane(Direction::Up) => self.move_up = trigger,
-            KeyboardAction::SelectPane(Direction::Down) => self.move_down = trigger,
+            KeyboardAction::MoveFocus(Direction::Right) => self.move_right = trigger,
+            KeyboardAction::MoveFocus(Direction::Left) => self.move_left = trigger,
+            KeyboardAction::MoveFocus(Direction::Up) => self.move_up = trigger,
+            KeyboardAction::MoveFocus(Direction::Down) => self.move_down = trigger,
             KeyboardAction::ToggleZoom => self.toggle_zoom = trigger,
             KeyboardAction::CopySelected => self.copy_selection = trigger,
             KeyboardAction::TabNew => self.new_tab = trigger,

@@ -172,7 +172,7 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
         KeyboardAction::TabClose => {
             top_level.close_tab();
         }
-        KeyboardAction::SelectPane(direction) => {
+        KeyboardAction::MoveFocus(direction) => {
             let previous_size = top_level.unzoom();
             if let Some(new_focus) = top_level.find_neighbor(terminal, direction, previous_size) {
                 new_focus.grab_focus();

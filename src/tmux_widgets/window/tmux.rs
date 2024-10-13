@@ -162,7 +162,7 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::PaneFocusChanged(tab_id, term_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
-                    top_level.focus_changed(term_id);
+                    top_level.select_terminal_event(term_id);
                 }
             }
             TmuxEvent::TabFocusChanged(tab_id) => {
@@ -260,5 +260,12 @@ impl IvyTmuxWindow {
 
     pub fn initial_output_finished(&self) -> bool {
         self.imp().init_layout_finished.get() == TmuxInitState::Done
+    }
+
+    pub fn focused_terminal_changed(&self, term_id: u32) {
+        let tmux = self.imp().tmux.borrow();
+        if let Some(tmux) = tmux.as_ref() {
+            tmux.select_terminal(term_id);
+        }
     }
 }

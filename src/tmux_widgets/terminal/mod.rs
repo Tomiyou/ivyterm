@@ -19,8 +19,6 @@ impl TmuxTerminal {
     pub fn new(top_level: &TmuxTopLevel, window: &IvyTmuxWindow, pane_id: u32) -> Self {
         let window = window.clone();
 
-        let top_level = top_level.clone();
-
         let app = window.application().unwrap();
         let app: IvyApplication = app.downcast().unwrap();
 
@@ -58,16 +56,16 @@ impl TmuxTerminal {
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
-        // vte.connect_has_focus_notify(glib::clone!(
-        //     #[strong]
-        //     terminal,
-        //     move |vte| {
-        //         if vte.has_focus() {
-        //             // Notify TopLevel that the focused terminal changed
-        //             top_level.focus_changed(pane_id, &terminal);
-        //         }
-        //     }
-        // ));
+        vte.connect_has_focus_notify(glib::clone!(
+            #[strong]
+            top_level,
+            move |vte| {
+                if vte.has_focus() {
+                    // Notify TopLevel that the focused terminal changed
+                    top_level.terminal_focus_changed(pane_id);
+                }
+            }
+        ));
 
         let eventctl = EventControllerKey::new();
         eventctl.connect_key_pressed(glib::clone!(

@@ -18,7 +18,7 @@ pub enum KeyboardAction {
     PaneSplit(bool),
     PaneClose,
     // TODO: Correct naming
-    SelectPane(Direction),
+    MoveFocus(Direction),
     ToggleZoom,
     CopySelected,
     PasteClipboard,

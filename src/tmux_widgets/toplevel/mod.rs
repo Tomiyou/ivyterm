@@ -120,7 +120,19 @@ impl TmuxTopLevel {
         window.as_ref().unwrap().unregister_terminal(pane_id);
     }
 
-    pub fn focus_changed(&self, term_id: u32) {
+    pub fn terminal_focus_changed(&self, term_id: u32) {
+        let imp = self.imp();
+
+        let old_term = imp.focused_terminal.replace(term_id);
+        if old_term != term_id {
+            // Focused Terminal changed, we should notify Tmux of this
+            let binding = imp.window.borrow();
+            let window = binding.as_ref().unwrap();
+            window.focused_terminal_changed(term_id);
+        }
+    }
+
+    pub fn select_terminal_event(&self, term_id: u32) {
         // TODO: Maybe our implementation of focus tracking is better than Tmux?
         let imp = self.imp();
         imp.focused_terminal.replace(term_id);
