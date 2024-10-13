@@ -89,7 +89,7 @@ impl TmuxAPI {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
-        let cmd = format!("send-keys -l -t %{} -- {}\n", pane_id, text);
+        let cmd = format!("send-keys -l -t %{} -- \"{}\"\n", pane_id, text);
         debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
         command_queue
             .send_blocking(TmuxCommand::ClipboardPaste)
