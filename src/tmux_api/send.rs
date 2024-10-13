@@ -95,7 +95,7 @@ impl TmuxAPI {
                     .send_blocking(TmuxCommand::PaneSplit(horizontal))
                     .unwrap();
                 format!(
-                    "split-window {} -t %{} -P -F \"#{{window_id}} #{{window_layout}} #{{window_visible_layout}} #{{window_flags}}\"\n",
+                    "split-window {} -t %{}\n",
                     if horizontal { "-v" } else { "-h" },
                     pane_id,
                 )
