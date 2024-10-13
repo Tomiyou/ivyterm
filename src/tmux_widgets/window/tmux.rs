@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::{
     keyboard::{keycode_to_arrow_key, KeyboardAction},
-    tmux_api::{TmuxEvent, TmuxPane},
+    tmux_api::{LayoutFlags, LayoutSync, TmuxEvent},
     tmux_widgets::toplevel::TmuxTopLevel,
 };
 
@@ -130,7 +130,9 @@ impl IvyTmuxWindow {
         }
     }
 
-    fn sync_tmux_layout(&self, tab_id: u32, layout: Vec<TmuxPane>, visible_layout: Vec<TmuxPane>) {
+    fn sync_tmux_layout(&self, layout_sync: LayoutSync) {
+        let tab_id = layout_sync.tab_id;
+
         let top_level = if let Some(top_level) = self.get_top_level(tab_id) {
             debug!("Reusing top Level {}", top_level.tab_id());
             top_level
@@ -139,7 +141,13 @@ impl IvyTmuxWindow {
             self.new_tab(tab_id)
         };
 
-        top_level.sync_tmux_layout(self, layout);
+        top_level.sync_tmux_layout(self, layout_sync.layout);
+
+        let flags = layout_sync.flags;
+        // If the Tab is focused, we remember that here
+        if flags.contains(LayoutFlags::HasFocus) {
+            // TODO
+        }
     }
 
     pub fn tmux_event_callback(&self, event: TmuxEvent) {
@@ -167,28 +175,24 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::TabFocusChanged(tab_id) => {
                 self.imp().focused_tab.replace(tab_id);
-
-                if let Some(top_level) = self.get_top_level(tab_id) {
-                    top_level.grab_focus();
-                    top_level.focus_current_terminal();
-                }
             }
-            TmuxEvent::TabNew(tab_id, layout, visible_layout) => {
+            TmuxEvent::TabNew(layout_sync) => {
                 println!("\n---------- New tab ----------");
-                self.sync_tmux_layout(tab_id, layout, visible_layout);
+                self.sync_tmux_layout(layout_sync);
             }
             TmuxEvent::TabClosed(tab_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     self.close_tab(&top_level);
                 }
             }
-            TmuxEvent::InitialLayout(tab_id, layout, visible_layout) => {
+            TmuxEvent::InitialLayout(layout_sync) => {
+                let tab_id = layout_sync.tab_id;
                 // TODO: Block resize until Tmux layout is parsed (or maybe the other way around?)
                 // Also only get initial output when size + layout is OK
                 // We can calculate TopLevel size: TotalSize - HeaderBar?
 
                 println!("\n---------- Initial layout ----------");
-                self.sync_tmux_layout(tab_id, layout, visible_layout);
+                self.sync_tmux_layout(layout_sync);
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     top_level.set_initialized();
                 }
@@ -203,9 +207,9 @@ impl IvyTmuxWindow {
                     pane.initial_output_finished();
                 }
             }
-            TmuxEvent::LayoutChanged(tab_id, layout, visible_layout) => {
+            TmuxEvent::LayoutChanged(layout_sync) => {
                 println!("\n---------- Layout changed ----------");
-                self.sync_tmux_layout(tab_id, layout, visible_layout);
+                self.sync_tmux_layout(layout_sync);
             }
             TmuxEvent::SizeChanged() => {
                 if imp.init_layout_finished.get() == TmuxInitState::SyncingSize {

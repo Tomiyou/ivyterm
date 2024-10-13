@@ -199,9 +199,9 @@ pub fn tmux_read_stdout(
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
-                let (tab_id, layout, visible_layout) = parse_tmux_layout(&buffer[15..]);
+                let layout_sync = parse_tmux_layout(&buffer[15..]);
                 event_channel
-                    .send_blocking(TmuxEvent::LayoutChanged(tab_id, layout, visible_layout))
+                    .send_blocking(TmuxEvent::LayoutChanged(layout_sync))
                     .unwrap();
             } else if buffer_starts_with(&buffer, "%error") {
                 // Command we executed produced an error
@@ -248,15 +248,15 @@ fn tmux_command_result(
 ) {
     match command {
         TmuxCommand::TabNew => {
-            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
+            let layout_sync = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::TabNew(tab_id, layout, visible_layout))
+                .send_blocking(TmuxEvent::TabNew(layout_sync))
                 .unwrap();
         }
         TmuxCommand::InitialLayout => {
-            let (tab_id, layout, visible_layout) = parse_tmux_layout(buffer);
+            let layout_sync = parse_tmux_layout(buffer);
             event_channel
-                .send_blocking(TmuxEvent::InitialLayout(tab_id, layout, visible_layout))
+                .send_blocking(TmuxEvent::InitialLayout(layout_sync))
                 .unwrap();
         }
         TmuxCommand::InitialOutput(pane_id) => {

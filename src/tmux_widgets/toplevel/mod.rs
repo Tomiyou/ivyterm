@@ -4,7 +4,7 @@ mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::Widget;
-use libadwaita::{glib, prelude::*, TabView};
+use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use self::imp::Zoomed;
@@ -18,13 +18,13 @@ glib::wrapper! {
 }
 
 impl TmuxTopLevel {
-    pub fn new(tab_view: &TabView, window: &IvyTmuxWindow, tab_id: u32) -> Self {
+    pub fn new(window: &IvyTmuxWindow, tab_id: u32) -> Self {
         let top_level: TmuxTopLevel = Object::builder().build();
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
         top_level.set_focusable(true);
 
-        top_level.imp().init_values(tab_view, window, tab_id);
+        top_level.imp().init_values(window, tab_id);
 
         top_level
     }

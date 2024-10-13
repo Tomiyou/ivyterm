@@ -150,6 +150,7 @@ impl TmuxTopLevel {
                         // Terminal does not exist yet, simply append it after previous_sibling
                         let new_terminal = TmuxTerminal::new(self, window, term_id);
                         self.set_child(Some(&new_terminal));
+                        self.select_terminal_event(term_id);
                         debug!("Created pane {} as only child", term_id);
                     }
                 }

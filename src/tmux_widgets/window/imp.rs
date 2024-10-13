@@ -16,6 +16,7 @@ use super::tmux::TmuxInitState;
 pub struct IvyWindowPriv {
     pub tmux: RefCell<Option<TmuxAPI>>,
     pub tab_view: RefCell<Option<TabView>>,
+    // TODO: Use SortedVec
     pub tabs: RefCell<Vec<TmuxTopLevel>>,
     pub terminals: RefCell<SortedVec<TmuxTerminal>>,
     pub css_provider: RefCell<CssProvider>,

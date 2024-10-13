@@ -1,6 +1,7 @@
 use std::process::{ChildStdin, Command, Stdio};
 
 use async_channel::{Receiver, Sender};
+use enumflags2::{bitflags, BitFlags};
 use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use receive::tmux_read_stdout;
@@ -18,6 +19,13 @@ pub struct TmuxAPI {
     command_queue: Sender<TmuxCommand>,
     window_size: (i32, i32),
     resize_future: bool,
+}
+
+pub struct LayoutSync {
+    pub tab_id: u32,
+    pub layout: Vec<TmuxPane>,
+    pub visible_layout: Vec<TmuxPane>,
+    pub flags: BitFlags<LayoutFlags>,
 }
 
 #[allow(dead_code)]
@@ -41,17 +49,25 @@ pub enum TmuxCommand {
 
 pub enum TmuxEvent {
     ScrollOutput(u32, usize),
-    InitialLayout(u32, Vec<TmuxPane>, Vec<TmuxPane>),
+    InitialLayout(LayoutSync),
     InitialOutputFinished(u32),
-    LayoutChanged(u32, Vec<TmuxPane>, Vec<TmuxPane>),
+    LayoutChanged(LayoutSync),
     Output(u32, Vec<u8>, bool),
     SizeChanged(),
     PaneFocusChanged(u32, u32),
     TabFocusChanged(u32),
-    TabNew(u32, Vec<TmuxPane>, Vec<TmuxPane>),
+    TabNew(LayoutSync),
     TabClosed(u32),
     SessionChanged(u32, String),
     Exit,
+}
+
+#[bitflags]
+#[repr(u8)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum LayoutFlags {
+    HasFocus,
+    IsZoomed,
 }
 
 #[derive(Debug, Clone, Copy)]

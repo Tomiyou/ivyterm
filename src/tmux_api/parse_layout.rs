@@ -1,14 +1,15 @@
 use std::str::from_utf8;
 
+use enumflags2::{BitFlag, BitFlags};
 use gtk4::Orientation;
 use log::debug;
 
-use super::{Rectangle, TmuxPane};
+use super::{LayoutFlags, LayoutSync, Rectangle, TmuxPane};
 
-pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>, Vec<TmuxPane>) {
+pub fn parse_tmux_layout(buffer: &[u8]) -> LayoutSync {
     // Example layout:
     // @0 a705,80x31,0,0[80x15,0,0,0,80x15,0,16{40x15,0,16,1,39x15,41,16,2}] a85f,80x31,0,0,2
-    debug!("Given layout {}", from_utf8(buffer).unwrap());
+    println!("Given layout {}", from_utf8(buffer).unwrap());
 
     // Skip initial @, if it exists
     let buffer = if buffer[0] == b'@' {
@@ -34,8 +35,29 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> (u32, Vec<TmuxPane>, Vec<TmuxPane>) {
 
     // Parse window flags
     debug!("Flags {}", from_utf8(buffer).unwrap());
+    let flags = parse_flags(buffer);
 
-    (tab_id, real_hierarchy, visible_hierarchy)
+    LayoutSync {
+        tab_id,
+        layout: real_hierarchy,
+        visible_layout: visible_hierarchy,
+        flags,
+    }
+}
+
+#[inline]
+fn parse_flags(buffer: &[u8]) -> BitFlags<LayoutFlags> {
+    let mut flags = LayoutFlags::empty();
+
+    for byte in buffer {
+        match *byte {
+            b'*' => flags |= LayoutFlags::HasFocus,
+            b'Z' => flags |= LayoutFlags::IsZoomed,
+            _ => {},
+        }
+    }
+
+    flags
 }
 
 #[inline]
