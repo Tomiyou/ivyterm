@@ -163,6 +163,7 @@ impl IvyTmuxWindow {
 
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     top_level.grab_focus();
+                    top_level.focus_current_terminal();
                 }
             }
             TmuxEvent::TabNew(tab_id, layout, visible_layout) => {

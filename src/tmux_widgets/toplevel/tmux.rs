@@ -189,16 +189,7 @@ impl TmuxTopLevel {
             panic!("Parsed Layout empty")
         }
 
-        // TODO: Fix this, Tmux currently does not report active Pane
-        // Ensure the correct Pane is focused
-        let focused_terminal = imp.focused_terminal.get();
-        let registered_terminals = imp.terminals.borrow();
-        for terminal in registered_terminals.iter() {
-            if terminal.pane_id() == focused_terminal {
-                terminal.grab_focus();
-                break;
-            }
-        }
+        self.focus_current_terminal();
     }
 }
 

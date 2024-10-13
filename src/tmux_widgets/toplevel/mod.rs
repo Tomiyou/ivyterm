@@ -189,4 +189,19 @@ impl TmuxTopLevel {
     pub fn get_initialized(&self) -> bool {
         self.imp().initialized.get()
     }
+
+    pub fn focus_current_terminal(&self) {
+        let imp = self.imp();
+
+        // TODO: Fix this, Tmux currently does not report active Pane
+        // Ensure the correct Pane is focused
+        let focused_terminal = imp.focused_terminal.get();
+        let registered_terminals = imp.terminals.borrow();
+        for terminal in registered_terminals.iter() {
+            if terminal.pane_id() == focused_terminal {
+                terminal.grab_focus();
+                break;
+            }
+        }
+    }
 }
