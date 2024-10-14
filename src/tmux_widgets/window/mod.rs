@@ -34,6 +34,7 @@ impl IvyTmuxWindow {
         window.set_title(Some(APPLICATION_TITLE));
         window.set_default_width(INITIAL_WIDTH);
         window.set_default_height(INITIAL_HEIGHT);
+        window.add_css_class("tmux_window");
 
         // Window content box holds title bar and panes
         let window_box = Box::new(Orientation::Vertical, 0);

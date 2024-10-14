@@ -15,3 +15,7 @@ separator {
 .setting_row {
     padding: 10px 20px;
 }
+
+.tmux_window {
+    background-color: #420a42;
+}
