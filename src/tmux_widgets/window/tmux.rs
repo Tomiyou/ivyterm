@@ -78,13 +78,19 @@ impl IvyTmuxWindow {
                 crate::keyboard::Direction::Down => "Down",
             };
             tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
+        } else if keycode >= 67 && keycode < 100 {
+            // This is a Function key
+            if let Some(name) = keyval.name() {
+                let name = name.as_str();
+                tmux.send_function_key(pane_id, name);
+            }
         }
     }
 
     pub fn send_clipboard(&self, pane_id: u32, text: &str) {
         let mut binding = self.imp().tmux.borrow_mut();
         if let Some(tmux) = binding.as_mut() {
-            tmux.send_clipboard(pane_id, text);
+            tmux.send_quoted_text(pane_id, text);
         }
     }
 

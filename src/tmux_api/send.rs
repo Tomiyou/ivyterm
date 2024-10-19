@@ -85,12 +85,26 @@ impl TmuxAPI {
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 
-    pub fn send_clipboard(&self, pane_id: u32, text: &str) {
+    pub fn send_quoted_text(&self, pane_id: u32, text: &str) {
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
 
+        // TODO: Escape content
         let cmd = format!("send-keys -l -t %{} -- \"{}\"\n", pane_id, text);
-        debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
+        println!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
+        command_queue
+            .send_blocking(TmuxCommand::ClipboardPaste)
+            .unwrap();
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
+    }
+
+    // TODO: Too many functions for sending text
+    pub fn send_function_key(&self, pane_id: u32, text: &str) {
+        let command_queue = &self.command_queue;
+        let mut stdin_stream = &self.stdin_stream;
+
+        let cmd = format!("send-keys -t %{} -- \"{}\"\n", pane_id, text);
+        debug!("send_function_key: {}", &cmd[..cmd.len() - 1]);
         command_queue
             .send_blocking(TmuxCommand::ClipboardPaste)
             .unwrap();
