@@ -90,8 +90,10 @@ impl TmuxAPI {
         let mut stdin_stream = &self.stdin_stream;
 
         // TODO: Escape content
+        let text = text.replace('\n', "\r");
+
         let cmd = format!("send-keys -l -t %{} -- \"{}\"\n", pane_id, text);
-        println!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
+        debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
         command_queue
             .send_blocking(TmuxCommand::ClipboardPaste)
             .unwrap();
