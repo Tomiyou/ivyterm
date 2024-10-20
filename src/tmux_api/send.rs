@@ -90,7 +90,10 @@ impl TmuxAPI {
         let mut stdin_stream = &self.stdin_stream;
 
         // TODO: Escape content
+        // Replace \n with \r (newlines)
         let text = text.replace('\n', "\r");
+        // Replace " with \"
+        let text = text.replace('"', "\\\"");
 
         let cmd = format!("send-keys -l -t %{} -- \"{}\"\n", pane_id, text);
         debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
