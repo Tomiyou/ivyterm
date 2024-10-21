@@ -93,7 +93,12 @@ pub fn spawn_new_tmux_modal(parent: &libadwaita::ApplicationWindow) {
 
             if let Some(app) = app {
                 let app: IvyApplication = app.downcast().unwrap();
-                app.new_window(Some(tmux_session.as_str()), Some(ssh_target.as_str()));
+                let ssh_target = if ssh_target.is_empty() {
+                    None
+                } else {
+                    Some(ssh_target.as_str())
+                };
+                app.new_window(Some(tmux_session.as_str()), ssh_target);
             }
         }
     ));
