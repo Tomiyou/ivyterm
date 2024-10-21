@@ -37,7 +37,7 @@ impl TmuxTopLevel {
     pub fn sync_tmux_layout(&self, window: &IvyTmuxWindow, layout: Vec<TmuxPane>) {
         let imp = self.imp();
 
-        {
+        if log::log_enabled!(log::Level::Debug) {
             let mut nested = 0;
             for pane in layout.iter() {
                 match pane {

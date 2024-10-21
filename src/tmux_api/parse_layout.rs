@@ -9,7 +9,7 @@ use super::{LayoutFlags, LayoutSync, Rectangle, TmuxPane};
 pub fn parse_tmux_layout(buffer: &[u8]) -> LayoutSync {
     // Example layout:
     // @0 a705,80x31,0,0[80x15,0,0,0,80x15,0,16{40x15,0,16,1,39x15,41,16,2}] a85f,80x31,0,0,2
-    println!("Given layout {}", from_utf8(buffer).unwrap());
+    debug!("Given layout {}", from_utf8(buffer).unwrap());
 
     // Skip initial @, if it exists
     let buffer = if buffer[0] == b'@' {

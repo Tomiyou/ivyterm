@@ -195,7 +195,7 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::TabNew(layout_sync) => {
-                println!("\n---------- New tab ----------");
+                debug!("\n---------- New tab ----------");
                 self.sync_tmux_layout(layout_sync);
             }
             TmuxEvent::TabClosed(tab_id) => {
@@ -209,7 +209,7 @@ impl IvyTmuxWindow {
                 // Also only get initial output when size + layout is OK
                 // We can calculate TopLevel size: TotalSize - HeaderBar?
 
-                println!("\n---------- Initial layout ----------");
+                debug!("\n---------- Initial layout ----------");
                 self.sync_tmux_layout(layout_sync);
             }
             TmuxEvent::InitialLayoutFinished => {
@@ -233,7 +233,7 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::LayoutChanged(layout_sync) => {
-                println!("\n---------- Layout changed ----------");
+                debug!("\n---------- Layout changed ----------");
                 self.sync_tmux_layout(layout_sync);
             }
             TmuxEvent::SizeChanged => {
