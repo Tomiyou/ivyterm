@@ -169,7 +169,7 @@ impl TmuxAPI {
                 cmd
             }
             KeyboardAction::ToggleZoom => {
-                let cmd = format!("resize-pane -Z -t {}\n", pane_id);
+                let cmd = format!("resize-pane -Z -t %{}\n", pane_id);
                 command_queue
                     .send_blocking(TmuxCommand::PaneZoom(pane_id))
                     .unwrap();

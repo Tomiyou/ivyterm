@@ -33,30 +33,7 @@ impl TmuxTopLevel {
         self.imp().tab_id.get()
     }
 
-    pub fn toggle_zoom(&self, terminal: &TmuxTerminal) {
-        let imp = self.imp();
-        let binding = imp.terminals.borrow();
-        if binding.len() < 2 {
-            // There is only 1 terminal present, no need for any zooming
-            return;
-        }
-
-        let mut binding = imp.zoomed.borrow_mut();
-        if let Some(z) = binding.take() {
-            // Unzoom the terminal
-            self.set_child(None::<&Widget>);
-            z.terminal
-                .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
-
-            self.set_child(Some(&z.root_container));
-            z.terminal.grab_focus();
-            return;
-        }
-        // Zoom the terminal
-
-        // We need to remember the current width and height for the unzoom portion
-        let (x, y, width, height) = terminal.bounds().unwrap();
-
+    pub fn zoom(&self, term_id: u32, terminal: TmuxTerminal) -> Zoomed {
         // Remove Terminal from its parent Container
         let container: TmuxContainer = terminal.parent().unwrap().downcast().unwrap();
         let previous_sibling = terminal.prev_sibling();
@@ -64,33 +41,25 @@ impl TmuxTopLevel {
 
         // Remove root Container and replace it with Terminal
         let root_paned: TmuxContainer = self.child().unwrap().downcast().unwrap();
-        self.set_child(Some(terminal));
+        self.set_child(Some(&terminal));
         terminal.grab_focus();
 
-        let zoomed = Zoomed {
-            terminal: terminal.clone(),
+        Zoomed {
+            term_id,
+            terminal: terminal,
             root_container: root_paned,
             terminal_container: container,
             previous_sibling,
-            previous_bounds: (x, y, width, height),
-        };
-        binding.replace(zoomed);
+        }
     }
 
-    pub fn unzoom(&self) -> Option<(i32, i32, i32, i32)> {
-        let mut binding = self.imp().zoomed.borrow_mut();
-        if let Some(z) = binding.take() {
-            self.set_child(None::<&Widget>);
-            z.terminal
-                .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
+    pub fn unzoom(&self, z: Zoomed) {
+        self.set_child(None::<&Widget>);
+        z.terminal
+            .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
 
-            self.set_child(Some(&z.root_container));
-            z.terminal.grab_focus();
-
-            return Some(z.previous_bounds);
-        }
-
-        None
+        self.set_child(Some(&z.root_container));
+        z.terminal.grab_focus();
     }
 
     pub fn register_terminal(&self, terminal: &TmuxTerminal) {

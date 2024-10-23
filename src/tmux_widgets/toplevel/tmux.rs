@@ -1,4 +1,4 @@
-use super::TmuxTopLevel;
+use super::{imp::Zoomed, TmuxTopLevel};
 
 use glib::subclass::types::ObjectSubclassIsExt;
 use gtk4::{Orientation, Widget};
@@ -6,7 +6,7 @@ use libadwaita::prelude::*;
 use log::debug;
 
 use crate::{
-    tmux_api::{Rectangle, TmuxPane},
+    tmux_api::{LayoutFlags, LayoutSync, Rectangle, TmuxPane},
     tmux_widgets::{container::TmuxContainer, separator::TmuxSeparator, terminal::TmuxTerminal},
 };
 
@@ -34,8 +34,90 @@ fn print_tab_debug(nested: u32) {
 }
 
 impl TmuxTopLevel {
-    pub fn sync_tmux_layout(&self, window: &IvyTmuxWindow, layout: Vec<TmuxPane>) {
-        let imp = self.imp();
+    fn close_removed_terminals(&self, window: &IvyTmuxWindow, layout: &Vec<TmuxPane>) {
+        let mut registered_terminals = self.imp().terminals.borrow_mut();
+        let original_len = registered_terminals.len();
+
+        // TODO: Make this less brute force
+        registered_terminals.retain(|terminal| {
+            let term_id = terminal.pane_id();
+
+            let mut still_exists = false;
+            // Check if our registered terminal has NOT been closed
+            for pane in layout.iter() {
+                match pane {
+                    TmuxPane::Terminal(pane_id, _) => {
+                        if term_id == *pane_id {
+                            still_exists = true;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if still_exists {
+                return true;
+            }
+
+            // Terminal has been closed by Tmux, we have to do the same
+            println!("Terminal {} closed by Tmux", term_id);
+
+            let parent = terminal.parent();
+            remove_pane(terminal);
+
+            if original_len > 1 {
+                // We know that there is at least 1 TmuxContainer, so Parent must be Container
+                if let Some(container) = parent {
+                    // If Container has only 1 child left at this point, we should remove it
+                    let first_child = container.first_child().unwrap();
+                    let last_child = container.last_child().unwrap();
+                    if first_child.eq(&last_child) {
+                        // First child is also the last child (only 1 child left)
+                        debug!(
+                            "Leftover child {} replacing closing Container {}",
+                            first_child.type_(),
+                            container.type_()
+                        );
+                        replace_container(&container, &first_child);
+                    }
+                }
+            }
+
+            // Terminal is unregistered for TopLevel, but we also need to unregister it from Window
+            window.unregister_terminal(term_id);
+
+            false
+        });
+    }
+
+    #[inline]
+    fn handle_zoomed_terminal(
+        &self,
+        window: &IvyTmuxWindow,
+        visible_layout: &Vec<TmuxPane>,
+    ) -> Zoomed {
+        // Check that visible_layout is not empty
+        let pane = match visible_layout.first() {
+            Some(pane) => pane,
+            None => panic!("Tab is zoomed, but hierarchy is empty"),
+        };
+
+        // Check that the pane is actually a Terminal
+        let term_id = match pane {
+            TmuxPane::Terminal(term_id, _) => *term_id,
+            _ => panic!("Tab is zoomed, but hierarchy doesn't match that"),
+        };
+
+        let terminal = match window.get_terminal_by_id(term_id) {
+            Some(terminal) => terminal,
+            None => panic!("Terminal {} zoomed by Tmux, but cannot be found!", term_id),
+        };
+
+        self.zoom(term_id, terminal)
+    }
+
+    pub fn sync_tmux_layout(&self, window: &IvyTmuxWindow, layout_sync: LayoutSync) {
+        let layout = layout_sync.layout;
 
         if log::log_enabled!(log::Level::Debug) {
             let mut nested = 0;
@@ -60,62 +142,14 @@ impl TmuxTopLevel {
             print_hierarchy(self, 0);
         }
 
-        // First we remove any Terminals which do not exist in Tmux anymore
-        // TODO: Make this less brute force
-        {
-            let mut registered_terminals = imp.terminals.borrow_mut();
-            let original_len = registered_terminals.len();
-
-            registered_terminals.retain(|terminal| {
-                let term_id = terminal.pane_id();
-
-                let mut still_exists = false;
-                // Check if our registered terminal has NOT been closed
-                for pane in layout.iter() {
-                    match pane {
-                        TmuxPane::Terminal(pane_id, _) => {
-                            if term_id == *pane_id {
-                                still_exists = true;
-                                break;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                if still_exists {
-                    return true;
-                }
-
-                // Terminal has been closed by Tmux, we have to do the same
-                println!("Terminal {} closed by Tmux", term_id);
-
-                let parent = terminal.parent();
-                remove_pane(terminal);
-
-                if original_len > 1 {
-                    // We know that there is at least 1 TmuxContainer, so Parent must be Container
-                    if let Some(container) = parent {
-                        // If Container has only 1 child left at this point, we should remove it
-                        let first_child = container.first_child().unwrap();
-                        let last_child = container.last_child().unwrap();
-                        if first_child.eq(&last_child) {
-                            // First child is also the last child (only 1 child left)
-                            debug!(
-                                "Leftover child {} replacing closing Container {}",
-                                first_child.type_(),
-                                container.type_()
-                            );
-                            replace_container(&container, &first_child);
-                        }
-                    }
-                }
-
-                // Terminal is unregistered for TopLevel, but we also need to unregister it from Window
-                window.unregister_terminal(term_id);
-
-                false
-            });
+        // First Unzoom (we AWLAYS unzoom to handle corner cases better)
+        let imp = self.imp();
+        if let Some(zoomed) = imp.zoomed.take() {
+            self.unzoom(zoomed);
         }
+
+        // First we remove any Terminals which do not exist in Tmux anymore
+        self.close_removed_terminals(window, &layout);
 
         // All closed Terminals are gone at this point
         // Now we have to determine if the first child is a Pane or a Container
@@ -188,6 +222,12 @@ impl TmuxTopLevel {
             }
         } else {
             panic!("Parsed Layout empty")
+        }
+
+        // Now we can zoom Terminal
+        if layout_sync.flags.contains(LayoutFlags::IsZoomed) {
+            let zoomed = self.handle_zoomed_terminal(window, &layout_sync.visible_layout);
+            imp.zoomed.replace(Some(zoomed));
         }
 
         self.focus_current_terminal();

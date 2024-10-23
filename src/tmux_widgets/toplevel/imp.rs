@@ -8,11 +8,11 @@ use crate::tmux_widgets::{container::TmuxContainer, terminal::TmuxTerminal, IvyT
 use super::layout::TopLevelLayout;
 
 pub struct Zoomed {
+    pub term_id: u32,
     pub terminal: TmuxTerminal,
     pub root_container: TmuxContainer,
     pub terminal_container: TmuxContainer,
     pub previous_sibling: Option<Widget>,
-    pub previous_bounds: (i32, i32, i32, i32),
 }
 
 // Object holding the state

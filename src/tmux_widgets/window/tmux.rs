@@ -138,6 +138,7 @@ impl IvyTmuxWindow {
 
     fn sync_tmux_layout(&self, layout_sync: LayoutSync) {
         let tab_id = layout_sync.tab_id;
+        let flags = layout_sync.flags;
 
         let top_level = if let Some(top_level) = self.get_top_level(tab_id) {
             debug!("Reusing top Level {}", top_level.tab_id());
@@ -147,9 +148,9 @@ impl IvyTmuxWindow {
             self.new_tab(tab_id)
         };
 
-        top_level.sync_tmux_layout(self, layout_sync.layout);
+        // Sync Tab layout
+        top_level.sync_tmux_layout(self, layout_sync);
 
-        let flags = layout_sync.flags;
         // If the Tab is focused, we remember that here
         if flags.contains(LayoutFlags::HasFocus) {
             self.imp().focused_tab.replace(tab_id);
