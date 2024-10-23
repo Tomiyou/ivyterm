@@ -151,7 +151,7 @@ impl TmuxTopLevel {
             return;
         }
 
-        println!(
+        debug!(
             "Temporarily adjusting Separator positions (x: {}, y: {})",
             x_diff, y_diff
         );
