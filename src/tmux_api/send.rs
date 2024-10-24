@@ -91,6 +91,7 @@ impl TmuxAPI {
 
         // TODO: Escape content
         // Replace \n with \r (newlines)
+        // TODO: This doesn't always work
         let text = text.replace('\n', "\r");
         // Replace " with \"
         let text = text.replace('"', "\\\"");

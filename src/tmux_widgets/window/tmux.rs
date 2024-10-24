@@ -68,6 +68,10 @@ impl IvyTmuxWindow {
             prefix.push_str("S-");
         }
 
+        // TODO: All keys can be handled using keyval.name(), just exclude Ctrl, Shift, Alt, Tab, etc
+        // - if char
+        // - if Ctrl, Shift, Alt, Tab, etc
+        // - else
         if let Some(c) = keyval.to_unicode() {
             tmux.send_keypress(pane_id, c, prefix, None);
         } else if let Some(direction) = keycode_to_arrow_key(keycode) {
@@ -78,11 +82,12 @@ impl IvyTmuxWindow {
                 crate::keyboard::Direction::Down => "Down",
             };
             tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
-        } else if keycode >= 67 && keycode < 100 {
+        } else if keycode >= 67 && keycode < 120 {
             // This is a Function key
             if let Some(name) = keyval.name() {
                 let name = name.as_str();
-                tmux.send_function_key(pane_id, name);
+                let name = name.replace('_', "");
+                tmux.send_function_key(pane_id, &name);
             }
         }
     }
