@@ -183,6 +183,10 @@ pub fn tmux_read_stdout(
                 event_channel
                     .send_blocking(TmuxEvent::PaneFocusChanged(tab_id, pane_id))
                     .unwrap();
+            } else if buffer_starts_with(&buffer, "%window-add") {
+                // TODO: Instead of asking for info when creating a new window, ask for info
+                // after receiving this notification
+                // %window-add @32
             } else if buffer_starts_with(&buffer, "%session-window-changed") {
                 // %session-window-changed $1 @1
                 let (session_id, chars_read) = read_first_u32(&buffer[25..]);
