@@ -34,14 +34,25 @@ pub fn parse_tmux_layout(buffer: &[u8]) -> LayoutSync {
     let buffer = &buffer[space_position + 1..];
 
     // Parse window flags
-    debug!("Flags {}", from_utf8(buffer).unwrap());
-    let flags = parse_flags(buffer);
+    let space_position = read_until_char(buffer, b' ');
+    debug!("Flags {}", from_utf8(&buffer[..space_position]).unwrap());
+    let flags = parse_flags(&buffer[..space_position]);
+
+    let name = if buffer.len() > space_position {
+        let buffer = &buffer[space_position + 1..];
+        let name = String::from_utf8(buffer.to_vec()).unwrap();
+        debug!("Found Tab name! {}", name);
+        Some(name)
+    } else {
+        None
+    };
 
     LayoutSync {
         tab_id,
         layout: real_hierarchy,
         visible_layout: visible_hierarchy,
         flags,
+        name,
     }
 }
 

@@ -195,4 +195,13 @@ impl TmuxTopLevel {
         let parent = binding.as_ref().unwrap();
         spawn_rename_modal(parent.upcast_ref(), "", callback);
     }
+
+    pub fn tab_renamed(&self, new_name: &str) {
+        let binding = self.imp().tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+
+        // TODO: Just store the Page directly instead of tab_view
+        let page = tab_view.page(self);
+        page.set_title(new_name);
+    }
 }

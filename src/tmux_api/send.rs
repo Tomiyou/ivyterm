@@ -20,7 +20,7 @@ impl TmuxAPI {
         command_queue.send_blocking(command).unwrap();
         stdin_stream
             .write_all(
-                b"list-windows -F \"#{window_id} #{window_layout} #{window_visible_layout} #{window_flags}\"\n",
+                b"list-windows -F \"#{window_id} #{window_layout} #{window_visible_layout} #{window_flags} #{window_name}\"\n",
             )
             .unwrap();
     }

@@ -26,6 +26,7 @@ pub struct LayoutSync {
     pub layout: Vec<TmuxPane>,
     pub visible_layout: Vec<TmuxPane>,
     pub flags: BitFlags<LayoutFlags>,
+    pub name: Option<String>,
 }
 
 #[allow(dead_code)]

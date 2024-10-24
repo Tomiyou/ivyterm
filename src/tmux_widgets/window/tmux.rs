@@ -219,10 +219,7 @@ impl IvyTmuxWindow {
             TmuxEvent::TabRenamed(tab_id, name) => {
                 let top_level = self.get_top_level(tab_id);
                 if let Some(top_level) = top_level {
-                    let binding = self.imp().tab_view.borrow();
-                    let tab_view = binding.as_ref().unwrap();
-                    let page = tab_view.page(&top_level);
-                    page.set_title(&name);
+                    top_level.tab_renamed(&name);
                 }
             }
             TmuxEvent::InitialLayout(layout_sync) => {

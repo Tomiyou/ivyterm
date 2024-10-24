@@ -142,6 +142,10 @@ impl TmuxTopLevel {
             print_hierarchy(self, 0);
         }
 
+        if let Some(name) = layout_sync.name {
+            self.tab_renamed(&name);
+        }
+
         // First Unzoom (we AWLAYS unzoom to handle corner cases better)
         let imp = self.imp();
         if let Some(zoomed) = imp.zoomed.take() {
