@@ -217,4 +217,17 @@ impl TmuxAPI {
         self.resize_future = new;
         return old;
     }
+
+    pub fn rename_tab(&mut self, tab_id: u32, name: String) {
+        // TODO: Cut off \n in name
+        let command_queue = &self.command_queue;
+        let mut stdin_stream = &self.stdin_stream;
+
+        command_queue
+            .send_blocking(TmuxCommand::TabRename(tab_id))
+            .unwrap();
+
+        let cmd = format!("rename-window -t @{} {}\n", tab_id, name);
+        stdin_stream.write_all(cmd.as_bytes()).unwrap();
+    }
 }

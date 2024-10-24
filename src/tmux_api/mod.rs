@@ -37,6 +37,7 @@ pub enum TmuxCommand {
     TabNew,
     TabClose,
     TabSelect(u32),
+    TabRename(u32),
     PaneSplit(bool),
     PaneClose(u32),
     PaneSelect(u32),
@@ -59,6 +60,7 @@ pub enum TmuxEvent {
     TabFocusChanged(u32),
     TabNew(LayoutSync),
     TabClosed(u32),
+    TabRenamed(u32, String),
     SessionChanged(u32, String),
     Exit,
 }

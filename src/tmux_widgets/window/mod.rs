@@ -148,7 +148,7 @@ impl IvyTmuxWindow {
         let tab_view = binding.as_ref().unwrap();
 
         // Create new TopLevel widget
-        let top_level = TmuxTopLevel::new(self, id);
+        let top_level = TmuxTopLevel::new(tab_view, self, id);
         let mut tabs = imp.tabs.borrow_mut();
         tabs.push(top_level.clone());
 

@@ -221,6 +221,15 @@ pub fn tmux_read_stdout(
                 event_channel
                     .send_blocking(TmuxEvent::SessionChanged(id, name))
                     .unwrap();
+            } else if buffer_starts_with(&buffer, "%window-renamed") {
+                // Session has changed
+                let (id, bytes_read) = read_first_u32(&buffer[17..]);
+                let name = from_utf8(&buffer[17 + bytes_read..]).unwrap().to_string();
+                debug!("Tmux event: Tab renamed ({}): {}", id, name);
+
+                event_channel
+                    .send_blocking(TmuxEvent::TabRenamed(id, name))
+                    .unwrap();
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();

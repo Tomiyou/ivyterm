@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 
 use gtk4::Widget;
-use libadwaita::{glib, subclass::prelude::*};
+use libadwaita::{glib, subclass::prelude::*, TabView};
 
 use crate::tmux_widgets::{container::TmuxContainer, terminal::TmuxTerminal, IvyTmuxWindow};
 
@@ -20,6 +20,7 @@ pub struct Zoomed {
 pub struct TopLevelPriv {
     pub tab_id: Cell<u32>,
     pub window: RefCell<Option<IvyTmuxWindow>>,
+    pub tab_view: RefCell<Option<TabView>>,
     // TODO: Replace this with SortedVec
     pub terminals: RefCell<Vec<TmuxTerminal>>,
     pub zoomed: RefCell<Option<Zoomed>>,
@@ -49,8 +50,9 @@ impl WidgetImpl for TopLevelPriv {}
 impl BinImpl for TopLevelPriv {}
 
 impl TopLevelPriv {
-    pub fn init_values(&self, window: &IvyTmuxWindow, tab_id: u32) {
+    pub fn init_values(&self, tab_view: &TabView, window: &IvyTmuxWindow, tab_id: u32) {
         self.window.replace(Some(window.clone()));
+        self.tab_view.replace(Some(tab_view.clone()));
         self.tab_id.replace(tab_id);
     }
 }

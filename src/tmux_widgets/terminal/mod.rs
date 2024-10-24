@@ -57,7 +57,7 @@ impl TmuxTerminal {
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
 
         vte.connect_has_focus_notify(glib::clone!(
-            #[strong]
+            #[weak]
             top_level,
             move |vte| {
                 if vte.has_focus() {
@@ -71,13 +71,15 @@ impl TmuxTerminal {
         eventctl.connect_key_pressed(glib::clone!(
             #[weak]
             vte,
+            #[strong]
+            top_level,
             #[upgrade_or]
             Propagation::Proceed,
             move |eventctl, keyval, key, state| {
                 if let Some(event) = eventctl.current_event() {
                     // Check if pressed keys match a keybinding
                     if let Some(action) = app.handle_keyboard_event(event) {
-                        handle_keyboard_event(action, &vte, pane_id, &window);
+                        handle_keyboard_event(action, &vte, pane_id, &top_level, &window);
                         return Propagation::Stop;
                     }
                     // Normal button press is handled separately for Tmux
@@ -167,7 +169,7 @@ impl TmuxTerminal {
 }
 
 #[inline]
-fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, window: &IvyTmuxWindow) {
+fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, top_level: &TmuxTopLevel, window: &IvyTmuxWindow) {
     match action {
         KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
@@ -176,7 +178,7 @@ fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, window
             window.clipboard_paste_event(pane_id);
         }
         KeyboardAction::TabRename => {
-            todo!();
+            top_level.open_rename_modal();
         }
         _ => {
             window.tmux_handle_keybinding(action, pane_id);

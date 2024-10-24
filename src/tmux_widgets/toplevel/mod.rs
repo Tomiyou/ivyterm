@@ -4,8 +4,10 @@ mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::Widget;
-use libadwaita::{glib, prelude::*};
+use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
+
+use crate::modals::spawn_rename_modal;
 
 use self::imp::Zoomed;
 
@@ -18,13 +20,13 @@ glib::wrapper! {
 }
 
 impl TmuxTopLevel {
-    pub fn new(window: &IvyTmuxWindow, tab_id: u32) -> Self {
+    pub fn new(tab_view: &TabView, window: &IvyTmuxWindow, tab_id: u32) -> Self {
         let top_level: TmuxTopLevel = Object::builder().build();
         top_level.set_vexpand(true);
         top_level.set_hexpand(true);
         top_level.set_focusable(true);
 
-        top_level.imp().init_values(window, tab_id);
+        top_level.imp().init_values(tab_view, window, tab_id);
 
         top_level
     }
@@ -176,5 +178,21 @@ impl TmuxTopLevel {
                 break;
             }
         }
+    }
+
+    pub fn open_rename_modal(&self) {
+        let imp = self.imp();
+        let binding = imp.window.borrow();
+        let window = binding.as_ref().unwrap().clone();
+        let tab_id = imp.tab_id.get();
+
+        let callback = glib::closure_local!(move |new_name: &str| {
+            window.rename_tmux_tab(tab_id, new_name);
+        });
+
+        // We need the "parent" Window for modal
+        let binding = self.imp().window.borrow();
+        let parent = binding.as_ref().unwrap();
+        spawn_rename_modal(parent.upcast_ref(), "", callback);
     }
 }

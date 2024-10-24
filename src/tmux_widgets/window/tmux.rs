@@ -162,6 +162,13 @@ impl IvyTmuxWindow {
         }
     }
 
+    pub fn rename_tmux_tab(&self, tab_id: u32, name: &str) {
+        let mut binding = self.imp().tmux.borrow_mut();
+        if let Some(tmux) = binding.as_mut() {
+            tmux.rename_tab(tab_id, name.to_string());
+        }
+    }
+
     pub fn tmux_event_callback(&self, event: TmuxEvent) {
         let imp = self.imp();
 
@@ -207,6 +214,15 @@ impl IvyTmuxWindow {
             TmuxEvent::TabClosed(tab_id) => {
                 if let Some(top_level) = self.get_top_level(tab_id) {
                     self.close_tab(&top_level);
+                }
+            }
+            TmuxEvent::TabRenamed(tab_id, name) => {
+                let top_level = self.get_top_level(tab_id);
+                if let Some(top_level) = top_level {
+                    let binding = self.imp().tab_view.borrow();
+                    let tab_view = binding.as_ref().unwrap();
+                    let page = tab_view.page(&top_level);
+                    page.set_title(&name);
                 }
             }
             TmuxEvent::InitialLayout(layout_sync) => {
