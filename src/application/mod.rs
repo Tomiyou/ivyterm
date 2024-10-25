@@ -14,6 +14,8 @@ use crate::normal_widgets::IvyNormalWindow;
 use crate::settings::show_preferences_window;
 use crate::tmux_widgets::IvyTmuxWindow;
 
+const APPLICATION_ID: &str = "com.tomiyou.ivyTerm";
+
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)
         @extends libadwaita::Application, gtk4::Application, gio::Application,
@@ -23,7 +25,7 @@ glib::wrapper! {
 impl IvyApplication {
     pub fn new() -> Self {
         let app: IvyApplication = Object::builder().build();
-        app.set_application_id(Some("com.tomiyou.ivyTerm"));
+        app.set_application_id(Some(APPLICATION_ID));
         app
     }
 
