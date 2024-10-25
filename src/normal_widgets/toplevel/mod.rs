@@ -350,9 +350,14 @@ impl TopLevel {
         let page = tab_view.page(self);
         let current_name = page.title();
 
-        let callback = glib::closure_local!(move |new_name: &str| {
-            page.set_title(new_name);
-        });
+        let callback = glib::closure_local!(
+            #[weak(rename_to = top_level)]
+            self,
+            move |new_name: &str| {
+                top_level.imp().name.borrow_mut().replace(new_name.to_string());
+                page.set_title(new_name);
+            }
+        );
 
         // We need the "parent" Window for modal
         let binding = self.imp().window.borrow();
@@ -368,6 +373,23 @@ impl TopLevel {
             tab_view.select_previous_page();
         } else {
             tab_view.select_next_page();
+        }
+    }
+
+    pub fn terminal_title_changed(&self, name: &str) {
+        let imp = self.imp();
+
+        if imp.name.borrow().is_some() {
+            return;
+        }
+
+        // We ditch the user@host:... part of the title
+        if let Some(name) = name.split(':').last() {
+            let binding = self.imp().tab_view.borrow();
+            let tab_view = binding.as_ref().unwrap();
+            // TODO: Just store the Page directly instead of tab_view
+            let page = tab_view.page(self);
+            page.set_title(name);
         }
     }
 }

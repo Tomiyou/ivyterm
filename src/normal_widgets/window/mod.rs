@@ -133,9 +133,6 @@ impl IvyNormalWindow {
 
         // Add pane as a page
         let page = tab_view.append(&top_level);
-
-        let text = format!("Terminal {}", tab_id);
-        page.set_title(&text);
         tab_view.set_selected_page(&page);
 
         top_level

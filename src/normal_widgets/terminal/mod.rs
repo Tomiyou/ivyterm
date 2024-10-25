@@ -66,6 +66,18 @@ impl Terminal {
             }
         ));
 
+        vte.connect_window_title_changed(glib::clone!(
+            #[weak]
+            top_level,
+            move |vte| {
+            if vte.has_focus() {
+                let title = vte.window_title();
+                if let Some(title) = title {
+                    top_level.terminal_title_changed(&title);
+                }
+            }
+        }));
+
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
         vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
@@ -77,6 +89,11 @@ impl Terminal {
             terminal,
             move |vte| {
                 if vte.has_focus() {
+                    // Tab title tracks the focused Terminal
+                    let title = vte.window_title();
+                    if let Some(title) = title {
+                        top_level.terminal_title_changed(&title);
+                    }
                     // Notify TopLevel that the focused terminal changed
                     top_level.focus_changed(pane_id, &terminal);
                 }

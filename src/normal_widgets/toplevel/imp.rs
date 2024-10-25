@@ -27,6 +27,7 @@ pub struct TopLevelPriv {
     pub lru_terminals: RefCell<Vec<WithId<Terminal>>>,
     pub zoomed: RefCell<Option<Zoomed>>,
     pub tab_id: Cell<u32>,
+    pub name: RefCell<Option<String>>,
 }
 
 // The central trait for subclassing a GObject
