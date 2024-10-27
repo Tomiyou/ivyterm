@@ -80,6 +80,11 @@ fn buffer_starts_with(buffer: &Vec<u8>, prefix: &str) -> bool {
 }
 
 #[inline]
+fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) {
+    event_channel.send_blocking(event).unwrap();
+}
+
+#[inline]
 pub fn tmux_read_stdout(
     stdout_stream: ChildStdout,
     event_channel: Sender<TmuxEvent>,
@@ -135,9 +140,7 @@ pub fn tmux_read_stdout(
                 let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
                 let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
 
-                event_channel
-                    .send_blocking(TmuxEvent::Output(pane_id, output, false))
-                    .expect("Event channel closed!");
+                receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false));
             } else if buffer_starts_with(&buffer, "%begin") {
                 // Beginning of output from a command we executed
                 current_command = Some(command_queue.recv_blocking().unwrap());
@@ -146,22 +149,14 @@ pub fn tmux_read_stdout(
                 if let Some(current_command) = current_command {
                     match current_command {
                         TmuxCommand::InitialOutput(pane_id) => {
-                            event_channel
-                                .send_blocking(TmuxEvent::ScrollOutput(pane_id, empty_line_count))
-                                .expect("Event channel closed!");
-                            event_channel
-                                .send_blocking(TmuxEvent::InitialOutputFinished(pane_id))
-                                .expect("Event channel closed!");
+                            receive_event(&event_channel, TmuxEvent::ScrollOutput(pane_id, empty_line_count));
+                            receive_event(&event_channel, TmuxEvent::InitialOutputFinished(pane_id));
                         }
                         TmuxCommand::ChangeSize(_, _) => {
-                            event_channel
-                                .send_blocking(TmuxEvent::SizeChanged)
-                                .expect("Event channel closed!");
+                            receive_event(&event_channel, TmuxEvent::SizeChanged);
                         }
                         TmuxCommand::InitialLayout => {
-                            event_channel
-                                .send_blocking(TmuxEvent::InitialLayoutFinished)
-                                .expect("Event channel closed!");
+                            receive_event(&event_channel, TmuxEvent::InitialLayoutFinished);
                         }
                         _ => {}
                     }
@@ -180,9 +175,7 @@ pub fn tmux_read_stdout(
                     "Tmux event: Window {} focus changed to pane {}",
                     tab_id, pane_id
                 );
-                event_channel
-                    .send_blocking(TmuxEvent::PaneFocusChanged(tab_id, pane_id))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::PaneFocusChanged(tab_id, pane_id));
             } else if buffer_starts_with(&buffer, "%window-add") {
                 // TODO: Instead of asking for info when creating a new window, ask for info
                 // after receiving this notification
@@ -196,22 +189,16 @@ pub fn tmux_read_stdout(
                     "Tmux event: Session {} focus changed to window {}",
                     session_id, tab_id
                 );
-                event_channel
-                    .send_blocking(TmuxEvent::TabFocusChanged(tab_id))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::TabFocusChanged(tab_id));
             } else if buffer_starts_with(&buffer, "%unlinked-window-close") {
                 // %unlinked-window-close @6
                 let (tab_id, _) = read_first_u32(&buffer[24..]);
                 debug!("Tmux event: Tab {} closed", tab_id);
-                event_channel
-                    .send_blocking(TmuxEvent::TabClosed(tab_id))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::TabClosed(tab_id));
             } else if buffer_starts_with(&buffer, "%layout-change") {
                 // Layout has changed
                 let layout_sync = parse_tmux_layout(&buffer[15..]);
-                event_channel
-                    .send_blocking(TmuxEvent::LayoutChanged(layout_sync))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync));
             } else if buffer_starts_with(&buffer, "%error") {
                 // Command we executed produced an error
                 current_command = Some(command_queue.recv_blocking().unwrap());
@@ -222,25 +209,19 @@ pub fn tmux_read_stdout(
                 let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
                 debug!("Tmux event: Session changed ({}): {}", id, name);
 
-                event_channel
-                    .send_blocking(TmuxEvent::SessionChanged(id, name))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::SessionChanged(id, name));
             } else if buffer_starts_with(&buffer, "%window-renamed") {
                 // Session has changed
                 let (id, bytes_read) = read_first_u32(&buffer[17..]);
                 let name = from_utf8(&buffer[17 + bytes_read..]).unwrap().to_string();
                 debug!("Tmux event: Tab renamed ({}): {}", id, name);
 
-                event_channel
-                    .send_blocking(TmuxEvent::TabRenamed(id, name))
-                    .unwrap();
+                receive_event(&event_channel, TmuxEvent::TabRenamed(id, name));
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();
                 println!("Tmux event: Exit received, reason: {}", reason);
-                event_channel
-                    .send_blocking(TmuxEvent::Exit)
-                    .expect("Event channel closed!");
+                receive_event(&event_channel, TmuxEvent::Exit);
                 // Stop receiving events
                 return;
             } else if buffer_starts_with(&buffer, "%client-session-changed") {
@@ -267,15 +248,11 @@ fn tmux_command_result(
     match command {
         TmuxCommand::TabNew => {
             let layout_sync = parse_tmux_layout(buffer);
-            event_channel
-                .send_blocking(TmuxEvent::TabNew(layout_sync))
-                .unwrap();
+            receive_event(&event_channel, TmuxEvent::TabNew(layout_sync));
         }
         TmuxCommand::InitialLayout => {
             let layout_sync = parse_tmux_layout(buffer);
-            event_channel
-                .send_blocking(TmuxEvent::InitialLayout(layout_sync))
-                .unwrap();
+            receive_event(&event_channel, TmuxEvent::InitialLayout(layout_sync));
         }
         TmuxCommand::InitialOutput(pane_id) => {
             let output = parse_escaped_output(&buffer, result_line > 0, empty_lines);
@@ -293,9 +270,7 @@ fn tmux_command_result(
             // }
             // println!("Tmux initial output for pane {}: |{}|", pane_id, escaped);
 
-            event_channel
-                .send_blocking(TmuxEvent::Output(*pane_id, output, true))
-                .expect("Event channel closed!");
+            receive_event(&event_channel, TmuxEvent::Output(*pane_id, output, true));
         }
         _ => {}
     }
