@@ -143,7 +143,7 @@ impl TmuxAPI {
                 // TODO: We should get all required layout info without having to ask directly,
                 // since it would allow us to react to external commands
                 String::from(
-                    "new-window -P -F \"#{window_id} #{window_layout} #{window_visible_layout} ${window_flags}\"\n",
+                    "new-window -P -F \"#{window_id} #{window_layout} #{window_visible_layout} ${window_flags} #{window_name}\"\n",
                 )
             }
             KeyboardAction::TabClose => {
@@ -219,15 +219,22 @@ impl TmuxAPI {
     }
 
     pub fn rename_tab(&mut self, tab_id: u32, name: String) {
-        // TODO: Cut off \n in name
         let command_queue = &self.command_queue;
         let mut stdin_stream = &self.stdin_stream;
+
+        // Handle newlines and escape " character
+        let name = name.replace('"', "\\\"");
+        let name = if let Some(newline) = name.find('\n') {
+            &name[..newline]
+        } else {
+            &name
+        };
 
         command_queue
             .send_blocking(TmuxCommand::TabRename(tab_id))
             .unwrap();
 
-        let cmd = format!("rename-window -t @{} {}\n", tab_id, name);
+        let cmd = format!("rename-window -t @{} -- \"{}\"\n", tab_id, name);
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
     }
 }
