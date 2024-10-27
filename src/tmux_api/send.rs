@@ -12,25 +12,28 @@ use super::TmuxAPI;
 impl TmuxAPI {
     #[inline]
     fn send_event(&self, event: TmuxCommand, cmd: &str) {
+        const NEWLINE: &[u8] = &[ b'\n' ];
         // First we put the Command in Event queue
         let command_queue = &self.command_queue;
         command_queue.send_blocking(event).unwrap();
 
         // Then we write the buffer to the Tmux input stream
+        debug!("Sending event: {}", cmd);
         let mut stdin_stream = &self.stdin_stream;
         stdin_stream.write_all(cmd.as_bytes()).unwrap();
+        stdin_stream.write_all(NEWLINE).unwrap();
     }
 
     pub fn get_initial_layout(&self) {
         debug!("Getting initial layout");
-        let cmd = "list-windows -F \"#{window_id} #{window_layout} #{window_visible_layout} #{window_flags} #{window_name}\"\n";
+        let cmd = "list-windows -F \"#{window_id} #{window_layout} #{window_visible_layout} #{window_flags} #{window_name}\"";
         self.send_event(TmuxCommand::InitialLayout, cmd);
     }
 
     pub fn get_initial_output(&self, pane_id: u32) {
         debug!("Getting initial output of pane {}", pane_id);
         let event = TmuxCommand::InitialOutput(pane_id);
-        let cmd = format!("capture-pane -J -p -t %{} -eC -S - -E -\n", pane_id);
+        let cmd = format!("capture-pane -J -p -t %{} -eC -S - -E -", pane_id);
         self.send_event(event, &cmd);
     }
 
@@ -47,18 +50,18 @@ impl TmuxAPI {
 
         println!("Resizing Tmux client to {}x{}", cols, rows);
         let event = TmuxCommand::ChangeSize(cols, rows);
-        let cmd = format!("refresh-client -C {},{}\n", cols, rows);
+        let cmd = format!("refresh-client -C {},{}", cols, rows);
         self.send_event(event, &cmd);
     }
 
     pub fn send_keypress(&self, pane_id: u32, c: char, prefix: String, movement: Option<&str>) {
         let cmd = if let Some(control) = movement {
             // Navigation keys (left, right, page up, ...)
-            format!("send-keys -t %{} {}{}\n", pane_id, prefix, control)
+            format!("send-keys -t %{} {}{}", pane_id, prefix, control)
         } else if c.is_ascii_control() {
             // A control character was just pressed
             let ascii = c as u8;
-            format!("send-keys -t %{} -- {}\\{:03o}\n", pane_id, prefix, ascii)
+            format!("send-keys -t %{} -- {}\\{:03o}", pane_id, prefix, ascii)
         } else {
             // We send single-quoted keys, but what if we want to send a single quote?
             let quote = if c == '\'' { '"' } else { '\'' };
@@ -68,7 +71,7 @@ impl TmuxAPI {
             let flags = if prefix.is_empty() { "-l" } else { "" };
 
             format!(
-                "send-keys -t %{} {} -- {}{}{}{}\n",
+                "send-keys -t %{} {} -- {}{}{}{}",
                 pane_id, flags, quote, prefix, c, quote
             )
         };
@@ -85,14 +88,14 @@ impl TmuxAPI {
         // Replace " with \"
         let text = text.replace('"', "\\\"");
 
-        let cmd = format!("send-keys -l -t %{} -- \"{}\"\n", pane_id, text);
+        let cmd = format!("send-keys -l -t %{} -- \"{}\"", pane_id, text);
         debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
         self.send_event(TmuxCommand::ClipboardPaste, &cmd);
     }
 
     // TODO: Too many functions for sending text
     pub fn send_function_key(&self, pane_id: u32, text: &str) {
-        let cmd = format!("send-keys -t %{} -- \"{}\"\n", pane_id, text);
+        let cmd = format!("send-keys -t %{} -- \"{}\"", pane_id, text);
 
         debug!("send_function_key: {}", &cmd[..cmd.len() - 1]);
         self.send_event(TmuxCommand::ClipboardPaste, &cmd);
@@ -103,7 +106,7 @@ impl TmuxAPI {
             KeyboardAction::PaneSplit(horizontal) => {
                 let event = TmuxCommand::PaneSplit(horizontal);
                 let cmd = format!(
-                    "split-window {} -t %{}\n",
+                    "split-window {} -t %{}",
                     if horizontal { "-v" } else { "-h" },
                     pane_id,
                 );
@@ -111,19 +114,19 @@ impl TmuxAPI {
             }
             KeyboardAction::PaneClose => {
                 let event = TmuxCommand::PaneClose(pane_id);
-                let cmd = format!("kill-pane -t {}\n", pane_id);
+                let cmd = format!("kill-pane -t {}", pane_id);
                 (event, cmd)
             }
             KeyboardAction::TabNew => {
                 // TODO: We should get all required layout info without having to ask directly,
                 // since it would allow us to react to external commands
                 let cmd = String::from(
-                    "new-window -P -F \"#{window_id} #{window_layout} #{window_visible_layout} ${window_flags} #{window_name}\"\n",
+                    "new-window -P -F \"#{window_id} #{window_layout} #{window_visible_layout} ${window_flags} #{window_name}\"",
                 );
                 (TmuxCommand::TabNew, cmd)
             }
             KeyboardAction::TabClose => {
-                let cmd = String::from("kill-window\n");
+                let cmd = String::from("kill-window");
                 (TmuxCommand::TabClose, cmd)
             }
             KeyboardAction::TabRename => {
@@ -132,7 +135,7 @@ impl TmuxAPI {
             }
             KeyboardAction::MoveFocus(direction) => {
                 let cmd = format!(
-                    "select-pane {}\n",
+                    "select-pane {}",
                     match direction {
                         Direction::Down => "-D",
                         Direction::Left => "-L",
@@ -144,7 +147,7 @@ impl TmuxAPI {
                 (event, cmd)
             }
             KeyboardAction::ToggleZoom => {
-                let cmd = format!("resize-pane -Z -t %{}\n", pane_id);
+                let cmd = format!("resize-pane -Z -t %{}", pane_id);
                 let event = TmuxCommand::PaneZoom(pane_id);
                 (event, cmd)
             }
@@ -161,13 +164,13 @@ impl TmuxAPI {
 
     pub fn select_tab(&self, tab_id: u32) {
         let event = TmuxCommand::TabSelect(tab_id);
-        let cmd = format!("select-window -t @{}\n", tab_id);
+        let cmd = format!("select-window -t @{}", tab_id);
         self.send_event(event, &cmd);
     }
 
     pub fn select_terminal(&self, term_id: u32) {
         let event = TmuxCommand::PaneSelect(term_id);
-        let cmd = format!("select-pane -t %{}\n", term_id);
+        let cmd = format!("select-pane -t %{}", term_id);
         self.send_event(event, &cmd);
     }
 
@@ -188,7 +191,7 @@ impl TmuxAPI {
         };
 
         let event = TmuxCommand::TabRename(tab_id);
-        let cmd = format!("rename-window -t @{} -- \"{}\"\n", tab_id, name);
+        let cmd = format!("rename-window -t @{} -- \"{}\"", tab_id, name);
         self.send_event(event, &cmd);
     }
 }
