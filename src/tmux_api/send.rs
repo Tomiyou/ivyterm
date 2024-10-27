@@ -98,7 +98,7 @@ impl TmuxAPI {
         let cmd = format!("send-keys -t %{} -- \"{}\"", pane_id, text);
 
         debug!("send_function_key: {}", &cmd[..cmd.len() - 1]);
-        self.send_event(TmuxCommand::ClipboardPaste, &cmd);
+        self.send_event(TmuxCommand::Keypress, &cmd);
     }
 
     pub fn send_keybinding(&self, action: KeyboardAction, pane_id: u32) {

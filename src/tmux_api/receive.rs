@@ -120,7 +120,7 @@ pub fn tmux_read_stdout(
             // This is output from a command we ran
             if is_error {
                 let error = from_utf8(&buffer).unwrap();
-                println!("Error: ({:?}) {}", current_command, error);
+                eprintln!("Error: ({:?}) {}", current_command, error);
             } else if let Some(command) = &current_command {
                 tmux_command_result(
                     command,
