@@ -166,6 +166,15 @@ pub fn tmux_read_stdout(
                 is_error = false;
                 result_line = 0;
                 empty_line_count = 0;
+            } else if buffer_starts_with(&buffer, "%error") {
+                // TODO: We still don't actually print the error
+                eprintln!("Error on command {:?}", current_command);
+
+                // Command we executed produced an error
+                current_command = None;
+                is_error = false;
+                result_line = 0;
+                empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%window-pane-changed") {
                 // %window-pane-changed @0 %10
                 let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
@@ -199,10 +208,6 @@ pub fn tmux_read_stdout(
                 // Layout has changed
                 let layout_sync = parse_tmux_layout(&buffer[15..]);
                 receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync));
-            } else if buffer_starts_with(&buffer, "%error") {
-                // Command we executed produced an error
-                current_command = Some(command_queue.recv_blocking().unwrap());
-                is_error = true;
             } else if buffer_starts_with(&buffer, "%session-changed") {
                 // Session has changed
                 let (id, bytes_read) = read_first_u32(&buffer[18..]);
