@@ -7,7 +7,7 @@ use std::{
 use async_channel::{Receiver, Sender};
 use log::debug;
 
-use crate::tmux_api::TmuxEvent;
+use crate::{helpers::open_editor, tmux_api::TmuxEvent};
 
 use super::{parse_layout::parse_tmux_layout, TmuxCommand};
 
@@ -89,6 +89,7 @@ pub fn tmux_read_stdout(
     stdout_stream: ChildStdout,
     event_channel: Sender<TmuxEvent>,
     command_queue: Receiver<TmuxCommand>,
+    ssh_target: Option<String>,
 ) {
     let mut buffer = Vec::with_capacity(65534);
     let mut reader = BufReader::new(stdout_stream);
@@ -128,6 +129,7 @@ pub fn tmux_read_stdout(
                     result_line,
                     empty_line_count,
                     &event_channel,
+                    &ssh_target,
                 );
             }
 
@@ -249,6 +251,7 @@ fn tmux_command_result(
     result_line: usize,
     empty_lines: usize,
     event_channel: &Sender<TmuxEvent>,
+    ssh_target: &Option<String>,
 ) {
     match command {
         TmuxCommand::TabNew => {
@@ -276,6 +279,15 @@ fn tmux_command_result(
             // println!("Tmux initial output for pane {}: |{}|", pane_id, escaped);
 
             receive_event(&event_channel, TmuxEvent::Output(*pane_id, output, true));
+        }
+        TmuxCommand::PaneCurrentPath(term_id) => {
+            let (pane_id, bytes_read) = read_first_u32(&buffer[7..]);
+            // Currently Tmux sends paths of all Terminals in the given Tab, so we need
+            // to filter manually
+            if pane_id == *term_id {
+                let path = from_utf8(&buffer[7 + bytes_read..]).unwrap();
+                open_editor(path, ssh_target);
+            }
         }
         _ => {}
     }

@@ -207,5 +207,9 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
         KeyboardAction::PasteClipboard => {
             vte.paste_clipboard();
         }
+        KeyboardAction::OpenEditorCwd => {
+            // https://stackoverflow.com/questions/6016219/get-current-working-directory-from-vte-gtk-terminal-widget-in-python
+            todo!()
+        }
     }
 }

@@ -22,6 +22,7 @@ pub enum KeyboardAction {
     ToggleZoom,
     CopySelected,
     PasteClipboard,
+    OpenEditorCwd,
 }
 
 pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {

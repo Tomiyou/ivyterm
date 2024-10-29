@@ -52,6 +52,8 @@ pub struct Keybindings {
     rename_tab: String,
     #[serde(default = "default_paste_clipboard")]
     paste_clipboard: String,
+    #[serde(default = "default_open_editor_cwd")]
+    open_editor_cwd: String,
 }
 
 impl Keybindings {
@@ -126,6 +128,11 @@ impl Keybindings {
             KeyboardAction::PasteClipboard,
             "Paste to Terminal",
         ));
+        keybindings.push(Keybinding::new(
+            &self.open_editor_cwd,
+            KeyboardAction::OpenEditorCwd,
+            "Open current working directory in VS Code",
+        ));
 
         keybindings
     }
@@ -152,6 +159,7 @@ impl Keybindings {
             KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
             KeyboardAction::PaneClose => self.close_pane = trigger,
             KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
+            KeyboardAction::OpenEditorCwd => self.open_editor_cwd = trigger,
         }
     }
 }
@@ -197,6 +205,7 @@ impl Default for Keybindings {
             move_down: default_move_down(),
             rename_tab: default_rename_tab(),
             paste_clipboard: default_paste_clipboard(),
+            open_editor_cwd: default_open_editor_cwd(),
         }
     }
 }
@@ -239,4 +248,7 @@ fn default_move_down() -> String {
 }
 fn default_rename_tab() -> String {
     "<Ctrl><Alt>A".to_string()
+}
+fn default_open_editor_cwd() -> String {
+    "<Ctrl><Shift>m".to_string()
 }

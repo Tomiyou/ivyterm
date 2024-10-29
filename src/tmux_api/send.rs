@@ -114,7 +114,7 @@ impl TmuxAPI {
             }
             KeyboardAction::PaneClose => {
                 let event = TmuxCommand::PaneClose(pane_id);
-                let cmd = format!("kill-pane -t {}", pane_id);
+                let cmd = format!("kill-pane -t %{}", pane_id);
                 (event, cmd)
             }
             KeyboardAction::TabNew => {
@@ -156,6 +156,12 @@ impl TmuxAPI {
             }
             KeyboardAction::PasteClipboard => {
                 panic!("PasteClipboard keyboard event needs to be handled by Terminal widget");
+            }
+            KeyboardAction::OpenEditorCwd => {
+                // TODO: This prints ALL panes in a Tab, not needed
+                let event = TmuxCommand::PaneCurrentPath(pane_id);
+                let cmd = format!("list-panes -t %{} -F \"path: #{{pane_id}} #{{pane_current_path}}\"", pane_id);
+                (event, cmd)
             }
         };
 

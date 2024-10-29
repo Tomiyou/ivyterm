@@ -1,3 +1,5 @@
+use std::process::{Command, Stdio};
+
 #[derive(Debug)]
 pub enum IvyError {
     TmuxSpawnError(String),
@@ -108,5 +110,37 @@ impl<T: Eq + Clone> SortedVec<T> {
 
     pub fn clear(&mut self) {
         self.terminals.clear();
+    }
+}
+
+pub fn open_editor(path: &str, ssh_target: &Option<String>) {
+    if path.is_empty() {
+        return;
+    }
+
+    println!("Opening editor in path: {}", path);
+
+    let mut command = Command::new("code");
+    // Redirect stdin/stdout/stderr to /dev/null (we don't care about it)
+    command.stdin(Stdio::null());
+    command.stdout(Stdio::null());
+    command.stderr(Stdio::null());
+
+    // Check if this is a remote Tmux session
+    if let Some(ssh_target) = ssh_target {
+        // code --remote ssh-remote+SSH_TARGET PATH
+        command.arg("--remote");
+        let arg = format!("ssh-remote+{}", ssh_target);
+        command.arg(&arg);
+    }
+
+    command.arg(path);
+    match command.spawn() {
+        Ok(child) => {
+            println!("Editor successfully opened!");
+        }
+        Err(err) => {
+            println!("Error opening editor: {}", err);
+        }
     }
 }
