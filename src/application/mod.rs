@@ -11,7 +11,7 @@ use log::debug;
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
 use crate::normal_widgets::IvyNormalWindow;
-use crate::settings::show_preferences_window;
+use crate::settings::{show_preferences_window, GlobalConfig};
 use crate::tmux_widgets::IvyTmuxWindow;
 
 const APPLICATION_ID: &str = "com.tomiyou.ivyTerm";
@@ -107,6 +107,11 @@ impl IvyApplication {
                 );
             }
         }
+    }
+
+    pub fn get_full_config(&self) -> GlobalConfig {
+        let config = self.imp().config.borrow();
+        config.clone()
     }
 }
 

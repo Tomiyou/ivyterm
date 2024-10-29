@@ -24,7 +24,7 @@ impl Keybinding {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Keybindings {
     #[serde(default = "default_new_tab")]
     new_tab: String,

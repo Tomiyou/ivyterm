@@ -6,6 +6,8 @@ use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
 use crate::application::IvyApplication;
 
+use super::GlobalConfig;
+
 fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
     child.set_halign(Align::End);
 
@@ -28,12 +30,13 @@ fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
     row
 }
 
-fn create_terminal_prefs(app: &IvyApplication) -> PreferencesGroup {
+fn create_terminal_prefs(app: &IvyApplication, data: &GlobalConfig) -> PreferencesGroup {
     let app = app.clone();
 
     // Font Dialog
     let font_dialog = FontDialog::new();
     let font_dialog_button = FontDialogButton::new(Some(font_dialog));
+    font_dialog_button.set_font_desc(data.font.as_ref());
     font_dialog_button.connect_font_desc_notify(glib::clone!(
         #[weak]
         app,
@@ -47,6 +50,7 @@ fn create_terminal_prefs(app: &IvyApplication) -> PreferencesGroup {
     // Foreground color
     let foreground_color_dialog = ColorDialog::new();
     let foreground_color_button = ColorDialogButton::new(Some(foreground_color_dialog));
+    foreground_color_button.set_rgba(data.foreground.as_ref());
     foreground_color_button.connect_rgba_notify(glib::clone!(
         #[weak]
         app,
@@ -60,6 +64,7 @@ fn create_terminal_prefs(app: &IvyApplication) -> PreferencesGroup {
     // Background
     let background_color_dialog = ColorDialog::new();
     let background_color_button = ColorDialogButton::new(Some(background_color_dialog));
+    background_color_button.set_rgba(data.background.as_ref());
     background_color_button.connect_rgba_notify(move |button| {
         let rgba = button.rgba();
         app.update_background_color(rgba)
@@ -78,11 +83,11 @@ fn create_terminal_prefs(app: &IvyApplication) -> PreferencesGroup {
     terminal_font_color
 }
 
-pub fn create_general_page(app: &IvyApplication) -> PreferencesPage {
+pub fn create_general_page(app: &IvyApplication, data: &GlobalConfig) -> PreferencesPage {
     // Page 1: Color and Font dialogs
     let page = PreferencesPage::builder().title("General").build();
 
-    let terminal_prefs = create_terminal_prefs(app);
+    let terminal_prefs = create_terminal_prefs(app, data);
     page.add(&terminal_prefs);
 
     page

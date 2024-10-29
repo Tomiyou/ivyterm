@@ -16,6 +16,7 @@ use crate::{application::IvyApplication, keyboard::Keybindings};
 mod default;
 mod general;
 mod keybindings;
+mod tmux;
 
 pub const INITIAL_WIDTH: i32 = 802;
 pub const INITIAL_HEIGHT: i32 = 648;
@@ -23,7 +24,7 @@ pub const APPLICATION_TITLE: &str = "ivyTerm";
 pub const SPLIT_HANDLE_WIDTH: i32 = 10;
 pub const SPLIT_VISUAL_WIDTH: i32 = 2;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct GlobalConfig {
     #[serde(default, skip)]
     path: Option<PathBuf>,
@@ -152,6 +153,12 @@ impl Into<RGBA> for IvyColor {
     }
 }
 
+impl AsRef<RGBA> for IvyColor {
+    fn as_ref(&self) -> &RGBA {
+        &self.0
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct IvyFont(FontDescription);
 
@@ -195,6 +202,12 @@ impl Into<FontDescription> for IvyFont {
     }
 }
 
+impl AsRef<FontDescription> for IvyFont {
+    fn as_ref(&self) -> &FontDescription {
+        &self.0
+    }
+}
+
 pub fn show_preferences_window(app: &IvyApplication) {
     // If a Settings window is already open, simply bring it to the front
     for window in app.windows() {
@@ -205,11 +218,19 @@ pub fn show_preferences_window(app: &IvyApplication) {
         }
     }
 
+    // Settings window doesn't exist yet, we need to build it now
     let window = PreferencesWindow::builder().application(app).build();
+    let data = app.get_full_config();
 
-    let general_page = create_general_page(app);
+    // General settings page
+    let general_page = create_general_page(app, &data);
     window.add(&general_page);
 
+    // // Tmux settings page
+    // let tmux_page = create_tmux_page(app, &data);
+    // window.add(&tmux_page);
+
+    // Keybinding settings page
     let keybinding_page = create_keybinding_page(app);
     window.add(&keybinding_page);
 
