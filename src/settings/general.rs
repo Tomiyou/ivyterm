@@ -4,9 +4,7 @@ use gtk4::{
 };
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
 
-use crate::application::IvyApplication;
-
-use super::GlobalConfig;
+use crate::{application::IvyApplication, config::GlobalConfig};
 
 fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
     child.set_halign(Align::End);

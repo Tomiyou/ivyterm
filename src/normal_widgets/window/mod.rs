@@ -11,9 +11,7 @@ use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 
 use crate::{
-    application::IvyApplication,
-    modals::spawn_new_tmux_modal,
-    settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    application::IvyApplication, config::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, modals::spawn_new_tmux_modal
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};

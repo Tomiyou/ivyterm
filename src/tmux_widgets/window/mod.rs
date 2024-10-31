@@ -11,7 +11,7 @@ use log::debug;
 use tmux::TmuxInitState;
 
 use crate::{
-    application::IvyApplication, keyboard::KeyboardAction, modals::spawn_new_tmux_modal, settings::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, tmux_api::TmuxAPI
+    application::IvyApplication, config::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH}, keyboard::KeyboardAction, modals::spawn_new_tmux_modal, tmux_api::TmuxAPI
 };
 
 use super::{terminal::TmuxTerminal, toplevel::TmuxTopLevel};

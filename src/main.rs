@@ -3,6 +3,7 @@ use libadwaita::glib;
 use libadwaita::prelude::*;
 
 mod application;
+mod config;
 mod helpers;
 mod keyboard;
 mod modals;

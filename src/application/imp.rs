@@ -4,8 +4,8 @@ use gtk4::CssProvider;
 use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
 
+use crate::config::GlobalConfig;
 use crate::keyboard::Keybinding;
-use crate::settings::GlobalConfig;
 
 // Object holding the state
 #[derive(Default)]

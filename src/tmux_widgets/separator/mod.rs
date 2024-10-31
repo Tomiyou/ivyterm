@@ -2,7 +2,7 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{gdk::Cursor, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
 
-use crate::settings::SPLIT_VISUAL_WIDTH;
+use crate::config::SPLIT_VISUAL_WIDTH;
 
 mod imp;
 

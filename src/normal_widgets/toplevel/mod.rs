@@ -6,7 +6,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    helpers::WithId, keyboard::Direction, modals::spawn_rename_modal, settings::SPLIT_HANDLE_WIDTH,
+    config::SPLIT_HANDLE_WIDTH, helpers::WithId, keyboard::Direction, modals::spawn_rename_modal
 };
 
 use self::imp::Zoomed;
