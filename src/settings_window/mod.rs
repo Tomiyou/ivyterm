@@ -1,12 +1,42 @@
 use general::create_general_page;
+use gtk4::{Align, Box, ColorDialog, ColorDialogButton, Label, Orientation};
 use keybindings::create_keybinding_page;
-use libadwaita::{prelude::*, PreferencesWindow};
+use libadwaita::{prelude::*, PreferencesGroup, PreferencesRow, PreferencesWindow};
 
-use crate::application::IvyApplication;
+use crate::{application::IvyApplication, config::IvyColor};
 
 mod general;
 mod keybindings;
 mod tmux;
+
+fn create_setting_row(pref_group: &PreferencesGroup, name: &str, child: impl IsA<gtk4::Widget>) {
+    child.set_halign(Align::End);
+
+    let label = Label::builder()
+        .hexpand(true)
+        .halign(Align::Start)
+        .label(name)
+        .build();
+
+    let row_box = Box::new(Orientation::Horizontal, 0);
+    row_box.append(&label);
+    row_box.append(&child);
+
+    let row = PreferencesRow::builder()
+        .title(name)
+        .child(&row_box)
+        .css_classes(["setting_row"])
+        .build();
+
+    pref_group.add(&row);
+}
+
+fn create_color_button(data: &IvyColor) -> ColorDialogButton {
+    let button = ColorDialogButton::new(Some(ColorDialog::new()));
+    button.set_rgba(data.as_ref());
+
+    button
+}
 
 pub fn show_preferences_window(app: &IvyApplication) {
     // If a Settings window is already open, simply bring it to the front
