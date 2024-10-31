@@ -126,7 +126,7 @@ pub fn open_editor(path: &str, ssh_target: &Option<String>) {
     command.stdout(Stdio::null());
     command.stderr(Stdio::null());
 
-    // Check if this is a remote Tmux session
+    // Check if this is a remote Tmux session and add this to the editor command
     if let Some(ssh_target) = ssh_target {
         // code --remote ssh-remote+SSH_TARGET PATH
         command.arg("--remote");
@@ -134,13 +134,14 @@ pub fn open_editor(path: &str, ssh_target: &Option<String>) {
         command.arg(&arg);
     }
 
+    // Add path to the editor command
     command.arg(path);
+
+    // Spawn editor
     match command.spawn() {
-        Ok(child) => {
-            println!("Editor successfully opened!");
-        }
         Err(err) => {
             println!("Error opening editor: {}", err);
         }
+        _ => {}
     }
 }
