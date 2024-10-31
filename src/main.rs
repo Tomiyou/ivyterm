@@ -8,7 +8,7 @@ mod helpers;
 mod keyboard;
 mod modals;
 mod normal_widgets;
-mod settings;
+mod settings_window;
 mod tmux_api;
 mod tmux_widgets;
 

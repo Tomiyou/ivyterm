@@ -12,7 +12,7 @@ use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
 use crate::config::GlobalConfig;
 use crate::normal_widgets::IvyNormalWindow;
-use crate::settings::show_preferences_window;
+use crate::settings_window::show_preferences_window;
 use crate::tmux_widgets::IvyTmuxWindow;
 
 const APPLICATION_ID: &str = "com.tomiyou.ivyTerm";
