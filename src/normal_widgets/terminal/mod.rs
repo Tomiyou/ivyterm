@@ -70,13 +70,14 @@ impl Terminal {
             #[weak]
             top_level,
             move |vte| {
-            if vte.has_focus() {
-                let title = vte.window_title();
-                if let Some(title) = title {
-                    top_level.terminal_title_changed(&title);
+                if vte.has_focus() {
+                    let title = vte.window_title();
+                    if let Some(title) = title {
+                        top_level.terminal_title_changed(&title);
+                    }
                 }
             }
-        }));
+        ));
 
         // Set terminal colors
         let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();

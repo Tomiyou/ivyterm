@@ -6,7 +6,8 @@ use gtk4::{
 };
 
 use crate::{
-    config::{IvyColor, IvyFont}, keyboard::{check_keybinding_match, Keybinding, KeyboardAction}
+    config::{IvyColor, IvyFont},
+    keyboard::{check_keybinding_match, Keybinding, KeyboardAction},
 };
 
 use super::IvyApplication;

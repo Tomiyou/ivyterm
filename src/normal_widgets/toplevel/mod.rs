@@ -6,7 +6,7 @@ use gtk4::{graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    config::SPLIT_HANDLE_WIDTH, helpers::WithId, keyboard::Direction, modals::spawn_rename_modal
+    config::SPLIT_HANDLE_WIDTH, helpers::WithId, keyboard::Direction, modals::spawn_rename_modal,
 };
 
 use self::imp::Zoomed;
@@ -354,7 +354,11 @@ impl TopLevel {
             #[weak(rename_to = top_level)]
             self,
             move |new_name: &str| {
-                top_level.imp().name.borrow_mut().replace(new_name.to_string());
+                top_level
+                    .imp()
+                    .name
+                    .borrow_mut()
+                    .replace(new_name.to_string());
                 page.set_title(new_name);
             }
         );

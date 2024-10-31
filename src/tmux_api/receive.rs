@@ -151,8 +151,14 @@ pub fn tmux_read_stdout(
                 if let Some(current_command) = current_command {
                     match current_command {
                         TmuxCommand::InitialOutput(pane_id) => {
-                            receive_event(&event_channel, TmuxEvent::ScrollOutput(pane_id, empty_line_count));
-                            receive_event(&event_channel, TmuxEvent::InitialOutputFinished(pane_id));
+                            receive_event(
+                                &event_channel,
+                                TmuxEvent::ScrollOutput(pane_id, empty_line_count),
+                            );
+                            receive_event(
+                                &event_channel,
+                                TmuxEvent::InitialOutputFinished(pane_id),
+                            );
                         }
                         TmuxCommand::ChangeSize(_, _) => {
                             receive_event(&event_channel, TmuxEvent::SizeChanged);

@@ -142,7 +142,12 @@ impl TmuxAPI {
         let ssh_target = ssh_target.map(|st| st.to_string());
         let stdout_stream = process.stdout.take().expect("Failed to open stdout");
         spawn_blocking(move || {
-            tmux_read_stdout(stdout_stream, tmux_event_sender, cmd_queue_receiver, ssh_target);
+            tmux_read_stdout(
+                stdout_stream,
+                tmux_event_sender,
+                cmd_queue_receiver,
+                ssh_target,
+            );
         });
         // Receive events from the channel on main thread
         let _window = window.clone();

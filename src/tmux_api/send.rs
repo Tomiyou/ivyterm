@@ -12,7 +12,7 @@ use super::TmuxAPI;
 impl TmuxAPI {
     #[inline]
     fn send_event(&self, event: TmuxCommand, cmd: &str) {
-        const NEWLINE: &[u8] = &[ b'\n' ];
+        const NEWLINE: &[u8] = &[b'\n'];
         // First we put the Command in Event queue
         let command_queue = &self.command_queue;
         command_queue.send_blocking(event).unwrap();
@@ -160,7 +160,10 @@ impl TmuxAPI {
             KeyboardAction::OpenEditorCwd => {
                 // TODO: This prints ALL panes in a Tab, not needed
                 let event = TmuxCommand::PaneCurrentPath(pane_id);
-                let cmd = format!("list-panes -t %{} -F \"path: #{{pane_id}} #{{pane_current_path}}\"", pane_id);
+                let cmd = format!(
+                    "list-panes -t %{} -F \"path: #{{pane_id}} #{{pane_current_path}}\"",
+                    pane_id
+                );
                 (event, cmd)
             }
         };

@@ -64,7 +64,7 @@ fn parse_flags(buffer: &[u8]) -> BitFlags<LayoutFlags> {
         match *byte {
             b'*' => flags |= LayoutFlags::HasFocus,
             b'Z' => flags |= LayoutFlags::IsZoomed,
-            _ => {},
+            _ => {}
         }
     }
 

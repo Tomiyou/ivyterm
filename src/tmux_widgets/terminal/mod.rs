@@ -169,7 +169,13 @@ impl TmuxTerminal {
 }
 
 #[inline]
-fn handle_keyboard_event(action: KeyboardAction, vte: &Vte, pane_id: u32, top_level: &TmuxTopLevel, window: &IvyTmuxWindow) {
+fn handle_keyboard_event(
+    action: KeyboardAction,
+    vte: &Vte,
+    pane_id: u32,
+    top_level: &TmuxTopLevel,
+    window: &IvyTmuxWindow,
+) {
     match action {
         KeyboardAction::CopySelected => {
             vte.emit_copy_clipboard();
