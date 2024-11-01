@@ -45,7 +45,10 @@ impl IvyApplication {
     }
 
     pub fn update_config(&self, new: GlobalConfig) {
+        // Write config to file
+        new.write_config_to_file();
         self.imp().config.replace(new);
+
         // Now reload the widgets
         self.reload_css_colors();
         self.refresh_terminals();
