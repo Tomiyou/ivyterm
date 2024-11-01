@@ -83,15 +83,6 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
             children_iter = child.next_sibling();
         }
     }
-
-    fn create_layout_child(
-        &self,
-        widget: &gtk4::Widget,
-        for_child: &gtk4::Widget,
-    ) -> gtk4::LayoutChild {
-        println!("create_layout_child widget {:p}", widget);
-        self.parent_create_layout_child(widget, for_child)
-    }
 }
 
 impl ContainerLayoutPriv {

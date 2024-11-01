@@ -99,7 +99,7 @@ impl TmuxAPI {
         }
 
         let cmd = format!("send-keys -l -t %{} -- \"{}\"", pane_id, escaped);
-        println!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
+        debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
         self.send_event(TmuxCommand::ClipboardPaste, &cmd);
     }
 

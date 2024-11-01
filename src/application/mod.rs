@@ -79,7 +79,7 @@ impl IvyApplication {
         // If a Settings window is already open, simply bring it to the front
         for window in self.windows() {
             if let Ok(window) = window.downcast::<PreferencesWindow>() {
-                println!("Presenting an already open Settings window");
+                debug!("Presenting an already open Settings window");
                 window.present();
                 return;
             }

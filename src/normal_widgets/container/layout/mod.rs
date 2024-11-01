@@ -4,6 +4,7 @@ use glib::Object;
 use gtk4::{GestureDrag, Orientation, Widget};
 use libadwaita::subclass::prelude::ObjectSubclassIsExt;
 use libadwaita::{glib, prelude::*};
+use log::debug;
 
 use super::separator::Separator;
 use super::Container;
@@ -101,7 +102,7 @@ impl ContainerLayout {
                 old_percentage / opposite
             };
             separator.set_percentage(new_percentage);
-            println!("New percentage {}", new_percentage);
+            debug!("New percentage after separator was removed {}", new_percentage);
 
             true
         });
