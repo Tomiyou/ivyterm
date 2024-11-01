@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use log::debug;
 
 use crate::{
@@ -12,6 +10,8 @@ use super::TmuxAPI;
 impl TmuxAPI {
     #[inline]
     fn send_event(&self, event: TmuxCommand, cmd: &str) {
+        use std::io::Write;
+
         const NEWLINE: &[u8] = &[b'\n'];
         // First we put the Command in Event queue
         let command_queue = &self.command_queue;
@@ -81,15 +81,25 @@ impl TmuxAPI {
     }
 
     pub fn send_quoted_text(&self, pane_id: u32, text: &str) {
-        // TODO: Escape content
-        // Replace \n with \r (newlines)
-        // TODO: This doesn't always work
-        let text = text.replace('\n', "\r");
-        // Replace " with \"
-        let text = text.replace('"', "\\\"");
+        // Escape content
+        let mut escaped = String::with_capacity(text.len());
+        for c in text.chars() {
+            // Import write!{} trait here, otherwise it collides with
+            // use std::io::Write;
+            use std::fmt::Write;
 
-        let cmd = format!("send-keys -l -t %{} -- \"{}\"", pane_id, text);
-        debug!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
+            match c {
+                // These characters mess with Tmux
+                '\n' | '"' | '\\' | '$' => {
+                    let ascii = c as u8;
+                    write!(escaped, "\\{:03o}", ascii).unwrap();
+                }
+                _ => escaped.push(c),
+            }
+        }
+
+        let cmd = format!("send-keys -l -t %{} -- \"{}\"", pane_id, escaped);
+        println!("send_clipboard: {}", &cmd[..cmd.len() - 1]);
         self.send_event(TmuxCommand::ClipboardPaste, &cmd);
     }
 
