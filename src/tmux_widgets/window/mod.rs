@@ -3,7 +3,7 @@ mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
-    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType,
+    Align, Box, Button, CssProvider, Orientation, PackType,
     WindowControls, WindowHandle,
 };
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
@@ -12,7 +12,7 @@ use tmux::TmuxInitState;
 
 use crate::{
     application::IvyApplication,
-    config::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
     keyboard::KeyboardAction,
     modals::spawn_new_tmux_modal,
     tmux_api::TmuxAPI,
@@ -235,18 +235,12 @@ impl IvyTmuxWindow {
         None
     }
 
-    pub fn update_terminal_config(
-        &self,
-        font_desc: &FontDescription,
-        main_colors: [RGBA; 2],
-        palette_colors: [RGBA; 16],
-        scrollback_lines: u32,
-    ) {
+    pub fn update_terminal_config(&self, config: &TerminalConfig) {
         let binding = self.imp().terminals.borrow();
         for sorted in binding.iter() {
             sorted
                 .terminal
-                .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+                .update_config(config);
         }
     }
 

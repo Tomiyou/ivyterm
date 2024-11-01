@@ -61,7 +61,7 @@ impl IvyApplication {
 
     fn reload_css_colors(&self) {
         let config = self.imp().config.borrow();
-        let background_hex = config.background.to_hex();
+        let background_hex = config.terminal.background.to_hex();
         let tmux_window_hex = config.tmux.window_color.to_hex();
 
         // Update CSS colors (background and separator)
@@ -90,21 +90,14 @@ impl IvyApplication {
     }
 
     fn refresh_terminals(&self) {
-        let config = self.imp().config.borrow();
-        let (font_desc, main_colors, palette_colors, scrollback_lines) =
-            config.get_terminal_config();
+        let config = self.get_terminal_config();
 
         // Refresh terminals to respect the new colors
         for window in self.windows() {
             // Handle non-Tmux windows
             let window = match window.downcast::<IvyNormalWindow>() {
                 Ok(window) => {
-                    window.update_terminal_config(
-                        &font_desc,
-                        main_colors,
-                        palette_colors,
-                        scrollback_lines,
-                    );
+                    window.update_terminal_config(&config);
                     continue;
                 }
                 Err(window) => window,
@@ -112,12 +105,7 @@ impl IvyApplication {
 
             // Handle Tmux windows
             if let Ok(window) = window.downcast::<IvyTmuxWindow>() {
-                window.update_terminal_config(
-                    &font_desc,
-                    main_colors,
-                    palette_colors,
-                    scrollback_lines,
-                );
+                window.update_terminal_config(&config);
             }
         }
     }

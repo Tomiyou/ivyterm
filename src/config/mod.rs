@@ -1,16 +1,13 @@
 use std::{fs, io::Write, path::PathBuf};
 
-use default::{
-    default_background, default_bright_colors, default_font, default_foreground,
-    default_scrollback_lines, default_standard_colors,
-};
 use gtk4::{gdk::RGBA, pango::FontDescription};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+pub use terminal::{ColorScheme, TerminalConfig};
 use tmux::TmuxConfig;
 
 use crate::keyboard::Keybindings;
 
-mod default;
+mod terminal;
 mod tmux;
 
 pub const INITIAL_WIDTH: i32 = 802;
@@ -23,18 +20,8 @@ pub const SPLIT_VISUAL_WIDTH: i32 = 2;
 pub struct GlobalConfig {
     #[serde(default, skip)]
     path: Option<PathBuf>,
-    #[serde(default = "default_font")]
-    pub font: IvyFont,
-    #[serde(default = "default_scrollback_lines")]
-    pub scrollback_lines: u32,
-    #[serde(default = "default_foreground")]
-    pub foreground: IvyColor,
-    #[serde(default = "default_background")]
-    pub background: IvyColor,
-    #[serde(default = "default_standard_colors")]
-    pub standard_colors: [IvyColor; 8],
-    #[serde(default = "default_bright_colors")]
-    pub bright_colors: [IvyColor; 8],
+    #[serde(default)]
+    pub terminal: TerminalConfig,
     #[serde(default)]
     pub tmux: TmuxConfig,
     #[serde(default)]
@@ -71,22 +58,6 @@ impl Default for GlobalConfig {
 }
 
 impl GlobalConfig {
-    pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
-        let font = self.font.clone().into();
-        let scrollback_lines = self.scrollback_lines.clone();
-        let main_colors = [
-            self.foreground.clone().into(),
-            self.background.clone().into(),
-        ];
-        let standard_colors: [RGBA; 8] = self.standard_colors.clone().map(|c| c.into());
-        let bright_colors: [RGBA; 8] = self.bright_colors.clone().map(|c| c.into());
-
-        let palette_colors = [standard_colors, bright_colors].concat();
-        let palette_colors: [RGBA; 16] = palette_colors.try_into().unwrap();
-
-        (font, main_colors, palette_colors, scrollback_lines)
-    }
-
     pub fn write_config_to_file(&self) {
         // Filesystem is always done async
         if let Some(path) = &self.path {

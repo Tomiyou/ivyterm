@@ -1,11 +1,15 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{gdk::RGBA, pango::FontDescription, EventControllerKey, ScrolledWindow};
+use gtk4::{EventControllerKey, ScrolledWindow};
 use libadwaita::{glib, prelude::*};
 use vte4::{Terminal as Vte, TerminalExt, TerminalExtManual};
 
-use crate::{application::IvyApplication, keyboard::KeyboardAction};
+use crate::{
+    application::IvyApplication,
+    config::{ColorScheme, TerminalConfig},
+    keyboard::KeyboardAction,
+};
 
 use super::{toplevel::TmuxTopLevel, IvyTmuxWindow};
 
@@ -23,14 +27,13 @@ impl TmuxTerminal {
         let app: IvyApplication = app.downcast().unwrap();
 
         // Get terminal font
-        let (font_desc, [foreground, background], palette, scrollback_lines) =
-            app.get_terminal_config();
+        let config = app.get_terminal_config();
 
         let vte = Vte::builder()
             .vexpand(true)
             .hexpand(true)
-            .font_desc(&font_desc)
-            .scrollback_lines(scrollback_lines)
+            .font_desc(config.font.as_ref())
+            .scrollback_lines(config.scrollback_lines)
             .build();
 
         // Add scrollbar
@@ -53,8 +56,12 @@ impl TmuxTerminal {
         top_level.register_terminal(&terminal);
 
         // Set terminal colors
-        let palette: Vec<&RGBA> = palette.iter().map(|c| c).collect();
-        vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
+        let color_scheme = ColorScheme::new(&config);
+        vte.set_colors(
+            Some(config.foreground.as_ref()),
+            Some(config.background.as_ref()),
+            &color_scheme.get(),
+        );
 
         vte.connect_has_focus_notify(glib::clone!(
             #[weak]
@@ -97,21 +104,19 @@ impl TmuxTerminal {
         self.imp().id.get()
     }
 
-    pub fn update_config(
-        &self,
-        font_desc: &FontDescription,
-        main_colors: [RGBA; 2],
-        palette_colors: [RGBA; 16],
-        scrollback_lines: u32,
-    ) {
-        let [foreground, background] = main_colors;
-        let palette: Vec<&RGBA> = palette_colors.iter().map(|c| c).collect();
+    pub fn update_config(&self, config: &TerminalConfig) {
+        let color_scheme = ColorScheme::new(config);
 
         let binding = self.imp().vte.borrow();
         let vte = binding.as_ref().unwrap();
-        vte.set_font(Some(&font_desc));
-        vte.set_colors(Some(&foreground), Some(&background), &palette[..]);
-        vte.set_scrollback_lines(scrollback_lines as i64);
+
+        vte.set_font(Some(config.font.as_ref()));
+        vte.set_colors(
+            Some(config.foreground.as_ref()),
+            Some(config.background.as_ref()),
+            &color_scheme.get(),
+        );
+        vte.set_scrollback_lines(config.scrollback_lines as i64);
     }
 
     pub fn feed_output(&self, output: Vec<u8>, initial: bool) {

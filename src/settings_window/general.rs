@@ -12,35 +12,35 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
 
     // Font Dialog
     let main_font = FontDialogButton::new(Some(FontDialog::new()));
-    main_font.set_font_desc(borrowed.font.as_ref());
+    main_font.set_font_desc(borrowed.terminal.font.as_ref());
     main_font.connect_font_desc_notify(glib::clone!(
         #[strong]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
-            borrowed.font = button.font_desc().unwrap().into();
+            borrowed.terminal.font = button.font_desc().unwrap().into();
         }
     ));
 
     // Foreground color
-    let foreground_color = create_color_button(&borrowed.foreground);
+    let foreground_color = create_color_button(&borrowed.terminal.foreground);
     foreground_color.connect_rgba_notify(glib::clone!(
         #[strong]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
-            borrowed.foreground = button.rgba().into();
+            borrowed.terminal.foreground = button.rgba().into();
         }
     ));
 
     // Background
-    let background_color = create_color_button(&borrowed.background);
+    let background_color = create_color_button(&borrowed.terminal.background);
     background_color.connect_rgba_notify(glib::clone!(
         #[strong]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
-            borrowed.background = button.rgba().into();
+            borrowed.terminal.background = button.rgba().into();
         }
     ));
 

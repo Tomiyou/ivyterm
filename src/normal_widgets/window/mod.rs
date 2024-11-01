@@ -4,7 +4,7 @@ use std::sync::atomic::Ordering;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{
-    gdk::RGBA, pango::FontDescription, Align, Box, Button, CssProvider, Orientation, PackType,
+    Align, Box, Button, CssProvider, Orientation, PackType,
     WindowControls, WindowHandle,
 };
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
@@ -12,7 +12,7 @@ use log::debug;
 
 use crate::{
     application::IvyApplication,
-    config::{APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
     modals::spawn_new_tmux_modal,
 };
 
@@ -158,18 +158,10 @@ impl IvyNormalWindow {
         debug!("Terminal with ID {} unregistered", pane_id);
     }
 
-    pub fn update_terminal_config(
-        &self,
-        font_desc: &FontDescription,
-        main_colors: [RGBA; 2],
-        palette_colors: [RGBA; 16],
-        scrollback_lines: u32,
-    ) {
+    pub fn update_terminal_config(&self, config: &TerminalConfig) {
         let binding = self.imp().terminals.borrow();
         for sorted in binding.iter() {
-            sorted
-                .terminal
-                .update_config(font_desc, main_colors, palette_colors, scrollback_lines);
+            sorted.terminal.update_config(config);
         }
     }
 }

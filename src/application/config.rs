@@ -1,21 +1,17 @@
 use glib::subclass::types::ObjectSubclassIsExt;
-use gtk4::{
-    gdk::{Event, RGBA},
-    pango::FontDescription,
-    ShortcutTrigger,
-};
+use gtk4::{gdk::Event, ShortcutTrigger};
 
 use crate::{
-    config::GlobalConfig,
+    config::{GlobalConfig, TerminalConfig},
     keyboard::{check_keybinding_match, Keybinding, KeyboardAction},
 };
 
 use super::IvyApplication;
 
 impl IvyApplication {
-    pub fn get_terminal_config(&self) -> (FontDescription, [RGBA; 2], [RGBA; 16], u32) {
+    pub fn get_terminal_config(&self) -> TerminalConfig {
         let config = self.imp().config.borrow();
-        config.get_terminal_config()
+        config.terminal.clone()
     }
 
     pub fn handle_keyboard_event(&self, event: Event) -> Option<KeyboardAction> {
