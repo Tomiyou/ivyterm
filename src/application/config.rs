@@ -6,7 +6,7 @@ use gtk4::{
 };
 
 use crate::{
-    config::{IvyColor, IvyFont},
+    config::GlobalConfig,
     keyboard::{check_keybinding_match, Keybinding, KeyboardAction},
 };
 
@@ -48,36 +48,10 @@ impl IvyApplication {
         config.write_config_to_file();
     }
 
-    pub fn update_foreground_color(&self, rgba: RGBA) {
-        let mut config = self.imp().config.borrow_mut();
-        let color: IvyColor = rgba.into();
-        config.foreground = color;
-        // Write new configuration to file
-        config.write_config_to_file();
-        drop(config);
-
+    pub fn update_config(&self, new: GlobalConfig) {
+        self.imp().config.replace(new);
+        // Now reload the widgets
         self.reload_css_colors();
-    }
-
-    pub fn update_background_color(&self, rgba: RGBA) {
-        let mut config = self.imp().config.borrow_mut();
-        let color: IvyColor = rgba.into();
-        config.background = color;
-        // Write new configuration to file
-        config.write_config_to_file();
-        drop(config);
-
-        self.reload_css_colors();
-    }
-
-    pub fn update_font(&self, font_desc: FontDescription) {
-        let mut config = self.imp().config.borrow_mut();
-        let font: IvyFont = font_desc.into();
-        config.font = font;
-        // Write new configuration to file
-        config.write_config_to_file();
-        drop(config);
-
         self.refresh_terminals();
     }
 }

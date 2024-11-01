@@ -5,14 +5,13 @@ use glib::Object;
 use gtk4::gdk::Display;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
-use libadwaita::{gio, glib};
+use libadwaita::{gio, glib, PreferencesWindow};
 use log::debug;
 // TODO: This should be libadwaita::prelude::*
 use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
-use crate::config::GlobalConfig;
 use crate::normal_widgets::IvyNormalWindow;
-use crate::settings_window::show_preferences_window;
+use crate::settings_window::spawn_preferences_window;
 use crate::tmux_widgets::IvyTmuxWindow;
 
 const APPLICATION_ID: &str = "com.tomiyou.ivyTerm";
@@ -74,7 +73,17 @@ impl IvyApplication {
     }
 
     pub fn show_settings(&self) {
-        show_preferences_window(self);
+        // If a Settings window is already open, simply bring it to the front
+        for window in self.windows() {
+            if let Ok(window) = window.downcast::<PreferencesWindow>() {
+                println!("Presenting an already open Settings window");
+                window.present();
+                return;
+            }
+        }
+
+        let config = self.imp().config.borrow().clone();
+        spawn_preferences_window(self, config);
     }
 
     fn refresh_terminals(&self) {
@@ -108,11 +117,6 @@ impl IvyApplication {
                 );
             }
         }
-    }
-
-    pub fn get_full_config(&self) -> GlobalConfig {
-        let config = self.imp().config.borrow();
-        config.clone()
     }
 }
 

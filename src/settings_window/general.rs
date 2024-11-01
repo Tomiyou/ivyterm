@@ -1,42 +1,48 @@
+use std::{cell::RefCell, rc::Rc};
+
 use gtk4::{FontDialog, FontDialogButton};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage};
 
-use crate::{application::IvyApplication, config::GlobalConfig};
+use crate::config::GlobalConfig;
 
 use super::{create_color_button, create_setting_row};
 
-fn create_terminal_prefs(app: &IvyApplication, data: &GlobalConfig) -> PreferencesGroup {
-    let app = app.clone();
+fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
+    let borrowed = config.borrow();
 
     // Font Dialog
     let main_font = FontDialogButton::new(Some(FontDialog::new()));
-    main_font.set_font_desc(data.font.as_ref());
+    main_font.set_font_desc(borrowed.font.as_ref());
     main_font.connect_font_desc_notify(glib::clone!(
-        #[weak]
-        app,
+        #[strong]
+        config,
         move |button| {
-            let font_description = button.font_desc().unwrap();
-            app.update_font(font_description);
+            let mut borrowed = config.borrow_mut();
+            borrowed.font = button.font_desc().unwrap().into();
         }
     ));
 
     // Foreground color
-    let foreground_color = create_color_button(&data.foreground);
+    let foreground_color = create_color_button(&borrowed.foreground);
     foreground_color.connect_rgba_notify(glib::clone!(
-        #[weak]
-        app,
+        #[strong]
+        config,
         move |button| {
-            let rgba = button.rgba();
-            app.update_foreground_color(rgba)
+            let mut borrowed = config.borrow_mut();
+            borrowed.foreground = button.rgba().into();
         }
     ));
 
     // Background
-    let background_color = create_color_button(&data.background);
-    background_color.connect_rgba_notify(move |button| {
-        let rgba = button.rgba();
-        app.update_background_color(rgba)
-    });
+    let background_color = create_color_button(&borrowed.background);
+    background_color.connect_rgba_notify(glib::clone!(
+        #[strong]
+        config,
+        move |button| {
+            let mut borrowed = config.borrow_mut();
+            borrowed.background = button.rgba().into();
+        }
+    ));
 
     // Build the page itself
     let terminal_font_color = PreferencesGroup::builder()
@@ -50,11 +56,11 @@ fn create_terminal_prefs(app: &IvyApplication, data: &GlobalConfig) -> Preferenc
     terminal_font_color
 }
 
-pub fn create_general_page(app: &IvyApplication, data: &GlobalConfig) -> PreferencesPage {
+pub fn create_general_page(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesPage {
     // Page 1: Color and Font dialogs
     let page = PreferencesPage::builder().title("General").build();
 
-    let terminal_prefs = create_terminal_prefs(app, data);
+    let terminal_prefs = create_terminal_prefs(config);
     page.add(&terminal_prefs);
 
     page
