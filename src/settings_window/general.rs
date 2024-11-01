@@ -7,6 +7,22 @@ use crate::config::GlobalConfig;
 
 use super::{create_color_button, create_setting_row};
 
+pub fn create_general_page(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesPage {
+    // Page 1: Color and Font dialogs
+    let page = PreferencesPage::builder().title("General").build();
+
+    let terminal_prefs = create_terminal_prefs(config);
+    page.add(&terminal_prefs);
+
+    // Color scheme
+    let standard_colors = create_standard_colors(config);
+    page.add(&standard_colors);
+    let bright_colors = create_bright_colors(config);
+    page.add(&bright_colors);
+
+    page
+}
+
 fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
     let borrowed = config.borrow();
 
@@ -56,12 +72,54 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     terminal_font_color
 }
 
-pub fn create_general_page(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesPage {
-    // Page 1: Color and Font dialogs
-    let page = PreferencesPage::builder().title("General").build();
+fn create_standard_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
+    // Build the page itself
+    let standard_colors = PreferencesGroup::builder()
+        .title("Standard colors")
+        .build();
 
-    let terminal_prefs = create_terminal_prefs(config);
-    page.add(&terminal_prefs);
+    let borrowed = config.borrow();
 
-    page
+    for (idx, _) in borrowed.terminal.standard_colors.iter().enumerate() {
+        let button = create_color_button(&borrowed.terminal.standard_colors[idx]);
+        button.connect_rgba_notify(glib::clone!(
+            #[strong]
+            config,
+            move |button| {
+                let mut borrowed = config.borrow_mut();
+                borrowed.terminal.standard_colors[idx] = button.rgba().into();
+            }
+        ));
+
+        let name = format!("Standard color {}", idx);
+        create_setting_row(&standard_colors, &name, button);
+    }
+
+    standard_colors
+}
+
+fn create_bright_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
+    // Build the page itself
+    let bright_colors = PreferencesGroup::builder()
+        .title("Bright colors")
+        .build();
+
+    let borrowed = config.borrow();
+
+    for (idx, _) in borrowed.terminal.bright_colors.iter().enumerate() {
+        let button = create_color_button(&borrowed.terminal.bright_colors[idx]);
+        button.connect_rgba_notify(glib::clone!(
+            #[strong]
+            config,
+            move |button| {
+                let mut borrowed = config.borrow_mut();
+                borrowed.terminal.bright_colors[idx] = button.rgba().into();
+            }
+        ));
+
+        let name = format!("Bright color {}", idx);
+        create_setting_row(&bright_colors, &name, button);
+    }
+
+    bright_colors
 }
