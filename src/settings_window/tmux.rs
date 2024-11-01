@@ -1,94 +1,39 @@
-// use gtk4::{
-//     Align, Box, ColorDialog, ColorDialogButton, FontDialog, FontDialogButton, Label, Orientation,
-//     Widget,
-// };
-// use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage, PreferencesRow};
+use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage};
 
-// use crate::application::IvyApplication;
+use crate::{application::IvyApplication, config::GlobalConfig};
 
-// use super::GlobalConfig;
+use super::{create_color_button, create_setting_row};
 
-// fn create_setting_row(name: &str, child: impl IsA<Widget>) -> PreferencesRow {
-//     child.set_halign(Align::End);
+fn create_appearance_prefs(app: &IvyApplication, data: &GlobalConfig) -> PreferencesGroup {
+    let app = app.clone();
 
-//     let label = Label::builder()
-//         .hexpand(true)
-//         .halign(Align::Start)
-//         .label(name)
-//         .build();
+    // Foreground color
+    let window_color = create_color_button(&data.tmux.window_color);
+    window_color.connect_rgba_notify(glib::clone!(
+        #[weak]
+        app,
+        move |button| {
+            let rgba = button.rgba();
+            app.update_foreground_color(rgba)
+        }
+    ));
 
-//     let row_box = Box::new(Orientation::Horizontal, 0);
-//     row_box.append(&label);
-//     row_box.append(&child);
+    // Build the page itself
+    let tmux_colors = PreferencesGroup::builder()
+        .title("Color")
+        .build();
 
-//     let row = PreferencesRow::builder()
-//         .title(name)
-//         .child(&row_box)
-//         .css_classes(["setting_row"])
-//         .build();
+    create_setting_row(&tmux_colors, "Tmux window color", window_color);
 
-//     row
-// }
+    tmux_colors
+}
 
-// fn create_appearance_prefs(app: &IvyApplication, data: &GlobalConfig) -> PreferencesGroup {
-//     let app = app.clone();
+pub fn create_tmux_page(app: &IvyApplication, data: &GlobalConfig) -> PreferencesPage {
+    // Page 2: Tmux settings
+    let page = PreferencesPage::builder().title("Tmux").build();
 
-//     // Font Dialog
-//     let font_dialog = FontDialog::new();
-//     let font_dialog_button = FontDialogButton::new(Some(font_dialog));
-//     font_dialog_button.set_font_desc(data.font.as_ref());
-//     font_dialog_button.connect_font_desc_notify(glib::clone!(
-//         #[weak]
-//         app,
-//         move |button| {
-//             let font_description = button.font_desc().unwrap();
-//             app.update_font(font_description);
-//         }
-//     ));
-//     let terminal_font_row = create_setting_row("Terminal font", font_dialog_button);
+    let appearance_prefs = create_appearance_prefs(app, data);
+    page.add(&appearance_prefs);
 
-//     // Foreground color
-//     let foreground_color_dialog = ColorDialog::new();
-//     let foreground_color_button = ColorDialogButton::new(Some(foreground_color_dialog));
-//     foreground_color_button.set_rgba(data.foreground.as_ref());
-//     foreground_color_button.connect_rgba_notify(glib::clone!(
-//         #[weak]
-//         app,
-//         move |button| {
-//             let rgba = button.rgba();
-//             app.update_foreground_color(rgba)
-//         }
-//     ));
-//     let foreground_color_row = create_setting_row("Foreground color", foreground_color_button);
-
-//     // Background
-//     let background_color_dialog = ColorDialog::new();
-//     let background_color_button = ColorDialogButton::new(Some(background_color_dialog));
-//     background_color_button.set_rgba(data.background.as_ref());
-//     background_color_button.connect_rgba_notify(move |button| {
-//         let rgba = button.rgba();
-//         app.update_background_color(rgba)
-//     });
-//     let background_color_row = create_setting_row("Background color", background_color_button);
-
-//     // Build the page itself
-//     let terminal_font_color = PreferencesGroup::builder()
-//         .title("Terminal font and colors")
-//         .build();
-
-//     terminal_font_color.add(&terminal_font_row);
-//     terminal_font_color.add(&foreground_color_row);
-//     terminal_font_color.add(&background_color_row);
-
-//     terminal_font_color
-// }
-
-// pub fn create_tmux_page(app: &IvyApplication, data: &GlobalConfig) -> PreferencesPage {
-//     // Page 2: Tmux settings
-//     let page = PreferencesPage::builder().title("Tmux").build();
-
-//     let appearance_prefs = create_appearance_prefs(app, data);
-//     page.add(&appearance_prefs);
-
-//     page
-// }
+    page
+}

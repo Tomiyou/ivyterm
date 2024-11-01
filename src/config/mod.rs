@@ -6,10 +6,12 @@ use default::{
 };
 use gtk4::{gdk::RGBA, pango::FontDescription};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use tmux::TmuxConfig;
 
 use crate::keyboard::Keybindings;
 
 mod default;
+mod tmux;
 
 pub const INITIAL_WIDTH: i32 = 802;
 pub const INITIAL_HEIGHT: i32 = 648;
@@ -33,6 +35,8 @@ pub struct GlobalConfig {
     pub standard_colors: [IvyColor; 8],
     #[serde(default = "default_bright_colors")]
     pub bright_colors: [IvyColor; 8],
+    #[serde(default)]
+    pub tmux: TmuxConfig,
     #[serde(default)]
     pub keybindings: Keybindings,
 }

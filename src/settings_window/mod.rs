@@ -2,6 +2,7 @@ use general::create_general_page;
 use gtk4::{Align, Box, ColorDialog, ColorDialogButton, Label, Orientation};
 use keybindings::create_keybinding_page;
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesRow, PreferencesWindow};
+use tmux::create_tmux_page;
 
 use crate::{application::IvyApplication, config::IvyColor};
 
@@ -56,9 +57,9 @@ pub fn show_preferences_window(app: &IvyApplication) {
     let general_page = create_general_page(app, &data);
     window.add(&general_page);
 
-    // // Tmux settings page
-    // let tmux_page = create_tmux_page(app, &data);
-    // window.add(&tmux_page);
+    // Tmux settings page
+    let tmux_page = create_tmux_page(app, &data);
+    window.add(&tmux_page);
 
     // Keybinding settings page
     let keybinding_page = create_keybinding_page(app);
