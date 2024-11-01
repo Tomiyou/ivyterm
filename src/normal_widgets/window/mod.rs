@@ -3,10 +3,7 @@ mod imp;
 use std::sync::atomic::Ordering;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{
-    Align, Box, Button, CssProvider, Orientation, PackType,
-    WindowControls, WindowHandle,
-};
+use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 

@@ -74,9 +74,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
 
 fn create_standard_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
     // Build the page itself
-    let standard_colors = PreferencesGroup::builder()
-        .title("Standard colors")
-        .build();
+    let standard_colors = PreferencesGroup::builder().title("Standard colors").build();
 
     let borrowed = config.borrow();
 
@@ -100,9 +98,7 @@ fn create_standard_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGrou
 
 fn create_bright_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup {
     // Build the page itself
-    let bright_colors = PreferencesGroup::builder()
-        .title("Bright colors")
-        .build();
+    let bright_colors = PreferencesGroup::builder().title("Bright colors").build();
 
     let borrowed = config.borrow();
 

@@ -2,10 +2,7 @@ mod imp;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{
-    Align, Box, Button, CssProvider, Orientation, PackType,
-    WindowControls, WindowHandle,
-};
+use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
 use tmux::TmuxInitState;
@@ -238,9 +235,7 @@ impl IvyTmuxWindow {
     pub fn update_terminal_config(&self, config: &TerminalConfig) {
         let binding = self.imp().terminals.borrow();
         for sorted in binding.iter() {
-            sorted
-                .terminal
-                .update_config(config);
+            sorted.terminal.update_config(config);
         }
     }
 
