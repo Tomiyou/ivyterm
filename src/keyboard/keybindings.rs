@@ -137,29 +137,31 @@ impl Keybindings {
         keybindings
     }
 
-    pub fn update_one(&mut self, keybinding: &Keybinding) {
-        let trigger = if let Some(trigger) = &keybinding.trigger {
-            let trigger = trigger.to_str();
-            trigger.to_string()
-        } else {
-            "".to_string()
-        };
+    pub fn update(&mut self, keybindings: &Vec<Keybinding>) {
+        for keybinding in keybindings {
+            let trigger = if let Some(trigger) = &keybinding.trigger {
+                let trigger = trigger.to_str();
+                trigger.to_string()
+            } else {
+                "".to_string()
+            };
 
-        match keybinding.action {
-            KeyboardAction::MoveFocus(Direction::Right) => self.move_right = trigger,
-            KeyboardAction::MoveFocus(Direction::Left) => self.move_left = trigger,
-            KeyboardAction::MoveFocus(Direction::Up) => self.move_up = trigger,
-            KeyboardAction::MoveFocus(Direction::Down) => self.move_down = trigger,
-            KeyboardAction::ToggleZoom => self.toggle_zoom = trigger,
-            KeyboardAction::CopySelected => self.copy_selection = trigger,
-            KeyboardAction::TabNew => self.new_tab = trigger,
-            KeyboardAction::TabClose => self.close_tab = trigger,
-            KeyboardAction::TabRename => self.rename_tab = trigger,
-            KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
-            KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
-            KeyboardAction::PaneClose => self.close_pane = trigger,
-            KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
-            KeyboardAction::OpenEditorCwd => self.open_editor_cwd = trigger,
+            match keybinding.action {
+                KeyboardAction::MoveFocus(Direction::Right) => self.move_right = trigger,
+                KeyboardAction::MoveFocus(Direction::Left) => self.move_left = trigger,
+                KeyboardAction::MoveFocus(Direction::Up) => self.move_up = trigger,
+                KeyboardAction::MoveFocus(Direction::Down) => self.move_down = trigger,
+                KeyboardAction::ToggleZoom => self.toggle_zoom = trigger,
+                KeyboardAction::CopySelected => self.copy_selection = trigger,
+                KeyboardAction::TabNew => self.new_tab = trigger,
+                KeyboardAction::TabClose => self.close_tab = trigger,
+                KeyboardAction::TabRename => self.rename_tab = trigger,
+                KeyboardAction::PaneSplit(true) => self.split_horizontal = trigger,
+                KeyboardAction::PaneSplit(false) => self.split_vertical = trigger,
+                KeyboardAction::PaneClose => self.close_pane = trigger,
+                KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
+                KeyboardAction::OpenEditorCwd => self.open_editor_cwd = trigger,
+            }
         }
     }
 }

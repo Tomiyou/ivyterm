@@ -21,18 +21,6 @@ pub fn spawn_preferences_window(app: &IvyApplication, config: GlobalConfig) {
     // Settings window doesn't exist yet, we need to build it now
     let window = PreferencesWindow::builder().application(app).build();
 
-    // Connect window to update app config when it exits
-    window.connect_destroy(glib::clone!(
-        #[strong]
-        app,
-        #[strong]
-        config,
-        move |_| {
-            let config = config.borrow().clone();
-            app.update_config(config);
-        }
-    ));
-
     // General settings page
     let general_page = create_general_page(&config);
     window.add(&general_page);
@@ -44,6 +32,23 @@ pub fn spawn_preferences_window(app: &IvyApplication, config: GlobalConfig) {
     // Keybinding settings page
     let keybinding_page = KeybindingPage::new(app);
     window.add(&keybinding_page);
+
+    // Connect window to update app config when it exits
+    window.connect_destroy(glib::clone!(
+        #[weak]
+        app,
+        #[weak]
+        config,
+        #[weak]
+        keybinding_page,
+        move |_| {
+            let mut config = config.borrow().clone();
+            let keybindings = keybinding_page.get_keybindings();
+            config.keybindings.update(&keybindings);
+            // Copy updated config back to application
+            app.update_config(config, keybindings);
+        }
+    ));
 
     window.present();
 }

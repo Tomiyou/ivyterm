@@ -15,64 +15,6 @@ glib::wrapper! {
         @implements gtk4::Accessible, gtk4::Buildable, gtk4::ConstraintTarget;
 }
 
-fn create_keybinding_row(
-    idx: usize,
-    keybinding: &Keybinding,
-    page: &KeybindingPage,
-) -> (PreferencesRow, Label) {
-    let row_box = Box::new(Orientation::Horizontal, 0);
-
-    let omegalul = keybinding.description;
-    let description = Label::builder()
-        .label(keybinding.description)
-        .halign(Align::Start)
-        .hexpand(true)
-        .build();
-    row_box.append(&description);
-
-    let accelerator_label = Label::builder().halign(Align::End).build();
-    set_text_from_trigger(&accelerator_label, &keybinding.trigger);
-    row_box.append(&accelerator_label);
-
-    let row = PreferencesRow::builder()
-        .child(&row_box)
-        .css_classes(["setting_row"])
-        .build();
-
-    // Handle losing focus
-    row.connect_has_focus_notify(glib::clone!(
-        #[weak]
-        page,
-        move |row| {
-            // Stop listening if row loses focus
-            if row.has_focus() == false {
-                page.row_listening_changed(idx, false);
-            }
-        }
-    ));
-
-    let gesture_ctrl = GestureClick::new();
-    gesture_ctrl.connect_released(glib::clone!(
-        #[weak]
-        page,
-        move |_, count, _, _| {
-            if count < 2 {
-                return;
-            }
-
-            // Row was double clicked, start listening for keyboard input
-            page.row_listening_changed(idx, true);
-        }
-    ));
-    row.add_controller(gesture_ctrl);
-
-    row.connect_destroy(move |_| {
-        println!("Destroying {}", omegalul);
-    });
-
-    (row, accelerator_label)
-}
-
 impl KeybindingPage {
     pub fn new(app: &IvyApplication) -> Self {
         let page: Self = Object::builder().build();
@@ -209,7 +151,7 @@ impl KeybindingPage {
                     if keybinding.action == action {
                         continue;
                     }
-    
+
                     // If new trigger collides with an existing one, unbind the existing one
                     if let Some(collision) = &keybinding.trigger {
                         if trigger.equal(collision) {
@@ -227,6 +169,72 @@ impl KeybindingPage {
         // Update displayed Keybinding
         imp.update_label_text(listener, false);
     }
+
+    pub fn get_keybindings(&self) -> Vec<Keybinding> {
+        let keybindings = self.imp().keybindings.borrow();
+        keybindings
+            .iter()
+            .map(|(keybinding, _)| keybinding.clone())
+            .collect()
+    }
+}
+
+fn create_keybinding_row(
+    idx: usize,
+    keybinding: &Keybinding,
+    page: &KeybindingPage,
+) -> (PreferencesRow, Label) {
+    let row_box = Box::new(Orientation::Horizontal, 0);
+
+    let omegalul = keybinding.description;
+    let description = Label::builder()
+        .label(keybinding.description)
+        .halign(Align::Start)
+        .hexpand(true)
+        .build();
+    row_box.append(&description);
+
+    let accelerator_label = Label::builder().halign(Align::End).build();
+    set_text_from_trigger(&accelerator_label, &keybinding.trigger);
+    row_box.append(&accelerator_label);
+
+    let row = PreferencesRow::builder()
+        .child(&row_box)
+        .css_classes(["setting_row"])
+        .build();
+
+    // Handle losing focus
+    row.connect_has_focus_notify(glib::clone!(
+        #[weak]
+        page,
+        move |row| {
+            // Stop listening if row loses focus
+            if row.has_focus() == false {
+                page.row_listening_changed(idx, false);
+            }
+        }
+    ));
+
+    let gesture_ctrl = GestureClick::new();
+    gesture_ctrl.connect_released(glib::clone!(
+        #[weak]
+        page,
+        move |_, count, _, _| {
+            if count < 2 {
+                return;
+            }
+
+            // Row was double clicked, start listening for keyboard input
+            page.row_listening_changed(idx, true);
+        }
+    ));
+    row.add_controller(gesture_ctrl);
+
+    row.connect_destroy(move |_| {
+        println!("Destroying {}", omegalul);
+    });
+
+    (row, accelerator_label)
 }
 
 #[inline]
