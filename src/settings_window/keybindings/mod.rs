@@ -186,7 +186,6 @@ fn create_keybinding_row(
 ) -> (PreferencesRow, Label) {
     let row_box = Box::new(Orientation::Horizontal, 0);
 
-    let omegalul = keybinding.description;
     let description = Label::builder()
         .label(keybinding.description)
         .halign(Align::Start)
@@ -229,10 +228,6 @@ fn create_keybinding_row(
         }
     ));
     row.add_controller(gesture_ctrl);
-
-    row.connect_destroy(move |_| {
-        println!("Destroying {}", omegalul);
-    });
 
     (row, accelerator_label)
 }
