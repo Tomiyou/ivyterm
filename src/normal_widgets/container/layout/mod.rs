@@ -102,7 +102,10 @@ impl ContainerLayout {
                 old_percentage / opposite
             };
             separator.set_percentage(new_percentage);
-            debug!("New percentage after separator was removed {}", new_percentage);
+            debug!(
+                "New percentage after separator was removed {}",
+                new_percentage
+            );
 
             true
         });
