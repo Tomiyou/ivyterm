@@ -64,33 +64,33 @@ impl Keybindings {
         keybindings.push(Keybinding::new(
             &self.move_right,
             KeyboardAction::MoveFocus(Direction::Right),
-            "Move focus to the Pane on the right",
+            "Move focus to the Terminal on the right",
         ));
         keybindings.push(Keybinding::new(
             &self.move_left,
             KeyboardAction::MoveFocus(Direction::Left),
-            "Move focus to the Pane on the left",
+            "Move focus to the Terminal on the left",
         ));
         keybindings.push(Keybinding::new(
             &self.move_up,
             KeyboardAction::MoveFocus(Direction::Up),
-            "Move focus to the Pane on the up",
+            "Move focus to the Terminal on the up",
         ));
         keybindings.push(Keybinding::new(
             &self.move_down,
             KeyboardAction::MoveFocus(Direction::Down),
-            "Move focus to the Pane on the down",
+            "Move focus to the Terminal on the down",
         ));
 
         keybindings.push(Keybinding::new(
             &self.toggle_zoom,
             KeyboardAction::ToggleZoom,
-            "Toggle zoom for the current Pane",
+            "Toggle zoom for the current Terminal",
         ));
         keybindings.push(Keybinding::new(
             &self.copy_selection,
             KeyboardAction::CopySelected,
-            "Copy selected text on the current Pane",
+            "Copy selected text on the current Terminal",
         ));
 
         keybindings.push(Keybinding::new(
@@ -116,7 +116,7 @@ impl Keybindings {
         keybindings.push(Keybinding::new(
             &self.close_pane,
             KeyboardAction::PaneClose,
-            "Close the current Pane",
+            "Close the current Terminal",
         ));
         keybindings.push(Keybinding::new(
             &self.rename_tab,
