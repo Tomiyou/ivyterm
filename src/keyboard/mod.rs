@@ -2,7 +2,7 @@ mod keybindings;
 
 pub use keybindings::{check_keybinding_match, Keybinding, Keybindings};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub enum Direction {
     Left,
     Up,
@@ -10,7 +10,7 @@ pub enum Direction {
     Down,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum KeyboardAction {
     TabNew,
     TabClose,

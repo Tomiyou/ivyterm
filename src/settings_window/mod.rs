@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use general::create_general_page;
 use gtk4::{Align, Box, ColorDialog, ColorDialogButton, Label, Orientation};
-use keybindings::create_keybinding_page;
+use keybindings::KeybindingPage;
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesRow, PreferencesWindow};
 use tmux::create_tmux_page;
 
@@ -42,7 +42,7 @@ pub fn spawn_preferences_window(app: &IvyApplication, config: GlobalConfig) {
     window.add(&tmux_page);
 
     // Keybinding settings page
-    let keybinding_page = create_keybinding_page(app);
+    let keybinding_page = KeybindingPage::new(app);
     window.add(&keybinding_page);
 
     window.present();

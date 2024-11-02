@@ -41,7 +41,7 @@ impl IvyApplication {
         }
 
         // Write new configuration to file
-        config.write_config_to_file();
+        // config.write_config_to_file();
     }
 
     pub fn update_config(&self, new: GlobalConfig) {
