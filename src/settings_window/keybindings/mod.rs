@@ -84,12 +84,6 @@ impl KeybindingPage {
         let imp = self.imp();
         let old_listener = imp.listening.get();
 
-        println!(
-            "Row {} {} focus",
-            new_listener,
-            if listen { "gained" } else { "lost" }
-        );
-
         // If listen is false, it means we stop listening in any case
         if listen == false {
             if let Some(old_listener) = old_listener {
@@ -106,7 +100,6 @@ impl KeybindingPage {
         if let Some(old_listener) = old_listener {
             // If we are already listening to this row, we are done
             if old_listener == new_listener {
-                println!("User double clicked the already focused row");
                 return;
             }
 

@@ -33,8 +33,6 @@ impl ObjectImpl for KeybindingPage {
         // Remove all keybindings
         let mut keybindings = self.keybindings.borrow_mut();
         keybindings.clear();
-
-        println!("Disposed!");
     }
 }
 
@@ -51,10 +49,8 @@ impl KeybindingPage {
 
         if enable {
             obj.add_controller(keyboard_ctrl.clone());
-            println!("Keyboard ctrl ENABLED");
         } else {
             obj.remove_controller(keyboard_ctrl);
-            println!("Keyboard ctrl DISABLED");
         }
     }
 
