@@ -40,6 +40,7 @@ impl Terminal {
             .vexpand(true)
             .hexpand(true)
             .font_desc(config.font.as_ref())
+            .audible_bell(config.terminal_bell)
             .scrollback_lines(config.scrollback_lines)
             .build();
 
@@ -171,6 +172,7 @@ impl Terminal {
             &color_scheme.get(),
         );
         vte.set_scrollback_lines(config.scrollback_lines as i64);
+        vte.set_audible_bell(config.terminal_bell);
     }
 }
 

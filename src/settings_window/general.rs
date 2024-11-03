@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gtk4::{FontDialog, FontDialogButton};
+use gtk4::{CheckButton, FontDialog, FontDialogButton};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage};
 
 use crate::config::GlobalConfig;
@@ -60,6 +60,27 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
         }
     ));
 
+    let terminal_bell = CheckButton::builder().active(borrowed.terminal.terminal_bell).build();
+    terminal_bell.connect_toggled(glib::clone!(
+        #[strong]
+        config,
+        move |terminal_bell| {
+            let mut borrowed = config.borrow_mut();
+            borrowed.terminal.terminal_bell = terminal_bell.is_active();
+        }
+    ));
+
+    // Foreground color
+    let split_color = create_color_button(&borrowed.terminal.split_handle_color);
+    split_color.connect_rgba_notify(glib::clone!(
+        #[strong]
+        config,
+        move |button| {
+            let mut borrowed = config.borrow_mut();
+            borrowed.terminal.split_handle_color = button.rgba().into();
+        }
+    ));
+
     // Build the page itself
     let terminal_font_color = PreferencesGroup::builder()
         .title("Terminal font and colors")
@@ -68,6 +89,8 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     create_setting_row(&terminal_font_color, "Terminal font", main_font);
     create_setting_row(&terminal_font_color, "Foreground color", foreground_color);
     create_setting_row(&terminal_font_color, "Background color", background_color);
+    create_setting_row(&terminal_font_color, "Terminal bell", terminal_bell);
+    create_setting_row(&terminal_font_color, "Split handle color", split_color);
 
     terminal_font_color
 }

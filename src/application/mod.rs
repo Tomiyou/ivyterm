@@ -63,11 +63,13 @@ impl IvyApplication {
         let config = self.imp().config.borrow();
         let background_hex = config.terminal.background.to_hex();
         let tmux_window_hex = config.tmux.window_color.to_hex();
+        let split_handle_hex = config.terminal.split_handle_color.to_hex();
 
         // Update CSS colors (background and separator)
         let binding = self.imp().css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
         let new_css = BASE_CSS
+            .replace("#f0f0f0", &split_handle_hex)
             .replace("#000000", &background_hex)
             .replace("#420a42", &tmux_window_hex);
         css_provider.load_from_data(&new_css);

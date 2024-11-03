@@ -17,6 +17,10 @@ pub struct TerminalConfig {
     pub standard_colors: [IvyColor; 8],
     #[serde(default = "default_bright_colors")]
     pub bright_colors: [IvyColor; 8],
+    #[serde(default = "default_split_handle_color")]
+    pub split_handle_color: IvyColor,
+    #[serde(default)]
+    pub terminal_bell: bool,
 }
 
 impl Default for TerminalConfig {
@@ -28,6 +32,8 @@ impl Default for TerminalConfig {
             background: default_background(),
             standard_colors: default_standard_colors(),
             bright_colors: default_bright_colors(),
+            split_handle_color: default_split_handle_color(),
+            terminal_bell: false,
         }
     }
 }
@@ -71,6 +77,11 @@ pub fn default_foreground() -> IvyColor {
 
 pub fn default_background() -> IvyColor {
     let rgba = RGBA::parse("#000000").unwrap();
+    IvyColor(rgba)
+}
+
+pub fn default_split_handle_color() -> IvyColor {
+    let rgba = RGBA::parse("#ffffff").unwrap();
     IvyColor(rgba)
 }
 
