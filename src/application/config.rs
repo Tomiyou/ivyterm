@@ -33,7 +33,7 @@ impl IvyApplication {
         imp.config.replace(new);
 
         // Now reload the widgets
-        self.reload_css_colors();
+        self.reload_css();
         self.refresh_terminals();
     }
 }

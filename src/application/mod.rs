@@ -16,6 +16,8 @@ use crate::tmux_widgets::IvyTmuxWindow;
 
 const APPLICATION_ID: &str = "com.tomiyou.ivyTerm";
 
+static BASE_CSS: &str = include_str!("style.css");
+
 glib::wrapper! {
     pub struct IvyApplication(ObjectSubclass<imp::IvyApplicationPriv>)
         @extends libadwaita::Application, gtk4::Application, gio::Application,
@@ -30,7 +32,17 @@ impl IvyApplication {
     }
 
     pub fn init_css_provider(&self) {
-        let css_provider = load_css();
+        // Load the CSS file and add it to the provider
+        let css_provider = CssProvider::new();
+        self.parse_css(&css_provider);
+
+        // Add the provider to the default screen
+        gtk4::style_context_add_provider_for_display(
+            &Display::default().expect("Could not connect to a display."),
+            &css_provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         self.imp().css_provider.replace(Some(css_provider));
         debug!("Css provider set!");
     }
@@ -59,20 +71,11 @@ impl IvyApplication {
         };
     }
 
-    fn reload_css_colors(&self) {
-        let config = self.imp().config.borrow();
-        let background_hex = config.terminal.background.to_hex();
-        let tmux_window_hex = config.tmux.window_color.to_hex();
-        let split_handle_hex = config.terminal.split_handle_color.to_hex();
-
+    fn reload_css(&self) {
         // Update CSS colors (background and separator)
         let binding = self.imp().css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
-        let new_css = BASE_CSS
-            .replace("#f0f0f0", &split_handle_hex)
-            .replace("#000000", &background_hex)
-            .replace("#420a42", &tmux_window_hex);
-        css_provider.load_from_data(&new_css);
+        self.parse_css(&css_provider);
 
         self.refresh_terminals();
     }
@@ -111,21 +114,19 @@ impl IvyApplication {
             }
         }
     }
-}
 
-static BASE_CSS: &str = include_str!("style.css");
+    #[inline]
+    fn parse_css(&self, css_provider: &CssProvider) {
+        let config = self.imp().config.borrow();
+        let background_hex = config.terminal.background.to_hex();
+        let tmux_window_hex = config.tmux.window_color.to_hex();
+        let split_handle_hex = config.terminal.split_handle_color.to_hex();
 
-fn load_css() -> CssProvider {
-    // Load the CSS file and add it to the provider
-    let provider = CssProvider::new();
-    provider.load_from_data(BASE_CSS);
+        let css = BASE_CSS
+            .replace("#f0f0f0", &split_handle_hex)
+            .replace("#000000", &background_hex)
+            .replace("#420a42", &tmux_window_hex);
 
-    // Add the provider to the default screen
-    gtk4::style_context_add_provider_for_display(
-        &Display::default().expect("Could not connect to a display."),
-        &provider,
-        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
-
-    provider
+        css_provider.load_from_data(&css);
+    }
 }
