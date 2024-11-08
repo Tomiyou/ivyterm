@@ -60,7 +60,9 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
         }
     ));
 
-    let terminal_bell = CheckButton::builder().active(borrowed.terminal.terminal_bell).build();
+    let terminal_bell = CheckButton::builder()
+        .active(borrowed.terminal.terminal_bell)
+        .build();
     terminal_bell.connect_toggled(glib::clone!(
         #[strong]
         config,

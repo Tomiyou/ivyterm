@@ -42,12 +42,12 @@ impl IvyNormalWindow {
             // If there is only 1 Terminal open, we can close immediately
             let terminal_count = imp.terminals.borrow().len();
             if terminal_count < 2 {
-                return Propagation::Proceed
+                return Propagation::Proceed;
             }
 
             // Check if closing window was allowed by Close dialog
             if imp.close_allowed.get() {
-                return Propagation::Proceed
+                return Propagation::Proceed;
             }
 
             let allow_close = glib::closure_local!(
@@ -58,10 +58,7 @@ impl IvyNormalWindow {
                 }
             );
 
-            spawn_exit_modal(
-                window.upcast_ref(),
-                allow_close,
-            );
+            spawn_exit_modal(window.upcast_ref(), allow_close);
 
             Propagation::Stop
         });
