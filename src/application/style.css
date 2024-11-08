@@ -19,3 +19,8 @@ separator {
 .tmux_window {
     background-color: #420a42;
 }
+
+.close_confirm_heading {
+    font-size: 18px;
+    font-weight: bold;
+}

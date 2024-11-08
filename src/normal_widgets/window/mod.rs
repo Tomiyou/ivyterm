@@ -10,7 +10,7 @@ use log::debug;
 use crate::{
     application::IvyApplication,
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    modals::spawn_new_tmux_modal,
+    modals::{spawn_exit_modal, spawn_new_tmux_modal},
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};
@@ -35,6 +35,36 @@ impl IvyNormalWindow {
         // View stack holds all panes
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view, css_provider);
+
+        window.connect_close_request(|window| {
+            let imp = window.imp();
+
+            // If there is only 1 Terminal open, we can close immediately
+            let terminal_count = imp.terminals.borrow().len();
+            if terminal_count < 2 {
+                return Propagation::Proceed
+            }
+
+            // Check if closing window was allowed by Close dialog
+            if imp.close_allowed.get() {
+                return Propagation::Proceed
+            }
+
+            let allow_close = glib::closure_local!(
+                #[weak]
+                window,
+                move || {
+                    window.imp().close_allowed.replace(true);
+                }
+            );
+
+            spawn_exit_modal(
+                window.upcast_ref(),
+                allow_close,
+            );
+
+            Propagation::Stop
+        });
 
         // Close the tab_view when 0 tabs remain
         let _window = window.clone();
