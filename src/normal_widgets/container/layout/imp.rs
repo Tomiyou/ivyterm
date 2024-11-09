@@ -2,8 +2,7 @@ use std::cell::RefCell;
 
 use gtk4::{Allocation, LayoutManager, Orientation};
 use libadwaita::subclass::prelude::*;
-use libadwaita::{glib, Bin};
-use vte4::{Cast, WidgetExt};
+use libadwaita::{glib, prelude::*, Bin};
 
 use crate::normal_widgets::container::separator::Separator;
 use crate::normal_widgets::container::Container;

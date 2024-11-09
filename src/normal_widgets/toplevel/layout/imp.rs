@@ -1,7 +1,6 @@
 use gtk4::{LayoutManager, Orientation, Widget};
-use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
-use vte4::WidgetExt;
+use libadwaita::{glib, prelude::*};
 
 // Object holding the state
 #[derive(Default)]

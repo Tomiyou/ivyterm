@@ -5,10 +5,8 @@ use glib::Object;
 use gtk4::gdk::Display;
 use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
-use libadwaita::{gio, glib, PreferencesWindow};
+use libadwaita::{gio, glib, prelude::*, PreferencesWindow};
 use log::debug;
-// TODO: This should be libadwaita::prelude::*
-use vte4::{ApplicationExt, Cast, GtkApplicationExt, GtkWindowExt};
 
 use crate::normal_widgets::IvyNormalWindow;
 use crate::settings_window::spawn_preferences_window;

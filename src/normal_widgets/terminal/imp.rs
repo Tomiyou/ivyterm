@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 
-use libadwaita::{glib, subclass::prelude::*};
-use vte4::{Terminal as Vte, WidgetExt};
+use libadwaita::{glib, prelude::*, subclass::prelude::*};
+use vte4::Terminal as Vte;
 
 use crate::normal_widgets::window::IvyNormalWindow;
 

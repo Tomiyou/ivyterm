@@ -2,8 +2,8 @@ use gtk4::{
     gdk::{Event, KeyMatch, ModifierType},
     ShortcutTrigger,
 };
+use libadwaita::prelude::*;
 use serde::{Deserialize, Serialize};
-use vte4::ShortcutTriggerExt;
 
 use super::{Direction, KeyboardAction};
 

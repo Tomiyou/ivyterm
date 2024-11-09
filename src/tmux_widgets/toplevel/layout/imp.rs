@@ -1,9 +1,8 @@
 use std::cell::Cell;
 
 use gtk4::{LayoutManager, Orientation, Widget};
-use libadwaita::glib;
 use libadwaita::subclass::prelude::*;
-use vte4::{Cast, LayoutManagerExt, WidgetExt};
+use libadwaita::{glib, prelude::*};
 
 use crate::tmux_widgets::toplevel::TmuxTopLevel;
 
