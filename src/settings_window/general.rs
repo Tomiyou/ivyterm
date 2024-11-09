@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gtk4::{CheckButton, FontDialog, FontDialogButton};
+use gtk4::{CheckButton, Entry, FontDialog, FontDialogButton};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage};
 
 use crate::config::GlobalConfig;
@@ -60,6 +60,27 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
         }
     ));
 
+    // Scroll lines
+    let scrollback = format!("{}", borrowed.terminal.scrollback_lines);
+    let scrollback = Entry::builder().placeholder_text(&scrollback).build();
+    scrollback.connect_has_focus_notify(glib::clone!(
+        #[strong]
+        config,
+        move |scroll_lines| {
+            let text = scroll_lines.text();
+            if text.is_empty() {
+                return;
+            }
+
+            if let Ok(new_scrollback) = text.parse::<u32>() {
+                println!("New scrollback {}", new_scrollback);
+                let mut borrowed = config.borrow_mut();
+                borrowed.terminal.scrollback_lines = new_scrollback;
+            }
+        }
+    ));
+    // content.append(&scroll_lines);
+
     let terminal_bell = CheckButton::builder()
         .active(borrowed.terminal.terminal_bell)
         .build();
@@ -91,6 +112,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     create_setting_row(&terminal_font_color, "Terminal font", main_font);
     create_setting_row(&terminal_font_color, "Foreground color", foreground_color);
     create_setting_row(&terminal_font_color, "Background color", background_color);
+    create_setting_row(&terminal_font_color, "Scrollback lines", scrollback);
     create_setting_row(&terminal_font_color, "Terminal bell", terminal_bell);
     create_setting_row(&terminal_font_color, "Split handle color", split_color);
 
