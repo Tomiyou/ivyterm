@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ivyTerm
+Comment=Terminal with Tmux integration
+TryExec=ivyterm
+Exec=ivyterm
+Icon=ivyterm_logo
+Type=Application
+Categories=GNOME;GTK;Utility;TerminalEmulator;System;
+StartupNotify=true
+Keywords=terminal;shell;prompt;command;commandline;tmux;
