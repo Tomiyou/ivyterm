@@ -2,7 +2,7 @@
 
 <p align="center">
   <img alt="Alacritty - A fast, cross-platform, OpenGL terminal emulator"
-       src="assets/ivyterm_example.png">
+       src="data/ivyterm_screenshot.png">
 </p>
 
 ## About
