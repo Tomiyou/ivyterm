@@ -5,9 +5,9 @@
   <metadata_license>CC0</metadata_license>
   <project_license>GPL-3.0+</project_license>
   <name>ivyTerm</name>
-  <summary>Rust Flatpak-ed app?</summary>
+  <summary>Terminal emulator with Tmux support</summary>
   <description>
-    <p>This metainfo is part of a Rust Flatpak-ed application</p>
+    <p>Terminal emulator with Tmux support implemented in gtk4-rs and VTE4.</p>
   </description>
   <url type="homepage">https://github.com/Tomiyou/ivyterm/</url>
 <!--
@@ -16,9 +16,9 @@ https://hughsie.github.io/oars/index.html
 -->
   <content_rating type="oars-1.0" />
   <releases>
-    <release version="0.0.1" date="2020-02-08">
+    <release version="0.9.1" date="2024-11-15">
       <description>
-        <p>First release of Rust Flatpak App</p>
+        <p>First release of ivyTerm which supports Flatpak</p>
       </description>
     </release>
   </releases>
