@@ -65,7 +65,7 @@ impl TmuxTopLevel {
     }
 
     pub fn register_terminal(&self, terminal: &TmuxTerminal) {
-        let pane_id = terminal.pane_id();
+        let pane_id = terminal.id();
         let imp = self.imp();
 
         let mut terminals_vec = imp.terminals.borrow_mut();
@@ -80,7 +80,7 @@ impl TmuxTopLevel {
     }
 
     pub fn unregister_terminal(&self, terminal: &TmuxTerminal) {
-        let pane_id = terminal.pane_id();
+        let pane_id = terminal.id();
         let imp = self.imp();
 
         let mut terminals_vec = imp.terminals.borrow_mut();
@@ -110,7 +110,7 @@ impl TmuxTopLevel {
 
         // Grab focus on the correct Terminal
         for terminal in imp.terminals.borrow().iter() {
-            if terminal.pane_id() == term_id {
+            if terminal.id() == term_id {
                 terminal.grab_focus();
                 break;
             }
@@ -173,7 +173,7 @@ impl TmuxTopLevel {
         let focused_terminal = imp.focused_terminal.get();
         let registered_terminals = imp.terminals.borrow();
         for terminal in registered_terminals.iter() {
-            if terminal.pane_id() == focused_terminal {
+            if terminal.id() == focused_terminal {
                 terminal.grab_focus();
                 break;
             }

@@ -209,7 +209,7 @@ impl TopLevel {
     }
 
     pub fn register_terminal(&self, terminal: &Terminal) {
-        let pane_id = terminal.pane_id();
+        let pane_id = terminal.id();
         let imp = self.imp();
 
         let mut terminals_vec = imp.terminals.borrow_mut();
@@ -233,7 +233,7 @@ impl TopLevel {
     }
 
     pub fn unregister_terminal(&self, terminal: &Terminal) {
-        let pane_id = terminal.pane_id();
+        let pane_id = terminal.id();
         let imp = self.imp();
 
         let mut terminals_vec = imp.terminals.borrow_mut();

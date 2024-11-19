@@ -40,7 +40,7 @@ impl TmuxTopLevel {
 
         // TODO: Make this less brute force
         registered_terminals.retain(|terminal| {
-            let term_id = terminal.pane_id();
+            let term_id = terminal.id();
 
             let mut still_exists = false;
             // Check if our registered terminal has NOT been closed
@@ -396,7 +396,7 @@ fn container_callback(
                 Ok(terminal) => {
                     debug!(
                         "Creating new Container to replace the current child TERMINAL {}, position {}",
-                        terminal.pane_id(),
+                        terminal.id(),
                         position
                     );
                 }
@@ -605,7 +605,7 @@ fn print_hierarchy(widget: &impl IsA<Widget>, nested: u32) {
     } else if widget.is::<TmuxTerminal>() {
         print_tab(nested);
         let terminal: TmuxTerminal = widget.as_ref().clone().downcast().unwrap();
-        println!("** Terminal ({}) {}", terminal.pane_id(), terminal.type_());
+        println!("** Terminal ({}) {}", terminal.id(), terminal.type_());
         nested += 1;
     } else if widget.is::<TmuxSeparator>() {
         print_tab(nested);

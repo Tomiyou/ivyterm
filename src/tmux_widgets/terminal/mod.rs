@@ -102,7 +102,7 @@ impl TmuxTerminal {
         terminal
     }
 
-    pub fn pane_id(&self) -> u32 {
+    pub fn id(&self) -> u32 {
         self.imp().id.get()
     }
 
