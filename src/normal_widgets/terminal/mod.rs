@@ -42,6 +42,7 @@ impl Terminal {
             .font_desc(config.font.as_ref())
             .audible_bell(config.terminal_bell)
             .scrollback_lines(config.scrollback_lines)
+            .allow_hyperlink(true)
             .build();
 
         // Add scrollbar
