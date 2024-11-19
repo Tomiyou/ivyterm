@@ -131,9 +131,17 @@ impl Terminal {
 
         // Spawn terminal
         let pty_flags = PtyFlags::DEFAULT;
-        let argv = ["/bin/bash"];
-        let envv = [];
         let spawn_flags = SpawnFlags::DEFAULT;
+
+        // Set shell
+        let mut argv: Vec<&str> = Vec::new();
+        let shell = std::env::var("SHELL").unwrap_or("/bin/bash".to_string());
+        argv.push(&shell);
+
+        // Set environment variables
+        let envv = std::env::vars();
+        let envv: Vec<String> = envv.map(|(key, val)| key + "=" + &val).collect();
+        let envv: Vec<&str> = envv.iter().map(|s| s.as_str()).collect();
 
         vte.spawn_async(
             pty_flags,
