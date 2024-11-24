@@ -31,20 +31,20 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32, i32, i32) {
-        let paned: Container = widget.clone().downcast().unwrap();
+        let container: Container = widget.clone().downcast().unwrap();
 
-        let (minimum, natural) = if orientation == paned.orientation() {
-            self.get_preferred_size_for_same_orientation(&paned, orientation, for_size)
+        let (minimum, natural) = if orientation == container.orientation() {
+            self.get_preferred_size_for_same_orientation(&container, orientation, for_size)
         } else {
-            self.get_preferred_size_for_opposite_orientation(&paned, orientation, for_size)
+            self.get_preferred_size_for_opposite_orientation(&container, orientation, for_size)
         };
 
         (minimum, natural, -1, -1)
     }
 
     fn allocate(&self, widget: &gtk4::Widget, width: i32, height: i32, _baseline: i32) {
-        let paned: Container = widget.clone().downcast().unwrap();
-        let orientation = paned.orientation();
+        let container: Container = widget.clone().downcast().unwrap();
+        let orientation = container.orientation();
 
         let allocations: Vec<Allocation> = if orientation == Orientation::Horizontal {
             let children_sizes = self.get_children_sizes(width);
@@ -74,7 +74,7 @@ impl LayoutManagerImpl for ContainerLayoutPriv {
                 .collect()
         };
 
-        let mut children_iter = paned.first_child();
+        let mut children_iter = container.first_child();
         let mut allocation_iter = allocations.iter();
         while let Some(child) = children_iter {
             let allocation = allocation_iter.next().unwrap();
@@ -117,7 +117,7 @@ impl ContainerLayoutPriv {
 
     fn get_preferred_size_for_same_orientation(
         &self,
-        paned: &Container,
+        container: &Container,
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32) {
@@ -127,7 +127,7 @@ impl ContainerLayoutPriv {
         let mut minimum = 0;
         let mut natural = 0;
 
-        let mut next_child = paned.first_child();
+        let mut next_child = container.first_child();
         while let Some(child) = next_child {
             // We do this here to avoid cloning on downcast()
             next_child = child.next_sibling();

@@ -126,7 +126,7 @@ impl TmuxLayoutPriv {
 
     fn get_preferred_size_for_same_orientation(
         &self,
-        paned: &TmuxContainer,
+        container: &TmuxContainer,
         orientation: gtk4::Orientation,
         for_size: i32,
     ) -> (i32, i32) {
@@ -136,7 +136,7 @@ impl TmuxLayoutPriv {
         let mut minimum = 0;
         let mut natural = 0;
 
-        let mut next_child = paned.first_child();
+        let mut next_child = container.first_child();
         while let Some(child) = next_child {
             // We do this here to avoid cloning on downcast()
             next_child = child.next_sibling();

@@ -145,7 +145,7 @@ impl TopLevel {
             return;
         }
 
-        panic!("Parent is neither Bin nor Paned");
+        panic!("Parent is neither Bin nor Container");
     }
 
     pub fn toggle_zoom(&self, terminal: &Terminal) {
@@ -178,13 +178,13 @@ impl TopLevel {
         terminal.unparent();
 
         // Remove root Container and replace it with Terminal
-        let root_paned: Container = self.child().unwrap().downcast().unwrap();
+        let root_container: Container = self.child().unwrap().downcast().unwrap();
         self.set_child(Some(terminal));
         terminal.grab_focus();
 
         let zoomed = Zoomed {
             terminal: terminal.clone(),
-            root_container: root_paned,
+            root_container,
             terminal_container: container,
             previous_sibling,
             previous_bounds: (x, y, width, height),

@@ -42,14 +42,14 @@ impl TmuxTopLevel {
         terminal.unparent();
 
         // Remove root Container and replace it with Terminal
-        let root_paned: TmuxContainer = self.child().unwrap().downcast().unwrap();
+        let root_container: TmuxContainer = self.child().unwrap().downcast().unwrap();
         self.set_child(Some(&terminal));
         terminal.grab_focus();
 
         Zoomed {
             term_id,
             terminal: terminal,
-            root_container: root_paned,
+            root_container,
             terminal_container: container,
             previous_sibling,
         }
