@@ -1,5 +1,7 @@
 use std::process::{Command, Stdio};
 
+use const_format::concatcp;
+
 #[derive(Debug)]
 pub enum IvyError {
     TmuxSpawnError(String),
@@ -144,4 +146,69 @@ pub fn open_editor(path: &str, ssh_target: &Option<String>) {
         }
         _ => {}
     }
+}
+
+const USERCHARS: &str = "-[:alnum:]";
+const USERCHARS_CLASS: &str = concatcp!("[", USERCHARS, "]");
+const PASSCHARS_CLASS: &str = "[-[:alnum:]\\Q,?;.:/!%$^*&~\"#'\\E]";
+const HOSTCHARS_CLASS: &str = "[-[:alnum:]]";
+const HOST: &str = concatcp!(HOSTCHARS_CLASS, "+(\\.", HOSTCHARS_CLASS, "+)*");
+const PORT: &str = "(?:\\:[[:digit:]]{1,5})?";
+const PATHCHARS_CLASS: &str = "[-[:alnum:]\\Q_$.+!*,;:@&=?/~#%\\E]";
+const PATHTERM_CLASS: &str = "[^\\Q]'.}>) \t\r\n,\"\\E]";
+const SCHEME: &str = concatcp!(
+    "(?:news:|telnet:|nntp:|file:\\/|https?:|ftps?:|sftp:|webcal:",
+    "|irc:|sftp:|ldaps?:|nfs:|smb:|rsync:|ssh:|rlogin:|telnet:|git:",
+    "|git\\+ssh:|bzr:|bzr\\+ssh:|svn:|svn\\+ssh:|hg:|mailto:|magnet:)"
+);
+
+const USERPASS: &str = concatcp!(USERCHARS_CLASS, "+(?:", PASSCHARS_CLASS, "+)?");
+const URLPATH: &str = concatcp!(
+    "(?:(/",
+    PATHCHARS_CLASS,
+    "+(?:[(]",
+    PATHCHARS_CLASS,
+    "*[)])*",
+    PATHCHARS_CLASS,
+    "*)*",
+    PATHTERM_CLASS,
+    ")?"
+);
+
+pub const URL_REGEX_STRINGS: [&str; 5] = [
+    concatcp!(SCHEME, "//(?:", USERPASS, "\\@)?", HOST, PORT, URLPATH),
+    concatcp!("(?:www|ftp)", HOSTCHARS_CLASS, "*\\.", HOST, PORT, URLPATH),
+    concatcp!(
+        "(?:callto:|h323:|sip:)",
+        USERCHARS_CLASS,
+        "[",
+        USERCHARS,
+        ".]*(?:",
+        PORT,
+        "/[a-z0-9]+)?\\@",
+        HOST
+    ),
+    concatcp!(
+        "(?:mailto:)?",
+        USERCHARS_CLASS,
+        "[",
+        USERCHARS,
+        ".]*\\@",
+        HOSTCHARS_CLASS,
+        "+\\.",
+        HOST
+    ),
+    concatcp!("(?:news:|man:|info:)[[:alnum:]\\Q^_{|}~!\"#$%&'()*+,./;:=?`\\E]+"),
+];
+
+pub const PCRE2_MULTILINE: u32 = 0x00000400;
+
+#[macro_export]
+macro_rules! unwrap_or_return {
+    ( $e:expr ) => {
+        match $e {
+            Some(x) => x,
+            None => return,
+        }
+    };
 }

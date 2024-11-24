@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 async-channel = "2.3.1"
+const_format = "0.2.33"
 dirs = "5.0.1"
 enumflags2 = { version = "0.7.10", features = ["std"] }
 glib = "0.20.5"
@@ -16,5 +17,5 @@ libadwaita = "0.7.1"
 log = "0.4.22"
 serde = { version = "1.0.214", features = ["derive"] }
 toml = "0.8.19"
-vte4 = "0.8.0"
+vte4 = { version = "0.8.0", features = ["v0_70"] }
 

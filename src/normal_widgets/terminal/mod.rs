@@ -1,14 +1,19 @@
 mod imp;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation, SpawnFlags};
-use gtk4::{EventControllerKey, Orientation, ScrolledWindow};
+use gtk4::{
+    gdk::{ModifierType, BUTTON_PRIMARY},
+    gio, EventControllerKey, GestureClick, Orientation, ScrolledWindow,
+};
 use libadwaita::{glib, prelude::*};
-use vte4::{PtyFlags, Terminal as Vte, TerminalExt, TerminalExtManual};
+use vte4::{PtyFlags, Regex, Terminal as Vte, TerminalExt, TerminalExtManual};
 
 use crate::{
     application::IvyApplication,
     config::{ColorScheme, TerminalConfig},
+    helpers::{PCRE2_MULTILINE, URL_REGEX_STRINGS},
     keyboard::KeyboardAction,
+    unwrap_or_return,
 };
 
 use super::{toplevel::TopLevel, window::IvyNormalWindow};
@@ -128,6 +133,41 @@ impl Terminal {
             }
         ));
         vte.add_controller(eventctl);
+
+        // Add Regex to recognize URLs
+        for regex in URL_REGEX_STRINGS {
+            let regex = Regex::for_match(regex, PCRE2_MULTILINE).expect("Unable to parse regex");
+            let tag = vte.match_add_regex(&regex, 0);
+            vte.match_set_cursor_name(tag, "pointer");
+        }
+
+        // Allow user to open URLs with Ctrl + click
+        let click_ctrl = GestureClick::builder().button(BUTTON_PRIMARY).build();
+        click_ctrl.connect_pressed(glib::clone!(
+            #[weak]
+            vte,
+            move |click_ctrl, n_clicked, x, y| {
+                if n_clicked != 1 {
+                    return;
+                }
+
+                // Links are only clickable when user holds Ctrl
+                let event = unwrap_or_return!(click_ctrl.current_event());
+                let state = event.modifier_state();
+                if !state.contains(ModifierType::CONTROL_MASK) {
+                    return;
+                }
+
+                // Open the URL
+                let (url, _) = vte.check_match_at(x, y);
+                let url = unwrap_or_return!(url);
+                match gio::AppInfo::launch_default_for_uri(&url, None::<&gio::AppLaunchContext>) {
+                    Ok(_) => {}
+                    Err(err) => eprintln!("Cannot open URL ({}): {}", url, err),
+                }
+            }
+        ));
+        vte.add_controller(click_ctrl);
 
         // Spawn terminal
         let pty_flags = PtyFlags::DEFAULT;
