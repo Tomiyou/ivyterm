@@ -113,7 +113,7 @@ impl TmuxAPI {
                 "Attaching to Tmux session {} on host {}",
                 session_name, ssh_target
             );
-            let remote_command = format!("/usr/bin/tmux -2 -C new-session -A -s {}", session_name);
+            let remote_command = format!("tmux -2 -C new-session -A -s {}", session_name);
             Command::new("ssh")
                 .arg(ssh_target)
                 .arg(remote_command)
