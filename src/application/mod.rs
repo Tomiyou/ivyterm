@@ -54,19 +54,23 @@ impl IvyApplication {
         keybindings.append(&mut parsed_keybindings)
     }
 
-    pub fn new_window(&self, tmux_session: Option<&str>, ssh_target: Option<&str>) {
+    pub fn new_normal_window(&self) {
         let imp = self.imp();
         let binding = imp.css_provider.borrow();
         let css_provider = binding.as_ref().unwrap();
 
-        if let Some(session_name) = tmux_session {
-            let window = IvyTmuxWindow::new(self, css_provider, session_name, ssh_target);
-            window.present();
-        } else {
-            // Create initial Tab
-            let window = IvyNormalWindow::new(self, css_provider);
-            window.present();
-        };
+        // Create initial Tab
+        let window = IvyNormalWindow::new(self, css_provider);
+        window.present();
+    }
+
+    pub fn new_tmux_window(&self, tmux_session: &str, ssh_target: Option<(&str, &str)>) {
+        let imp = self.imp();
+        let binding = imp.css_provider.borrow();
+        let css_provider = binding.as_ref().unwrap();
+
+        let window = IvyTmuxWindow::new(self, css_provider, tmux_session, ssh_target);
+        window.present();
     }
 
     fn reload_css(&self) {

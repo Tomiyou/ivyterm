@@ -5,6 +5,7 @@ use const_format::concatcp;
 #[derive(Debug)]
 pub enum IvyError {
     TmuxSpawnError(String),
+    Blabla,
 }
 
 #[derive(Debug, PartialEq, Eq)]

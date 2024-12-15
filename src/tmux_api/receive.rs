@@ -1,15 +1,11 @@
-use std::{
-    io::{BufRead, BufReader},
-    process::ChildStdout,
-    str::from_utf8,
-};
+use std::str::from_utf8;
 
-use async_channel::{Receiver, Sender};
+use async_channel::Sender;
 use log::debug;
 
 use crate::{helpers::open_editor, tmux_api::TmuxEvent};
 
-use super::{parse_layout::parse_tmux_layout, TmuxCommand};
+use super::{parse_layout::parse_tmux_layout, TmuxCommand, TmuxParserState};
 
 /// Parses Tmux output and replaces octal escapes sequences with correct binary
 /// characters
@@ -68,7 +64,7 @@ fn parse_escaped_output(input: &[u8], prepend_linebreak: bool, empty_lines: usiz
 }
 
 #[inline]
-fn buffer_starts_with(buffer: &Vec<u8>, prefix: &str) -> bool {
+fn buffer_starts_with(buffer: &[u8], prefix: &str) -> bool {
     if prefix.len() > buffer.len() {
         return false;
     }
@@ -85,56 +81,38 @@ fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) {
 }
 
 #[inline]
-pub fn tmux_read_stdout(
-    stdout_stream: ChildStdout,
-    event_channel: Sender<TmuxEvent>,
-    command_queue: Receiver<TmuxCommand>,
-    ssh_target: Option<String>,
-) {
-    let mut buffer = Vec::with_capacity(65534);
-    let mut reader = BufReader::new(stdout_stream);
-
-    // Variable containing Tmux state
-    let mut current_command = None;
-    let mut is_error = false;
-    let mut result_line = 0;
-    let mut empty_line_count = 0;
+pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) {
+    let event_channel = &mut state.event_channel;
+    let command_queue = &mut state.command_queue;
 
     // TODO: Handle output larger than 65534 bytes
-    while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
+    // while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
+    {
         // All output from Tmux is ASCII, except %output which we handle separately
-        if bytes_read == 0 {
-            continue;
+        if buffer.len() == 0 {
+            return;
         }
 
-        // Since we read until (and including) '\n', it will always be at the
-        // end of the buffer. We should strip it here.
-        buffer.pop();
-        if buffer.is_empty() {
-            empty_line_count += 1;
-            continue;
-        }
-
-        debug!("Tmux output: {}", from_utf8(&buffer).unwrap());
+        debug!("Tmux output: .{}.", from_utf8(&buffer).unwrap());
 
         if buffer.is_empty() || buffer[0] != b'%' {
             // This is output from a command we ran
-            if is_error {
+            if state.is_error {
                 let error = from_utf8(&buffer).unwrap();
-                eprintln!("Error: ({:?}) {}", current_command, error);
-            } else if let Some(command) = &current_command {
+                eprintln!("Error: ({:?}) {}", state.current_command, error);
+            } else if let Some(command) = &state.current_command {
                 tmux_command_result(
                     command,
-                    &mut buffer,
-                    result_line,
-                    empty_line_count,
+                    buffer,
+                    state.result_line,
+                    state.empty_line_count,
                     &event_channel,
-                    &ssh_target,
+                    &state.ssh_target,
                 );
             }
 
-            result_line += 1;
-            empty_line_count = 0;
+            state.result_line += 1;
+            state.empty_line_count = 0;
         } else {
             // This is a notification
             if buffer_starts_with(&buffer, "%output") {
@@ -145,15 +123,16 @@ pub fn tmux_read_stdout(
                 receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false));
             } else if buffer_starts_with(&buffer, "%begin") {
                 // Beginning of output from a command we executed
-                current_command = Some(command_queue.recv_blocking().unwrap());
+                state.current_command = Some(command_queue.recv_blocking().unwrap());
             } else if buffer_starts_with(&buffer, "%end") {
                 // End of output from a command we executed
-                if let Some(current_command) = current_command {
+                if let Some(current_command) = &state.current_command {
                     match current_command {
                         TmuxCommand::InitialOutput(pane_id) => {
+                            let pane_id = *pane_id;
                             receive_event(
                                 &event_channel,
-                                TmuxEvent::ScrollOutput(pane_id, empty_line_count),
+                                TmuxEvent::ScrollOutput(pane_id, state.empty_line_count),
                             );
                             receive_event(
                                 &event_channel,
@@ -170,19 +149,19 @@ pub fn tmux_read_stdout(
                     }
                 }
 
-                current_command = None;
-                is_error = false;
-                result_line = 0;
-                empty_line_count = 0;
+                state.current_command = None;
+                state.is_error = false;
+                state.result_line = 0;
+                state.empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%error") {
                 // TODO: We still don't actually print the error
-                eprintln!("Error on command {:?}", current_command);
+                eprintln!("Error on command {:?}", state.current_command);
 
                 // Command we executed produced an error
-                current_command = None;
-                is_error = false;
-                result_line = 0;
-                empty_line_count = 0;
+                state.current_command = None;
+                state.is_error = false;
+                state.result_line = 0;
+                state.empty_line_count = 0;
             } else if buffer_starts_with(&buffer, "%window-pane-changed") {
                 // %window-pane-changed @0 %10
                 let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
@@ -245,15 +224,15 @@ pub fn tmux_read_stdout(
             }
         }
 
-        buffer.clear();
+        // buffer.clear();
     }
-    buffer.clear();
+    // buffer.clear();
 }
 
 #[inline]
 fn tmux_command_result(
     command: &TmuxCommand,
-    buffer: &mut Vec<u8>,
+    buffer: &[u8],
     result_line: usize,
     empty_lines: usize,
     event_channel: &Sender<TmuxEvent>,

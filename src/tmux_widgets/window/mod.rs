@@ -5,6 +5,8 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
+use mio::{Events, Poll};
+use ssh2::Session;
 use tmux::TmuxInitState;
 
 use crate::{
@@ -12,6 +14,7 @@ use crate::{
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
     keyboard::KeyboardAction,
     modals::spawn_new_tmux_modal,
+    ssh::new_session,
     tmux_api::TmuxAPI,
 };
 
@@ -28,7 +31,7 @@ impl IvyTmuxWindow {
         app: &IvyApplication,
         css_provider: &CssProvider,
         tmux_session: &str,
-        ssh_target: Option<&str>,
+        ssh_host: Option<(&str, &str)>,
     ) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));
@@ -108,18 +111,27 @@ impl IvyTmuxWindow {
         window_box.append(&tab_view);
         window.set_content(Some(&window_box));
 
-        // Initialize Tmux API
-        let tmux = TmuxAPI::new(tmux_session, ssh_target, &window).unwrap();
-        window.imp().tmux.replace(Some(tmux));
-
-        // Get initial Tmux layout
-        {
-            let binding = window.imp().tmux.borrow();
-            let tmux = binding.as_ref().unwrap();
-            tmux.get_initial_layout();
+        if let Some((ssh_target, ssh_password)) = ssh_host {
+            new_ssh_session(&window, tmux_session, ssh_target, ssh_password);
+        } else {
+            window.initialize_tmux(tmux_session, None);
         }
 
         window
+    }
+
+    /// Called after both Tmux and SSH session are ready (if it exists)
+    fn initialize_tmux(&self, tmux_session: &str, ssh_session: Option<(Session, Poll, Events)>) {
+        // Initialize Tmux API
+        let tmux = TmuxAPI::new(tmux_session, ssh_session, self).unwrap();
+        self.imp().tmux.replace(Some(tmux));
+
+        // Get initial Tmux layout
+        {
+            let mut binding = self.imp().tmux.borrow_mut();
+            let tmux = binding.as_mut().unwrap();
+            tmux.get_initial_layout();
+        }
     }
 
     pub fn close_tmux_window(&self) {
@@ -241,15 +253,15 @@ impl IvyTmuxWindow {
 
     #[inline]
     pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
-        let tmux = self.imp().tmux.borrow();
-        if let Some(tmux) = tmux.as_ref() {
+        let mut tmux = self.imp().tmux.borrow_mut();
+        if let Some(tmux) = tmux.as_mut() {
             tmux.send_keybinding(action, pane_id);
         }
     }
 
     pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
-        let tmux = self.imp().tmux.borrow();
-        if let Some(tmux) = tmux.as_ref() {
+        let mut tmux = self.imp().tmux.borrow_mut();
+        if let Some(tmux) = tmux.as_mut() {
             tmux.select_terminal(term_id);
         }
     }
@@ -260,8 +272,8 @@ impl IvyTmuxWindow {
         if imp.init_layout_finished.get() == TmuxInitState::Done {
             imp.focused_tab.replace(tab_id);
 
-            let binding = imp.tmux.borrow();
-            let tmux = binding.as_ref().unwrap();
+            let mut binding = imp.tmux.borrow_mut();
+            let tmux = binding.as_mut().unwrap();
             tmux.select_tab(tab_id);
         }
     }
@@ -279,4 +291,40 @@ impl IvyTmuxWindow {
             }
         });
     }
+}
+
+fn new_ssh_session(
+    window: &IvyTmuxWindow,
+    tmux_session: &str,
+    ssh_target: &str,
+    ssh_password: &str,
+) {
+    let tmux_session = tmux_session.to_string();
+    let ssh_target = ssh_target.to_string();
+    let ssh_password = ssh_password.to_string();
+
+    glib::spawn_future_local(glib::clone!(
+        #[weak]
+        window,
+        async move {
+            let ret =
+                match gio::spawn_blocking(move || new_session(&ssh_target, &ssh_password)).await {
+                    Ok(ret) => ret,
+                    Err(_) => {
+                        window.close();
+                        return;
+                    }
+                };
+
+            let tuple = match ret {
+                Ok(ret) => ret,
+                Err(_) => {
+                    window.close();
+                    return;
+                }
+            };
+
+            window.initialize_tmux(&tmux_session, Some(tuple));
+        }
+    ));
 }

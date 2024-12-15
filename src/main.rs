@@ -9,6 +9,7 @@ mod keyboard;
 mod modals;
 mod normal_widgets;
 mod settings_window;
+mod ssh;
 mod tmux_api;
 mod tmux_widgets;
 
@@ -22,7 +23,7 @@ fn main() -> glib::ExitCode {
     });
 
     application.connect_activate(move |app| {
-        app.new_window(None, None);
+        app.new_normal_window();
     });
     application.run()
 }

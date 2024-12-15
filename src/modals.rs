@@ -1,5 +1,5 @@
 use glib::RustClosure;
-use gtk4::{Align, Box, Button, Entry, Label, Orientation};
+use gtk4::{Align, Box, Button, Entry, Label, Orientation, PasswordEntry};
 use libadwaita::{prelude::*, ApplicationWindow, HeaderBar, Window};
 
 use crate::application::IvyApplication;
@@ -67,6 +67,12 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
     content.append(&ssh_label);
     content.append(&ssh_input);
 
+    // SSH password
+    let password_label = Label::new(Some("SSH password:"));
+    let password_input = PasswordEntry::new();
+    content.append(&password_label);
+    content.append(&password_input);
+
     // Button
     let button = Button::builder().label("Attach").build();
     content.append(&button);
@@ -82,6 +88,7 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
         move |_| {
             let tmux_session = session_input.text();
             let ssh_target = ssh_input.text();
+            let ssh_password = password_input.text();
 
             let app = dialog.application();
             dialog.close();
@@ -91,9 +98,9 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
                 let ssh_target = if ssh_target.is_empty() {
                     None
                 } else {
-                    Some(ssh_target.as_str())
+                    Some((ssh_target.as_str(), ssh_password.as_str()))
                 };
-                app.new_window(Some(tmux_session.as_str()), ssh_target);
+                app.new_tmux_window(tmux_session.as_str(), ssh_target);
             }
         }
     ));

@@ -40,8 +40,8 @@ impl IvyTmuxWindow {
     }
 
     pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
-        let binding = self.imp().tmux.borrow();
-        let tmux = match binding.as_ref() {
+        let mut binding = self.imp().tmux.borrow_mut();
+        let tmux = match binding.as_mut() {
             Some(tmux) => tmux,
             None => return,
         };

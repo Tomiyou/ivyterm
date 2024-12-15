@@ -15,7 +15,9 @@ gtk4 = { version = "0.9.3", features = ["v4_10"] }
 lazy_static = "1.5.0"
 libadwaita = "0.7.1"
 log = "0.4.22"
+mio = { version = "1.0.3", features = ["net", "os-poll"] }
 serde = { version = "1.0.214", features = ["derive"] }
+ssh2 = "0.9.4"
+ssh2-config = "0.2.3"
 toml = "0.8.19"
 vte4 = { version = "0.8.0", features = ["v0_70"] }
-
