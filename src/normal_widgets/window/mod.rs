@@ -10,7 +10,8 @@ use log::debug;
 use crate::{
     application::IvyApplication,
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    modals::{spawn_exit_modal, spawn_new_tmux_modal},
+    modals::spawn_exit_modal,
+    ssh::spawn_new_tmux_modal,
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};

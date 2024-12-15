@@ -9,6 +9,7 @@ mod keyboard;
 mod modals;
 mod normal_widgets;
 mod settings_window;
+mod ssh;
 mod tmux_api;
 mod tmux_widgets;
 
