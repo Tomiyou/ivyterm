@@ -3,8 +3,6 @@ use std::cell::{Cell, RefCell};
 use libadwaita::{glib, prelude::*, subclass::prelude::*};
 use vte4::Terminal as Vte;
 
-use crate::tmux_widgets::IvyTmuxWindow;
-
 // Object holding the state
 #[derive(Default)]
 pub struct TerminalPriv {
@@ -41,7 +39,7 @@ impl WidgetImpl for TerminalPriv {
 impl BinImpl for TerminalPriv {}
 
 impl TerminalPriv {
-    pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyTmuxWindow) {
+    pub fn init_values(&self, id: u32, terminal: &Vte) {
         self.id.replace(id);
         self.vte.borrow_mut().replace(terminal.clone());
     }

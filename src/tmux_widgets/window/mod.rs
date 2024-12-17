@@ -2,7 +2,7 @@ mod imp;
 mod tmux;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
+use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
 use mio::{Events, Poll};
@@ -29,7 +29,6 @@ glib::wrapper! {
 impl IvyTmuxWindow {
     pub fn new(
         app: &IvyApplication,
-        css_provider: &CssProvider,
         tmux_session: &str,
         ssh_host: Option<(&str, &str)>,
     ) -> Self {
@@ -45,7 +44,7 @@ impl IvyTmuxWindow {
 
         // View stack holds all panes
         let tab_view = TabView::new();
-        window.imp().initialize(&tab_view, css_provider);
+        window.imp().initialize(&tab_view);
 
         // Close the tab_view when 0 tabs remain
         tab_view.connect_close_page(glib::clone!(

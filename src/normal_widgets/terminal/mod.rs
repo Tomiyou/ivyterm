@@ -56,7 +56,7 @@ impl Terminal {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().init_values(pane_id, &vte, &window);
+        terminal.imp().init_values(pane_id, &vte);
 
         // Add terminal to top level terminal list
         top_level.register_terminal(&terminal);

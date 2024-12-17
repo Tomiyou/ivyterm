@@ -2,8 +2,8 @@ mod imp;
 
 use std::sync::atomic::Ordering;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
-use gtk4::{Align, Box, Button, CssProvider, Orientation, PackType, WindowControls, WindowHandle};
+use glib::{subclass::types::ObjectSubclassIsExt, Object};
+use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
 
@@ -22,7 +22,7 @@ glib::wrapper! {
 }
 
 impl IvyNormalWindow {
-    pub fn new(app: &IvyApplication, css_provider: &CssProvider) -> Self {
+    pub fn new(app: &IvyApplication) -> Self {
         let window: Self = Object::builder().build();
         window.set_application(Some(app));
         window.set_title(Some(APPLICATION_TITLE));
@@ -34,7 +34,7 @@ impl IvyNormalWindow {
 
         // View stack holds all panes
         let tab_view = TabView::new();
-        window.imp().initialize(&tab_view, css_provider);
+        window.imp().initialize(&tab_view);
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");

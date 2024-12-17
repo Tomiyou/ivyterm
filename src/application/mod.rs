@@ -55,21 +55,12 @@ impl IvyApplication {
     }
 
     pub fn new_normal_window(&self) {
-        let imp = self.imp();
-        let binding = imp.css_provider.borrow();
-        let css_provider = binding.as_ref().unwrap();
-
-        // Create initial Tab
-        let window = IvyNormalWindow::new(self, css_provider);
+        let window = IvyNormalWindow::new(self);
         window.present();
     }
 
     pub fn new_tmux_window(&self, tmux_session: &str, ssh_target: Option<(&str, &str)>) {
-        let imp = self.imp();
-        let binding = imp.css_provider.borrow();
-        let css_provider = binding.as_ref().unwrap();
-
-        let window = IvyTmuxWindow::new(self, css_provider, tmux_session, ssh_target);
+        let window = IvyTmuxWindow::new(self, tmux_session, ssh_target);
         window.present();
     }
 

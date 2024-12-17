@@ -2,7 +2,6 @@ use std::cell::{Cell, RefCell};
 use std::sync::atomic::AtomicU32;
 
 use glib::Propagation;
-use gtk4::CssProvider;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*, ApplicationWindow, TabView};
 
@@ -101,7 +100,7 @@ impl ApplicationWindowImpl for IvyWindowPriv {}
 impl AdwApplicationWindowImpl for IvyWindowPriv {}
 
 impl IvyWindowPriv {
-    pub fn initialize(&self, tab_view: &TabView, css_provider: &CssProvider) {
+    pub fn initialize(&self, tab_view: &TabView) {
         let mut binding = self.tab_view.borrow_mut();
         binding.replace(tab_view.clone());
     }

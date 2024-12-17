@@ -51,7 +51,7 @@ impl TmuxTerminal {
         // Create self
         let terminal: Self = Object::builder().build();
         terminal.set_child(Some(&scrolled));
-        terminal.imp().init_values(pane_id, &vte, &window);
+        terminal.imp().init_values(pane_id, &vte);
 
         if window.initial_layout_finished() {
             terminal.imp().set_synced();
