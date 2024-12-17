@@ -22,7 +22,11 @@ impl ObjectSubclass for ContainerLayoutPriv {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for ContainerLayoutPriv {}
+impl ObjectImpl for ContainerLayoutPriv {
+    fn dispose(&self) {
+        self.separators.borrow_mut().clear();
+    }
+}
 
 impl LayoutManagerImpl for ContainerLayoutPriv {
     fn measure(

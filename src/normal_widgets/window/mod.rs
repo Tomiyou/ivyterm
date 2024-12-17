@@ -10,7 +10,7 @@ use log::debug;
 use crate::{
     application::IvyApplication,
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
-    modals::{spawn_exit_modal, spawn_new_tmux_modal},
+    modals::spawn_new_tmux_modal,
 };
 
 use super::{terminal::Terminal, toplevel::TopLevel};
@@ -35,47 +35,6 @@ impl IvyNormalWindow {
         // View stack holds all panes
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view, css_provider);
-
-        window.connect_close_request(|window| {
-            let imp = window.imp();
-
-            // If there is only 1 Terminal open, we can close immediately
-            let terminal_count = imp.terminals.borrow().len();
-            if terminal_count < 2 {
-                return Propagation::Proceed;
-            }
-
-            // Check if closing window was allowed by Close dialog
-            if imp.close_allowed.get() {
-                return Propagation::Proceed;
-            }
-
-            let allow_close = glib::closure_local!(
-                #[weak]
-                window,
-                move || {
-                    window.imp().close_allowed.replace(true);
-                }
-            );
-
-            spawn_exit_modal(window.upcast_ref(), allow_close);
-
-            Propagation::Stop
-        });
-
-        // Close the tab_view when 0 tabs remain
-        tab_view.connect_close_page(glib::clone!(
-            #[weak]
-            window,
-            #[upgrade_or]
-            Propagation::Proceed,
-            move |tab_view, _page| {
-                if tab_view.n_pages() < 2 {
-                    window.close();
-                }
-                Propagation::Proceed
-            }
-        ));
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
@@ -139,13 +98,11 @@ impl IvyNormalWindow {
     }
 
     fn unique_tab_id(&self) -> u32 {
-        let binding = self.imp().next_tab_id.borrow();
-        binding.fetch_add(1, Ordering::Relaxed)
+        self.imp().next_tab_id.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn unique_terminal_id(&self) -> u32 {
-        let binding = self.imp().next_terminal_id.borrow();
-        binding.fetch_add(1, Ordering::Relaxed)
+        self.imp().next_terminal_id.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn new_tab(&self) -> TopLevel {
@@ -192,6 +149,36 @@ impl IvyNormalWindow {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
         debug!("Terminal with ID {} unregistered", pane_id);
+    }
+
+    // TODO: Make this an event
+    pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
+        let close_window = {
+            // Remove all Terminals belonging to the closed Tab
+            let mut terminals = self.imp().terminals.borrow_mut();
+            terminals.retain(|term_id| {
+                let term_id = term_id.id;
+                // If the given term_id is one of the deleted_ids, do NOT retain it
+                for deleted_id in deleted_terms.iter() {
+                    if term_id == *deleted_id {
+                        debug!("Terminal with ID {} unregistered", deleted_id);
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Just in case (mainly for when users uses CloseTab shortcut)
+            let mut tabs = self.imp().tabs.borrow_mut();
+            tabs.retain(|tab_id| tab_id.tab_id() != deleted_tab);
+
+            tabs.len() == 0
+        };
+
+        if close_window {
+            self.close();
+        }
     }
 
     pub fn update_terminal_config(&self, config: &TerminalConfig) {

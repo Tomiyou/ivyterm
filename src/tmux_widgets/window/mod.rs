@@ -232,6 +232,36 @@ impl IvyTmuxWindow {
         debug!("Terminal with ID {} unregistered", pane_id);
     }
 
+    // TODO: Make this an event
+    pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
+        let close_window = {
+            // Remove all Terminals belonging to the closed Tab
+            let mut terminals = self.imp().terminals.borrow_mut();
+            terminals.retain(|term_id| {
+                let term_id = term_id.id;
+                // If the given term_id is one of the deleted_ids, do NOT retain it
+                for deleted_id in deleted_terms.iter() {
+                    if term_id == *deleted_id {
+                        debug!("Terminal with ID {} unregistered", deleted_id);
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Just in case (mainly for when users uses CloseTab shortcut)
+            let mut tabs = self.imp().tabs.borrow_mut();
+            tabs.retain(|tab_id| tab_id.tab_id() != deleted_tab);
+
+            tabs.len() == 0
+        };
+
+        if close_window {
+            self.close();
+        }
+    }
+
     fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
         let tabs = self.imp().tabs.borrow();
         for top_level in tabs.iter() {

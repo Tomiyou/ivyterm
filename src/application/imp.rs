@@ -23,7 +23,12 @@ impl ObjectSubclass for IvyApplicationPriv {
     type ParentType = libadwaita::Application;
 }
 
-impl ObjectImpl for IvyApplicationPriv {}
+impl ObjectImpl for IvyApplicationPriv {
+    fn dispose(&self) {
+        self.css_provider.take();
+        self.keybindings.borrow_mut().clear();
+    }
+}
 impl ApplicationImpl for IvyApplicationPriv {}
 impl GtkApplicationImpl for IvyApplicationPriv {}
 impl AdwApplicationImpl for IvyApplicationPriv {}

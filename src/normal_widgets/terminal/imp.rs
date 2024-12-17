@@ -9,7 +9,6 @@ use crate::normal_widgets::window::IvyNormalWindow;
 #[derive(Default)]
 pub struct TerminalPriv {
     pub vte: RefCell<Option<Vte>>,
-    window: RefCell<Option<IvyNormalWindow>>,
     pub id: Cell<u32>,
 }
 
@@ -22,7 +21,11 @@ impl ObjectSubclass for TerminalPriv {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for TerminalPriv {}
+impl ObjectImpl for TerminalPriv {
+    fn dispose(&self) {
+        self.vte.take();
+    }
+}
 
 // Trait shared by all widgets
 impl WidgetImpl for TerminalPriv {
@@ -40,6 +43,5 @@ impl TerminalPriv {
     pub fn init_values(&self, id: u32, terminal: &Vte, window: &IvyNormalWindow) {
         self.id.replace(id);
         self.vte.borrow_mut().replace(terminal.clone());
-        self.window.borrow_mut().replace(window.clone());
     }
 }

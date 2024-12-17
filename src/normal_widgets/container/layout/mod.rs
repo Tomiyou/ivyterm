@@ -44,7 +44,7 @@ impl ContainerLayout {
             container,
             #[weak]
             separator,
-            #[strong(rename_to = layout)]
+            #[weak(rename_to = layout)]
             self,
             move |drag, offset_x, offset_y| {
                 let (start_x, start_y) = drag.start_point().unwrap();

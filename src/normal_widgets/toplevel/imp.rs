@@ -44,7 +44,28 @@ impl ObjectSubclass for TopLevelPriv {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for TopLevelPriv {}
+impl ObjectImpl for TopLevelPriv {
+    fn dispose(&self) {
+        self.tab_view.take();
+
+        let mut terminals = self.terminals.borrow_mut();
+        let mut term_ids = Vec::new();
+        for terminal in terminals.iter() {
+            term_ids.push(terminal.id());
+        }
+        terminals.clear();
+
+        if let Some(window) = self.window.take() {
+            window.tab_closed(self.tab_id.get(), term_ids);
+        }
+
+        let mut lru_terminals = self.lru_terminals.borrow_mut();
+        lru_terminals.clear();
+
+        self.zoomed.take();
+        self.name.take();
+    }
+}
 
 // Trait shared by all widgets
 impl WidgetImpl for TopLevelPriv {}

@@ -47,6 +47,8 @@ impl ObjectImpl for ContainerPriv {
         while let Some(child) = self.obj().first_child() {
             child.unparent();
         }
+        self.window.take();
+        self.layout.take();
     }
 }
 

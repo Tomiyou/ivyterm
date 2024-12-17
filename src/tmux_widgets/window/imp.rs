@@ -19,7 +19,6 @@ pub struct IvyWindowPriv {
     // TODO: Use SortedVec
     pub tabs: RefCell<Vec<TmuxTopLevel>>,
     pub terminals: RefCell<SortedVec<TmuxTerminal>>,
-    pub css_provider: RefCell<CssProvider>,
     pub char_size: Cell<(i32, i32)>,
     pub focused_tab: Cell<u32>,
     pub session: Cell<Option<(u32, String)>>,
@@ -35,10 +34,43 @@ impl ObjectSubclass for IvyWindowPriv {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for IvyWindowPriv {}
+impl ObjectImpl for IvyWindowPriv {
+    fn dispose(&self) {
+        self.tmux.take();
+
+        // Close all remaining pages
+        if let Some(tab_view) = self.tab_view.take() {
+            if tab_view.n_pages() > 0 {
+                println!("Closing {} pages", tab_view.n_pages());
+                let first_page = tab_view.nth_page(0);
+                tab_view.close_pages_after(&first_page);
+                tab_view.close_page(&first_page);
+    
+                println!(
+                    "Remaining pages {}",
+                    tab_view.n_pages(),
+                );
+            }
+        }
+
+        // Remove all remaining Tabs
+        self.tabs.borrow_mut().clear();
+        self.terminals.borrow_mut().clear();
+    }
+}
 
 // Trait shared by all widgets
-impl WidgetImpl for IvyWindowPriv {}
+impl WidgetImpl for IvyWindowPriv {
+    fn unrealize(&self) {
+        self.parent_unrealize();
+        
+        // TODO: GTK code currently does NOT clean up if closing window directly ...
+        self.tmux.take();
+        self.tab_view.take();
+        self.terminals.borrow_mut().clear();
+        self.tabs.borrow_mut().clear();
+    }
+}
 
 // Trait shared by all windows
 impl WindowImpl for IvyWindowPriv {}
@@ -53,7 +85,5 @@ impl IvyWindowPriv {
     pub fn initialize(&self, tab_view: &TabView, css_provider: &CssProvider) {
         let mut binding = self.tab_view.borrow_mut();
         binding.replace(tab_view.clone());
-
-        self.css_provider.replace(css_provider.clone());
     }
 }
