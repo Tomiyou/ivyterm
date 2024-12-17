@@ -12,7 +12,7 @@ fn create_appearance_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGro
     // Foreground color
     let window_color = create_color_button(&borrowed.tmux.window_color);
     window_color.connect_rgba_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();

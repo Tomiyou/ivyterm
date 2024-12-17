@@ -30,7 +30,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     let main_font = FontDialogButton::new(Some(FontDialog::new()));
     main_font.set_font_desc(borrowed.terminal.font.as_ref());
     main_font.connect_font_desc_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
@@ -41,7 +41,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     // Foreground color
     let foreground_color = create_color_button(&borrowed.terminal.foreground);
     foreground_color.connect_rgba_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
@@ -52,7 +52,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     // Background
     let background_color = create_color_button(&borrowed.terminal.background);
     background_color.connect_rgba_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
@@ -64,7 +64,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     let scrollback = format!("{}", borrowed.terminal.scrollback_lines);
     let scrollback = Entry::builder().placeholder_text(&scrollback).build();
     scrollback.connect_has_focus_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |scroll_lines| {
             let text = scroll_lines.text();
@@ -85,7 +85,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
         .active(borrowed.terminal.terminal_bell)
         .build();
     terminal_bell.connect_toggled(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |terminal_bell| {
             let mut borrowed = config.borrow_mut();
@@ -96,7 +96,7 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     // Foreground color
     let split_color = create_color_button(&borrowed.terminal.split_handle_color);
     split_color.connect_rgba_notify(glib::clone!(
-        #[strong]
+        #[weak]
         config,
         move |button| {
             let mut borrowed = config.borrow_mut();
@@ -128,7 +128,7 @@ fn create_standard_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGrou
     for (idx, _) in borrowed.terminal.standard_colors.iter().enumerate() {
         let button = create_color_button(&borrowed.terminal.standard_colors[idx]);
         button.connect_rgba_notify(glib::clone!(
-            #[strong]
+            #[weak]
             config,
             move |button| {
                 let mut borrowed = config.borrow_mut();
@@ -152,7 +152,7 @@ fn create_bright_colors(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup 
     for (idx, _) in borrowed.terminal.bright_colors.iter().enumerate() {
         let button = create_color_button(&borrowed.terminal.bright_colors[idx]);
         button.connect_rgba_notify(glib::clone!(
-            #[strong]
+            #[weak]
             config,
             move |button| {
                 let mut borrowed = config.borrow_mut();

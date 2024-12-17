@@ -40,9 +40,9 @@ impl ContainerLayout {
         // Add ability to drag
         let drag = GestureDrag::new();
         drag.connect_drag_update(glib::clone!(
-            #[strong]
+            #[weak]
             container,
-            #[strong]
+            #[weak]
             separator,
             #[strong(rename_to = layout)]
             self,

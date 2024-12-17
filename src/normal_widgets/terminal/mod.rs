@@ -26,14 +26,10 @@ glib::wrapper! {
 
 impl Terminal {
     pub fn new(top_level: &TopLevel, window: &IvyNormalWindow, pane_id: Option<u32>) -> Self {
-        let window = window.clone();
-
         let pane_id = match pane_id {
             Some(pane_id) => pane_id,
             None => window.unique_terminal_id(),
         };
-
-        let top_level = top_level.clone();
 
         let app = window.application().unwrap();
         let app: IvyApplication = app.downcast().unwrap();
@@ -117,10 +113,14 @@ impl Terminal {
 
         let eventctl = EventControllerKey::new();
         eventctl.connect_key_pressed(glib::clone!(
-            #[strong]
+            #[weak]
             terminal,
-            #[strong]
+            #[weak]
             vte,
+            #[weak]
+            top_level,
+            #[upgrade_or]
+            Propagation::Proceed,
             move |eventctl, _keyval, _key, _state| {
                 if let Some(event) = eventctl.current_event() {
                     // Check if pressed keys match a keybinding

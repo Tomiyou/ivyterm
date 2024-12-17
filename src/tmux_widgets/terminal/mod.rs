@@ -26,8 +26,6 @@ glib::wrapper! {
 
 impl TmuxTerminal {
     pub fn new(top_level: &TmuxTopLevel, window: &IvyTmuxWindow, pane_id: u32) -> Self {
-        let window = window.clone();
-
         let app = window.application().unwrap();
         let app: IvyApplication = app.downcast().unwrap();
 
@@ -85,8 +83,10 @@ impl TmuxTerminal {
         eventctl.connect_key_pressed(glib::clone!(
             #[weak]
             vte,
-            #[strong]
+            #[weak]
             top_level,
+            #[weak]
+            window,
             #[upgrade_or]
             Propagation::Proceed,
             move |eventctl, keyval, key, state| {

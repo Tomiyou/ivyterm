@@ -64,18 +64,23 @@ impl IvyNormalWindow {
         });
 
         // Close the tab_view when 0 tabs remain
-        let _window = window.clone();
-        tab_view.connect_close_page(move |tab_view, _page| {
-            if tab_view.n_pages() < 2 {
-                _window.close();
+        tab_view.connect_close_page(glib::clone!(
+            #[weak]
+            window,
+            #[upgrade_or]
+            Propagation::Proceed,
+            move |tab_view, _page| {
+                if tab_view.n_pages() < 2 {
+                    window.close();
+                }
+                Propagation::Proceed
             }
-            Propagation::Proceed
-        });
+        ));
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
         tmux_button.connect_clicked(glib::clone!(
-            #[strong]
+            #[weak]
             window,
             move |_| {
                 spawn_new_tmux_modal(window.upcast_ref());
@@ -84,7 +89,7 @@ impl IvyNormalWindow {
         // Tmux session spawn
         let settings_button = Button::with_label("Settings");
         settings_button.connect_clicked(glib::clone!(
-            #[strong]
+            #[weak]
             app,
             move |_| {
                 app.show_settings();
