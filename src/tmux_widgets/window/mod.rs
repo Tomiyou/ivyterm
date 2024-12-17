@@ -210,6 +210,10 @@ impl IvyTmuxWindow {
 
             true
         });
+
+        // Remove the tab from the tab list
+        let mut tabs = imp.tabs.borrow_mut();
+        tabs.retain(|tab| tab != closing_tab);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &TmuxTerminal) {

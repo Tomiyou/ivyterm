@@ -168,10 +168,17 @@ impl IvyNormalWindow {
     }
 
     pub fn close_tab(&self, child: &TopLevel) {
-        let binding = self.imp().tab_view.borrow();
+        let imp = self.imp();
+        let binding = imp.tab_view.borrow();
+
+        // Close the tab (page) in TabView
         let tab_view = binding.as_ref().unwrap();
         let page = tab_view.page(child);
         tab_view.close_page(&page);
+
+        // Remove the tab from the tab list
+        let mut tabs = imp.tabs.borrow_mut();
+        tabs.retain(|tab| tab != child);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
