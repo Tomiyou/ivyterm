@@ -7,16 +7,16 @@ edition = "2021"
 
 [dependencies]
 async-channel = "2.3.1"
-const_format = "0.2.33"
+const_format = "0.2.34"
 dirs = "5.0.1"
 enumflags2 = { version = "0.7.10", features = ["std"] }
-glib = "0.20.5"
-gtk4 = "0.9.3"
+glib = "0.20.7"
+gtk4 = "0.9.4"
 lazy_static = "1.5.0"
 libadwaita = "0.7.1"
 log = "0.4.22"
 mio = { version = "1.0.3", features = ["net", "os-poll"] }
-serde = { version = "1.0.214", features = ["derive"] }
+serde = { version = "1.0.216", features = ["derive"] }
 ssh2 = "0.9.4"
 ssh2-config = "0.2.3"
 toml = "0.8.19"
