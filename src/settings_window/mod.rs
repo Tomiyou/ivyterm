@@ -1,7 +1,8 @@
+#![allow(deprecated)]
 use std::{cell::RefCell, rc::Rc};
 
 use general::create_general_page;
-use gtk4::{Align, Box, ColorDialog, ColorDialogButton, Label, Orientation};
+use gtk4::{Align, Box, ColorButton, Label, Orientation};
 use keybindings::KeybindingPage;
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesRow, PreferencesWindow};
 use tmux::create_tmux_page;
@@ -37,7 +38,7 @@ pub fn spawn_preferences_window(app: &IvyApplication, config: GlobalConfig) {
     window.connect_destroy(glib::clone!(
         #[weak]
         app,
-        #[weak]
+        #[strong]
         config,
         #[weak]
         keybinding_page,
@@ -75,9 +76,8 @@ fn create_setting_row(pref_group: &PreferencesGroup, name: &str, child: impl IsA
     pref_group.add(&row);
 }
 
-fn create_color_button(data: &IvyColor) -> ColorDialogButton {
-    let button = ColorDialogButton::new(Some(ColorDialog::new()));
-    button.set_rgba(data.as_ref());
+fn create_color_button(data: &IvyColor) -> ColorButton {
+    let button = ColorButton::with_rgba(data.as_ref());
 
     button
 }
