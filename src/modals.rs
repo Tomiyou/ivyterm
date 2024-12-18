@@ -53,7 +53,14 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
         .build();
 
     let header_bar = HeaderBar::new();
-    let content = Box::new(Orientation::Vertical, 5);
+    let content = Box::builder()
+        .orientation(Orientation::Vertical)
+        .spacing(10)
+        .margin_bottom(10)
+        .margin_end(10)
+        .margin_start(10)
+        .margin_top(10)
+        .build();
 
     // Tmux session input
     let session_label = Label::new(Some("Tmux session:"));
@@ -62,13 +69,13 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
     content.append(&session_input);
 
     // SSH input
-    let ssh_label = Label::new(Some("SSH host:"));
+    let ssh_label = Label::new(Some("SSH host (optional):"));
     let ssh_input = Entry::new();
     content.append(&ssh_label);
     content.append(&ssh_input);
 
     // SSH password
-    let password_label = Label::new(Some("SSH password:"));
+    let password_label = Label::new(Some("SSH password (optional, public key preferred):"));
     let password_input = PasswordEntry::new();
     content.append(&password_label);
     content.append(&password_input);
