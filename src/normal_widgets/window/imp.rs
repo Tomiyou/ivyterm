@@ -32,49 +32,46 @@ impl ObjectSubclass for IvyWindowPriv {
 // Trait shared by all GObjects
 impl ObjectImpl for IvyWindowPriv {
     fn dispose(&self) {
-        // Close all remaining pages
-        if let Some(tab_view) = self.tab_view.take() {
-            if tab_view.n_pages() > 0 {
-                println!("Closing {} pages", tab_view.n_pages());
-                let first_page = tab_view.nth_page(0);
-                tab_view.close_pages_after(&first_page);
-                tab_view.close_page(&first_page);
-    
-                println!(
-                    "Remaining pages {}",
-                    tab_view.n_pages(),
-                );
-            }
-        }
-
         // Remove all remaining Tabs
         self.tabs.borrow_mut().clear();
         self.terminals.borrow_mut().clear();
+
+        // Close all remaining pages
+        if let Some(tab_view) = self.tab_view.take() {
+            if tab_view.n_pages() > 0 {
+                let first_page = tab_view.nth_page(0);
+                tab_view.close_pages_after(&first_page);
+                tab_view.close_page(&first_page);
+            }
+        }
     }
 }
 
 // Trait shared by all widgets
-impl WidgetImpl for IvyWindowPriv {
-    fn unrealize(&self) {
-        self.parent_unrealize();
-
-        // TODO: GTK code currently does NOT clean up if closing window directly ...
-        self.tab_view.take();
-        self.terminals.borrow_mut().clear();
-        self.tabs.borrow_mut().clear();
-    }
-}
+impl WidgetImpl for IvyWindowPriv {}
 
 // Trait shared by all windows
 impl WindowImpl for IvyWindowPriv {
     fn close_request(&self) -> Propagation {
         let terminal_count = self.terminals.borrow().len();
-        let close_allowed = self.close_allowed.get();
 
-        // If there is only 1 Terminal open, we can close immediately
-        // If user confirmed close, we can also close immediately
-        if terminal_count < 2 || close_allowed {
+        // If there are no Terminals open, we can close immediately
+        if terminal_count < 1 {
             return Propagation::Proceed;
+        }
+
+        // If user confirmed close, we can start closing tabs, then wait for 
+        // dispose to call tab_closed() when everything is actually released
+        if self.close_allowed.get() || terminal_count < 2 {
+            self.tabs.borrow_mut().clear();
+
+            let tab_view = self.tab_view.take().unwrap();
+            if tab_view.n_pages() > 0 {
+                let first_page = tab_view.nth_page(0);
+                tab_view.close_other_pages(&first_page);
+                tab_view.close_page(&first_page);
+            }
+            return Propagation::Stop;
         }
 
         // If there are more than 2 terminals left, ask the user if he really wants

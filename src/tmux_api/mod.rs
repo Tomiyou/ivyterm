@@ -25,6 +25,12 @@ pub struct TmuxAPI {
     resize_future: bool,
 }
 
+impl Drop for TmuxAPI {
+    fn drop(&mut self) {
+        println!("Dropping TMUX");
+    }
+}
+
 pub struct LayoutSync {
     pub tab_id: u32,
     pub layout: Vec<TmuxPane>,

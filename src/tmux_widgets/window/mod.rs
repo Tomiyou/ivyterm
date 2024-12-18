@@ -233,6 +233,7 @@ impl IvyTmuxWindow {
 
     // TODO: Make this an event
     pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
+        // We do it this way so all RefCells are dropped
         let close_window = {
             // Remove all Terminals belonging to the closed Tab
             let mut terminals = self.imp().terminals.borrow_mut();

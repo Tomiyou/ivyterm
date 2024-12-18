@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 
+use glib::Propagation;
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, ApplicationWindow, TabView};
 
@@ -36,25 +37,17 @@ impl ObjectSubclass for IvyWindowPriv {
 impl ObjectImpl for IvyWindowPriv {
     fn dispose(&self) {
         self.tmux.take();
+        self.tabs.borrow_mut().clear();
+        self.terminals.borrow_mut().clear();
 
         // Close all remaining pages
         if let Some(tab_view) = self.tab_view.take() {
             if tab_view.n_pages() > 0 {
-                println!("Closing {} pages", tab_view.n_pages());
                 let first_page = tab_view.nth_page(0);
-                tab_view.close_pages_after(&first_page);
+                tab_view.close_other_pages(&first_page);
                 tab_view.close_page(&first_page);
-    
-                println!(
-                    "Remaining pages {}",
-                    tab_view.n_pages(),
-                );
             }
         }
-
-        // Remove all remaining Tabs
-        self.tabs.borrow_mut().clear();
-        self.terminals.borrow_mut().clear();
     }
 }
 
@@ -62,8 +55,8 @@ impl ObjectImpl for IvyWindowPriv {
 impl WidgetImpl for IvyWindowPriv {
     fn unrealize(&self) {
         self.parent_unrealize();
-        
-        // TODO: GTK code currently does NOT clean up if closing window directly ...
+
+        // TODO: GTK code currently does NOT clean up closing window directly ...
         self.tmux.take();
         self.tab_view.take();
         self.terminals.borrow_mut().clear();
@@ -72,7 +65,29 @@ impl WidgetImpl for IvyWindowPriv {
 }
 
 // Trait shared by all windows
-impl WindowImpl for IvyWindowPriv {}
+impl WindowImpl for IvyWindowPriv {
+    fn close_request(&self) -> Propagation {
+        let terminal_count = self.terminals.borrow().len();
+
+        // If there are no Terminals open, we can close immediately
+        if terminal_count < 1 {
+            return Propagation::Proceed;
+        }
+
+        // Start closing tabs, then wait for dispose to call tab_closed()
+        // when everything is actually released
+        self.tabs.borrow_mut().clear();
+
+        let tab_view = self.tab_view.take().unwrap();
+        if tab_view.n_pages() > 0 {
+            let first_page = tab_view.nth_page(0);
+            tab_view.close_other_pages(&first_page);
+            tab_view.close_page(&first_page);
+        }
+
+        Propagation::Stop
+    }
+}
 
 // Trait shared by all application windows
 impl ApplicationWindowImpl for IvyWindowPriv {}
