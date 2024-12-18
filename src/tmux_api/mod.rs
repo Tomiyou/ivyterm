@@ -7,7 +7,7 @@ use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use mio::{Events, Poll};
 use receive::tmux_parse_line;
-use ssh2::Session;
+use ssh2::{DisconnectCode, Session};
 
 use crate::helpers::IvyError;
 use crate::keyboard::Direction;
@@ -19,6 +19,7 @@ mod receive;
 mod send;
 
 pub struct TmuxAPI {
+    ssh_session: Option<Session>,
     stdin_stream: Box<dyn Write>,
     command_queue: Sender<TmuxCommand>,
     window_size: (i32, i32),
@@ -28,6 +29,13 @@ pub struct TmuxAPI {
 impl Drop for TmuxAPI {
     fn drop(&mut self) {
         println!("Dropping TMUX");
+        if let Some(ssh_session) = &self.ssh_session {
+            if let Err(err) =
+                ssh_session.disconnect(Some(DisconnectCode::ByApplication), "Tmux closed", None)
+            {
+                eprintln!("Error disconnecting from SSH session: {}", err);
+            }
+        }
     }
 }
 
@@ -149,10 +157,11 @@ impl TmuxAPI {
             new_with_ssh(session_name, tuple, tmux_event_sender, cmd_queue_receiver)
         } else {
             new_without_ssh(session_name, tmux_event_sender, cmd_queue_receiver)
+                .map(|ok| (ok, None))
         };
-        let writer = match spawn {
+        let (writer, ssh_session) = match spawn {
             Err(_) => return Err(IvyError::Blabla),
-            Ok(writer) => writer,
+            Ok(ok) => ok,
         };
 
         // Receive events from the channel on main thread
@@ -168,6 +177,7 @@ impl TmuxAPI {
 
         // Handle Tmux STDIN
         let tmux = TmuxAPI {
+            ssh_session,
             stdin_stream: writer,
             command_queue: cmd_queue_sender,
             window_size: (0, 0),
@@ -183,14 +193,12 @@ fn new_with_ssh(
     tuple: (Session, Poll, Events),
     tmux_event_sender: Sender<TmuxEvent>,
     cmd_queue_receiver: Receiver<TmuxCommand>,
-) -> Result<Box<dyn Write>, ()> {
+) -> Result<(Box<dyn Write>, Option<Session>), ()> {
     let (session, mut poll, mut events) = tuple;
 
     let command = format!("tmux -2 -C new-session -A -s {}", session_name);
     let mut channel = session.channel_session().unwrap();
-    channel
-        .exec(&command)
-        .unwrap();
+    channel.exec(&command).unwrap();
     session.set_blocking(false);
 
     let ssh_stdin = channel.stream(0);
@@ -198,8 +206,10 @@ fn new_with_ssh(
     let mut ssh_stderr = channel.stderr();
 
     spawn_blocking(move || {
-        let mut buffer = vec![0; 65534];
         let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
+        let mut stdout_buffer = vec![0; 65534];
+        let mut stderr_buffer = vec![0; 4096];
+        let stderr = io::stderr();
 
         loop {
             poll.poll(&mut events, None).unwrap();
@@ -207,9 +217,9 @@ fn new_with_ssh(
                 match event.token() {
                     SSH_TOKEN => {
                         if event.is_readable() {
-                            match ssh_stdout.read(&mut buffer) {
+                            match ssh_stdout.read(&mut stdout_buffer) {
                                 Ok(bytes_read) => {
-                                    let mut slice = &buffer[..bytes_read];
+                                    let mut slice = &stdout_buffer[..bytes_read];
 
                                     let mut i = 0;
                                     while i < slice.len() {
@@ -227,18 +237,17 @@ fn new_with_ssh(
                                 }
                                 Err(e) => {
                                     if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        println!("Error reading Tmux stdout: {}", e);
+                                        println!("Error reading Tmux stdout: {}, {:?}", e, e.kind());
                                         return;
                                     }
                                 }
                             }
 
-                            let stderr = io::stderr();
-                            let mut stderr = stderr.lock();
-                            let mut buf = vec![0; 4096];
-                            match ssh_stderr.read(&mut buf) {
-                                Ok(_) => {
-                                    let s = String::from_utf8(buf).unwrap();
+                            match ssh_stderr.read(&mut stderr_buffer) {
+                                Ok(bytes_read) => {
+                                    let data = stdout_buffer[..bytes_read].to_vec();
+                                    let s = String::from_utf8(data).unwrap();
+                                    let mut stderr = stderr.lock();
                                     stderr.write(s.as_bytes()).unwrap();
                                 }
                                 Err(e) => {
@@ -265,7 +274,7 @@ fn new_with_ssh(
         }
     });
 
-    return Ok(Box::new(ssh_stdin));
+    return Ok((Box::new(ssh_stdin), Some(session)));
 }
 
 fn new_without_ssh(
