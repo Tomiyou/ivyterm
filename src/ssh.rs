@@ -9,7 +9,7 @@ use std::{
 use dirs::home_dir;
 use log::debug;
 use mio::{net::TcpStream, Events, Interest, Poll, Token};
-use ssh2::{MethodType, Session};
+use ssh2::{DisconnectCode, MethodType, Session};
 use ssh2_config::{HostParams, ParseRule, SshConfig};
 
 pub const SSH_TOKEN: Token = Token(0);
@@ -30,6 +30,10 @@ fn check_connected(tcp: &mut TcpStream) -> Result<(), ()> {
         }
 
         for event in events.iter() {
+            if event.is_error() || event.is_write_closed() || event.is_read_closed() {
+                return Err(());
+            }
+
             match event.token() {
                 SSH_TOKEN => {
                     //  4. Check `TcpStream::take_error`. If it returns an error, then
@@ -106,8 +110,6 @@ fn connect_tcp(host: &str) -> Option<(TcpStream, Poll, Events)> {
 
             return Some((tcp, poll, events));
         }
-
-        println!("Polling next socket address");
     }
 
     return None;
@@ -137,15 +139,15 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
 
     // Parse username
     let username = match params.user.as_ref() {
-        Some(u) => {
-            u.clone()
+        Some(u) => u.clone(),
+        None => {
+            if let Some(username) = username {
+                username.to_string()
+            } else {
+                eprintln!("No username provided for SSH");
+                return Err(());
+            }
         }
-        None => if let Some(username) = username {
-            username.to_string()
-        } else {
-            eprintln!("No username provided for SSH");
-            return Err(());
-        },
     };
     debug!("SSH username: {}, host: {}", username, host);
 
@@ -153,7 +155,6 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     let (tcp, poll, events) = match connect_tcp(&host) {
         Some(ret) => ret,
         None => {
-            eprintln!("No suitable socket address found; connection timeout");
             return Err(());
         }
     };
@@ -176,17 +177,26 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
         ssh2::ErrorCode::Session(-18) => {
             debug!("Error authenticating with user agent, trying password")
         }
-        _ => return Err(()),
+        _ => {
+            let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
+            return Err(());
+        }
     }
 
     if let Err(err) = session.userauth_password("tomaz", password) {
         println!("Password authentication failed: {}!", err);
-        return Err(());
+        {
+            let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
+            return Err(());
+        };
     }
 
     if !session.authenticated() {
         println!("Authentication failed without reason!");
-        return Err(());
+        {
+            let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
+            return Err(());
+        };
     }
 
     println!("Established connection with {}", host);
@@ -245,62 +255,3 @@ fn configure_session(session: &mut Session, params: &HostParams) {
         }
     }
 }
-
-// fn authenticate_ssh(parent: &IvyTmuxWindow) {
-//     let app = parent.application().unwrap();
-
-//     let dialog = Window::builder()
-//         .application(&app)
-//         .title("Attach new Tmux session")
-//         .modal(true)
-//         .transient_for(parent)
-//         .build();
-
-//     let header_bar = HeaderBar::new();
-//     let content = Box::new(Orientation::Vertical, 5);
-
-//     // Tmux session input
-//     let session_label = Label::new(Some("Tmux session:"));
-//     let session_input = Entry::new();
-//     content.append(&session_label);
-//     content.append(&session_input);
-
-//     // SSH input
-//     let ssh_label = Label::new(Some("SSH host:"));
-//     let ssh_input = Entry::new();
-//     content.append(&ssh_label);
-//     content.append(&ssh_input);
-
-//     // Button
-//     let button = Button::builder().label("Attach").build();
-//     content.append(&button);
-
-//     let window_box = Box::new(Orientation::Vertical, 0);
-//     window_box.append(&header_bar);
-//     window_box.append(&content);
-//     dialog.set_content(Some(&window_box));
-
-//     button.connect_clicked(glib::clone!(
-//         #[weak]
-//         dialog,
-//         move |_| {
-//             let tmux_session = session_input.text();
-//             let ssh_target = ssh_input.text();
-
-//             // let app = dialog.application();
-//             // dialog.close();
-
-//             // if let Some(app) = app {
-//             //     let app: IvyApplication = app.downcast().unwrap();
-//             //     let ssh_target = if ssh_target.is_empty() {
-//             //         None
-//             //     } else {
-//             //         Some(ssh_target.as_str())
-//             //     };
-//             //     app.new_window(Some(tmux_session.as_str()), ssh_target);
-//             // }
-//         }
-//     ));
-
-//     dialog.present();
-// }
