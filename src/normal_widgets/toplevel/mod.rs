@@ -2,7 +2,7 @@ mod imp;
 mod layout;
 
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{graphene::Rect, Orientation, Widget};
+use gtk4::{gdk::Rectangle, graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
@@ -170,7 +170,7 @@ impl TopLevel {
         // Zoom the terminal
 
         // We need to remember the current width and height for the unzoom portion
-        let (x, y, width, height) = terminal.bounds().unwrap();
+        let allocation = terminal.allocation();
 
         // Remove Terminal from its parent Container
         let container: Container = terminal.parent().unwrap().downcast().unwrap();
@@ -187,12 +187,12 @@ impl TopLevel {
             root_container,
             terminal_container: container,
             previous_sibling,
-            previous_bounds: (x, y, width, height),
+            previous_bounds: allocation,
         };
         binding.replace(zoomed);
     }
 
-    pub fn unzoom(&self) -> Option<(i32, i32, i32, i32)> {
+    pub fn unzoom(&self) -> Option<Rectangle> {
         let mut binding = self.imp().zoomed.borrow_mut();
         if let Some(z) = binding.take() {
             self.set_child(None::<&Widget>);
@@ -292,7 +292,7 @@ impl TopLevel {
         &self,
         terminal: &Terminal,
         direction: Direction,
-        use_size: Option<(i32, i32, i32, i32)>,
+        use_size: Option<Rectangle>,
     ) -> Option<Terminal> {
         let binding = self.imp().terminals.borrow();
         if binding.len() < 2 {
@@ -304,10 +304,16 @@ impl TopLevel {
         // We will use Rect intersection to find a matching neighbor. For this to work, the Rect
         // used for calculating the intersection must be slightly larger in the direction we
         // wish to find a neighbor.
-        let (x, y, width, height) = if let Some((x, y, width, height)) = use_size {
+        let (x, y, width, height) = if let Some(allocation) = use_size {
+            let x = allocation.x();
+            let y = allocation.y();
+            let width = allocation.width();
+            let height = allocation.height();
             (x as f32, y as f32, width as f32, height as f32)
         } else {
-            let (_, _, width, height) = terminal.bounds().unwrap();
+            let allocation = terminal.allocation();
+            let width = allocation.width();
+            let height = allocation.height();
             (0.0, 0.0, width as f32, height as f32)
         };
         let terminal_rect = match direction {

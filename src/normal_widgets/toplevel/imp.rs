@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gtk4::Widget;
+use gtk4::{gdk::Rectangle, Widget};
 use libadwaita::{glib, subclass::prelude::*, TabView};
 
 use crate::{
@@ -15,7 +15,7 @@ pub struct Zoomed {
     pub root_container: Container,
     pub terminal_container: Container,
     pub previous_sibling: Option<Widget>,
-    pub previous_bounds: (i32, i32, i32, i32),
+    pub previous_bounds: Rectangle,
 }
 
 // Object holding the state
