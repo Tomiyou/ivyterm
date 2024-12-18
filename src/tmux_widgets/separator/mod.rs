@@ -1,6 +1,7 @@
 use glib::{subclass::types::ObjectSubclassIsExt, Object};
-use gtk4::{gdk::Cursor, Orientation, Separator as GtkSeparator};
+use gtk4::{gdk::Cursor, GestureDrag, Orientation, Separator as GtkSeparator};
 use libadwaita::{glib, prelude::*};
+use log::debug;
 
 use crate::config::SPLIT_VISUAL_WIDTH;
 
@@ -50,6 +51,83 @@ impl TmuxSeparator {
         if let Some(cursor) = cursor.as_ref() {
             bin.set_cursor(Some(&cursor));
         }
+
+        // Add ability to drag
+        let drag = GestureDrag::new();
+        drag.connect_drag_update(glib::clone!(
+            #[weak]
+            bin,
+            move |_, offset_x, offset_y| {
+                let old_position = bin.get_position();
+                // Account for 1px of internal padding
+                let handle_width = (bin.get_handle_width() + 2) as f64;
+
+                let new_position = match bin.orientation() {
+                    Orientation::Vertical => {
+                        let offset = offset_x / handle_width;
+                        old_position + (offset.round() as i32)
+                    },
+                    _ => {
+                        let offset = offset_y / handle_width;
+                        old_position + (offset.round() as i32)
+                    },
+                };
+
+                // If the position did not change, we can stop now
+                if new_position == old_position {
+                    return;
+                }
+
+                // We need to check that this new position does not overlap with previous Separator
+                let prev_separator = bin.prev_sibling().unwrap().prev_sibling();
+                if let Some(prev_separator) = prev_separator {
+                    let prev_separator: TmuxSeparator = prev_separator.downcast().unwrap();
+                    if new_position < prev_separator.get_position() + 2 {
+                        return;
+                    }
+                } else {
+                    // We are the first separator
+                    if new_position < 1 {
+                        return;
+                    }
+                }
+
+                // We need to check that this new position does not overlap with next Separator
+                let next_separator = bin.next_sibling().unwrap().next_sibling();
+                // We remember parent as an optimization
+                let parent = if let Some(next_separator) = next_separator {
+                    let next_separator: TmuxSeparator = next_separator.downcast().unwrap();
+                    if new_position > next_separator.get_position() - 2 {
+                        return;
+                    }
+                    bin.parent().unwrap()
+                } else {
+                    // We are the last separator, ensure we don't overlap the parent
+                    let parent = bin.parent().unwrap();
+                    let allocation = parent.allocation();
+                    let parent_size = match bin.orientation() {
+                        Orientation::Vertical => {
+                            allocation.width() as f64 / handle_width
+                        },
+                        _ => {
+                            allocation.height() as f64 / handle_width
+                        },
+                    };
+                    let parent_size = parent_size.round() as i32;
+
+                    if new_position > parent_size -2 {
+                        return;
+                    }
+
+                    parent
+                };
+
+                debug!("TmuxSeparator: drag to new_position {}", new_position);
+                bin.set_position(new_position);
+                parent.queue_allocate();
+            }
+        ));
+        bin.add_controller(drag);
 
         bin
     }
