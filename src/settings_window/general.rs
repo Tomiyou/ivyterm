@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gtk4::{CheckButton, Entry, FontDialog, FontDialogButton};
+use gtk4::{CheckButton, Entry, FontButton};
 use libadwaita::{prelude::*, PreferencesGroup, PreferencesPage};
 
 use crate::config::GlobalConfig;
@@ -27,8 +27,9 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
     let borrowed = config.borrow();
 
     // Font Dialog
-    let main_font = FontDialogButton::new(Some(FontDialog::new()));
-    main_font.set_font_desc(borrowed.terminal.font.as_ref());
+    let main_font = FontButton::builder()
+        .font_desc(borrowed.terminal.font.as_ref())
+        .build();
     main_font.connect_font_desc_notify(glib::clone!(
         #[weak]
         config,
