@@ -11,6 +11,7 @@ use libadwaita::{glib, prelude::*, Bin};
 pub struct SeparatorPriv {
     // Left/top position of handle
     pub position: Cell<i32>,
+    pub position_before_drag: Cell<i32>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
 }
@@ -27,6 +28,7 @@ impl ObjectSubclass for SeparatorPriv {
         // Here we set the default orientation.
         Self {
             position: Cell::new(0),
+            position_before_drag: Cell::new(0),
             orientation: RefCell::new(Orientation::Horizontal),
         }
     }

@@ -63,6 +63,7 @@ pub enum TmuxCommand {
     PaneCurrentPath(u32),
     PaneMoveFocus(Direction),
     PaneZoom(u32),
+    PaneResize(u32),
     ChangeSize(i32, i32),
     InitialOutput(u32),
     ClipboardPaste,

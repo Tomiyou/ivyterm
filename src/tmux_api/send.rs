@@ -213,4 +213,16 @@ impl TmuxAPI {
         let cmd = format!("rename-window -t @{} -- \"{}\"", tab_id, name);
         self.send_event(event, &cmd);
     }
+
+    pub fn resize_pane(&mut self, term_id: u32, direction: Direction, amount: u32) {
+        let event = TmuxCommand::PaneResize(term_id);
+        let direction = match direction {
+            Direction::Down => "D",
+            Direction::Left => "L",
+            Direction::Up => "U",
+            Direction::Right => "R",
+        };
+        let cmd = format!("resize-pane -{} -t %{} {}", direction, term_id, amount);
+        self.send_event(event, &cmd);
+    }
 }

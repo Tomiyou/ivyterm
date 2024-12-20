@@ -1,14 +1,17 @@
 use std::time::Duration;
 
 use glib::subclass::types::ObjectSubclassIsExt;
-use gtk4::gdk::{Key, ModifierType};
+use gtk4::{
+    gdk::{Key, ModifierType},
+    Orientation,
+};
 use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
-    keyboard::keycode_to_arrow_key,
+    keyboard::{keycode_to_arrow_key, Direction},
     tmux_api::{LayoutFlags, LayoutSync, TmuxEvent},
-    tmux_widgets::toplevel::TmuxTopLevel,
+    tmux_widgets::{separator::TmuxSeparator, terminal::TmuxTerminal, toplevel::TmuxTopLevel},
 };
 
 use super::IvyTmuxWindow;
@@ -300,5 +303,35 @@ impl IvyTmuxWindow {
 
     pub fn initial_layout_finished(&self) -> bool {
         self.imp().init_layout_finished.get() == TmuxInitState::Done
+    }
+
+    pub fn separator_drag_sync(&self, separator: &TmuxSeparator, amount: i32) {
+        let orientation = separator.orientation();
+        let direction = match (amount < 0, orientation) {
+            (true, Orientation::Horizontal) => Direction::Up,
+            (false, Orientation::Horizontal) => Direction::Down,
+            (true, _) => Direction::Left,
+            (false, _) => Direction::Right,
+        };
+        let amount = amount.abs() as u32;
+
+        let mut binding = self.imp().tmux.borrow_mut();
+        if let Some(tmux) = binding.as_mut() {
+            // We need to find widget to the top/left of our separator
+            let mut widget = separator.prev_sibling().unwrap();
+            loop {
+                // Check if our sibling is a Terminal
+                match widget.downcast::<TmuxTerminal>() {
+                    Ok(terminal) => {
+                        let id = terminal.id();
+                        tmux.resize_pane(id, direction, amount);
+                        return;
+                    }
+                    Err(container) => {
+                        widget = container.first_child().unwrap();
+                    }
+                };
+            }
+        }
     }
 }
