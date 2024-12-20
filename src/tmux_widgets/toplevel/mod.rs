@@ -79,18 +79,6 @@ impl TmuxTopLevel {
             .register_terminal(pane_id, terminal);
     }
 
-    pub fn unregister_terminal(&self, terminal: &TmuxTerminal) {
-        let pane_id = terminal.id();
-        let imp = self.imp();
-
-        let mut terminals_vec = imp.terminals.borrow_mut();
-        terminals_vec.retain(|t| t != terminal);
-
-        // Also update global terminal hashmap
-        let window = imp.window.borrow();
-        window.as_ref().unwrap().unregister_terminal(pane_id);
-    }
-
     pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
         let imp = self.imp();
 

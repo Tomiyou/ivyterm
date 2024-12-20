@@ -85,6 +85,12 @@ impl WindowImpl for IvyWindowPriv {
             tab_view.close_page(&first_page);
         }
 
+        // If all children were disposed while we were running, we can exit early
+        let terminal_count = self.terminals.borrow().len();
+        if terminal_count < 1 {
+            return Propagation::Proceed;
+        }
+
         Propagation::Stop
     }
 }

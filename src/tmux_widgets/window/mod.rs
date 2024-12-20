@@ -1,7 +1,7 @@
 mod imp;
 mod tmux;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
+use glib::{subclass::types::ObjectSubclassIsExt, Object};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
@@ -41,20 +41,6 @@ impl IvyTmuxWindow {
         // View stack holds all panes
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view);
-
-        // Close the tab_view when 0 tabs remain
-        tab_view.connect_close_page(glib::clone!(
-            #[weak]
-            window,
-            #[upgrade_or]
-            Propagation::Proceed,
-            move |tab_view, _page| {
-                if tab_view.n_pages() < 2 {
-                    window.close();
-                }
-                Propagation::Proceed
-            }
-        ));
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
@@ -142,17 +128,6 @@ impl IvyTmuxWindow {
 
         // Drop all children
         self.set_content(None::<&gtk4::Widget>);
-
-        // Remove all Tab
-        let mut tabs = imp.tabs.borrow_mut();
-        tabs.clear();
-
-        // Remove all Terminals
-        let mut terminals = imp.terminals.borrow_mut();
-        terminals.clear();
-
-        drop(tabs);
-        drop(terminals);
 
         self.close();
     }
