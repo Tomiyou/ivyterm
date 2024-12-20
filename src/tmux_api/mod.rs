@@ -5,6 +5,7 @@ use async_channel::{Receiver, Sender};
 use enumflags2::{bitflags, BitFlags};
 use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
+use log::debug;
 use mio::{Events, Poll};
 use receive::tmux_parse_line;
 use ssh2::{DisconnectCode, Session};
@@ -28,7 +29,6 @@ pub struct TmuxAPI {
 
 impl Drop for TmuxAPI {
     fn drop(&mut self) {
-        println!("Dropping TMUX");
         if let Some(ssh_session) = &self.ssh_session {
             if let Err(err) =
                 ssh_session.disconnect(Some(DisconnectCode::ByApplication), "Tmux closed", None)
@@ -238,7 +238,7 @@ fn new_with_ssh(
                                 }
                                 Err(e) => {
                                     if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        println!(
+                                        debug!(
                                             "Error reading Tmux stdout: {}, {:?}",
                                             e,
                                             e.kind()
@@ -257,7 +257,7 @@ fn new_with_ssh(
                                 }
                                 Err(e) => {
                                     if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        println!("Stderr: {}", e);
+                                        debug!("Stderr: {}", e);
                                         return;
                                     }
                                 }
@@ -268,11 +268,11 @@ fn new_with_ssh(
                 }
 
                 if event.is_error() {
-                    println!("Event is error, quitting!!!");
+                    debug!("Event is error, quitting!!!");
                     return;
                 }
                 if event.is_read_closed() || event.is_write_closed() {
-                    println!("Read or write closed, quitting!!!");
+                    debug!("Read or write closed, quitting!!!");
                     return;
                 }
             }

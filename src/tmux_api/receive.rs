@@ -212,7 +212,7 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) {
             } else if buffer_starts_with(&buffer, "%exit") {
                 // Tmux client has exited
                 let reason = from_utf8(&buffer[5..]).unwrap();
-                println!("Tmux event: Exit received, reason: {}", reason);
+                debug!("Tmux event: Exit received, reason: {}", reason);
                 receive_event(&event_channel, TmuxEvent::Exit);
                 // Stop receiving events
                 return;
@@ -220,7 +220,7 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) {
             } else {
                 // Unsupported notification
                 let notification = from_utf8(&buffer).unwrap();
-                println!("Tmux event: Unknown notification: {}", notification)
+                debug!("Tmux event: Unknown notification: {}", notification)
             }
         }
 

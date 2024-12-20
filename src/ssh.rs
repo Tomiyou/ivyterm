@@ -40,7 +40,7 @@ fn check_connected(tcp: &mut TcpStream) -> Result<(), ()> {
                     //     something went wrong. If it returns `Ok(None)`, then proceed to
                     //     step 5.
                     if let Err(err) = tcp.take_error() {
-                        println!("Something went wrong {}", err);
+                        debug!("Something went wrong {}", err);
                         poll.registry().deregister(tcp).unwrap();
                         return Err(());
                     }
@@ -54,7 +54,7 @@ fn check_connected(tcp: &mut TcpStream) -> Result<(), ()> {
                             continue;
                         }
                         if err.raw_os_error() == Some(115) {
-                            println!("libc::EINPROGRESS");
+                            debug!("libc::EINPROGRESS");
                             continue;
                         }
                         poll.registry().deregister(tcp).unwrap();
@@ -96,7 +96,7 @@ fn connect_tcp(host: &str) -> Option<(TcpStream, Poll, Events)> {
         let mut tcp = match TcpStream::connect(socket_addr) {
             Ok(stream) => stream,
             Err(_) => {
-                println!("Continuing with next TCP stream");
+                debug!("Continuing with next TCP stream");
                 continue;
             }
         };
@@ -184,7 +184,7 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     }
 
     if let Err(err) = session.userauth_password("tomaz", password) {
-        println!("Password authentication failed: {}!", err);
+        eprintln!("Both public key and password authentication failed: {}!", err);
         {
             let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
             return Err(());
@@ -192,7 +192,7 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     }
 
     if !session.authenticated() {
-        println!("Authentication failed without reason!");
+        eprintln!("Authentication failed without reason!");
         {
             let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
             return Err(());
@@ -219,12 +219,12 @@ fn read_config() -> SshConfig {
 
 fn configure_session(session: &mut Session, params: &HostParams) {
     if let Some(compress) = params.compression {
-        println!("compression: {}", compress);
+        debug!("compression: {}", compress);
         session.set_compress(compress);
     }
     if params.tcp_keep_alive.unwrap_or(false) && params.server_alive_interval.is_some() {
         let interval = params.server_alive_interval.unwrap().as_secs() as u32;
-        println!("keepalive interval: {} seconds", interval);
+        debug!("keepalive interval: {} seconds", interval);
         session.set_keepalive(true, interval);
     }
     // algos

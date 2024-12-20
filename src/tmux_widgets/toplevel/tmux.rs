@@ -60,7 +60,7 @@ impl TmuxTopLevel {
             }
 
             // Terminal has been closed by Tmux, we have to do the same
-            println!("Terminal {} closed by Tmux", term_id);
+            debug!("Terminal {} closed by Tmux", term_id);
 
             let parent = terminal.parent();
             remove_pane(terminal);
@@ -125,13 +125,13 @@ impl TmuxTopLevel {
                 match pane {
                     TmuxPane::Container(_, _) => {
                         print_tab(nested);
-                        println!("- {:?}", pane);
+                        debug!("- {:?}", pane);
                         nested += 1
                     }
                     TmuxPane::Return => nested -= 1,
                     _ => {
                         print_tab(nested);
-                        println!("- {:?}", pane);
+                        debug!("- {:?}", pane);
                     }
                 }
             }
@@ -600,16 +600,16 @@ fn print_hierarchy(widget: &impl IsA<Widget>, nested: u32) {
 
     if widget.is::<TmuxContainer>() {
         print_tab(nested);
-        println!("** Container {}", widget.type_());
+        debug!("** Container {}", widget.type_());
         nested += 1;
     } else if widget.is::<TmuxTerminal>() {
         print_tab(nested);
         let terminal: TmuxTerminal = widget.as_ref().clone().downcast().unwrap();
-        println!("** Terminal ({}) {}", terminal.id(), terminal.type_());
+        debug!("** Terminal ({}) {}", terminal.id(), terminal.type_());
         nested += 1;
     } else if widget.is::<TmuxSeparator>() {
         print_tab(nested);
-        println!("** Separator {}", widget.type_());
+        debug!("** Separator {}", widget.type_());
         nested += 1;
     }
 

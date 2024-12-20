@@ -201,7 +201,7 @@ impl IvyTmuxWindow {
         my_terminals.retain(|terminal| {
             for closed in &closed_terminals {
                 if terminal.terminal.eq(closed) {
-                    println!("Unregistered Terminal {} since Tab was closed", terminal.id);
+                    debug!("Unregistered Terminal {} since Tab was closed", terminal.id);
                     return false;
                 }
             }

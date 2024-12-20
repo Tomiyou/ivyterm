@@ -74,7 +74,6 @@ fn create_terminal_prefs(config: &Rc<RefCell<GlobalConfig>>) -> PreferencesGroup
             }
 
             if let Ok(new_scrollback) = text.parse::<u32>() {
-                println!("New scrollback {}", new_scrollback);
                 let mut borrowed = config.borrow_mut();
                 borrowed.terminal.scrollback_lines = new_scrollback;
             }

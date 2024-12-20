@@ -143,7 +143,7 @@ pub fn open_editor(path: &str, ssh_target: &Option<String>) {
     // Spawn editor
     match command.spawn() {
         Err(err) => {
-            println!("Error opening editor: {}", err);
+            eprintln!("Error opening editor: {}", err);
         }
         _ => {}
     }

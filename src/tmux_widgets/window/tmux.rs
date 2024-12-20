@@ -265,7 +265,6 @@ impl IvyTmuxWindow {
                     let mut binding = imp.tmux.borrow_mut();
                     if let Some(tmux) = binding.as_mut() {
                         // If initial output has not been captured yet, now is the time
-                        println!("Getting initial output");
                         let terminals = imp.terminals.borrow();
                         for sorted in terminals.iter() {
                             tmux.get_initial_output(sorted.id);
@@ -274,7 +273,7 @@ impl IvyTmuxWindow {
                 }
             }
             TmuxEvent::Exit => {
-                println!("Received EXIT event, closing window!");
+                debug!("Received EXIT event, closing window!");
                 self.close_tmux_window();
             }
             TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
