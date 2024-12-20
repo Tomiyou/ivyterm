@@ -151,6 +151,9 @@ impl IvyTmuxWindow {
         let mut terminals = imp.terminals.borrow_mut();
         terminals.clear();
 
+        drop(tabs);
+        drop(terminals);
+
         self.close();
     }
 
