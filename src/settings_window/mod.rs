@@ -38,8 +38,6 @@ pub fn spawn_preferences_window(app: &IvyApplication, config: GlobalConfig) {
     window.connect_destroy(glib::clone!(
         #[weak]
         app,
-        #[strong]
-        config,
         #[weak]
         keybinding_page,
         move |_| {

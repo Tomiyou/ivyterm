@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 
-use glib::subclass::{object::ObjectImpl, types::ObjectSubclass};
 use gtk4::{subclass::widget::WidgetImpl, Orientation};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*, Bin};
