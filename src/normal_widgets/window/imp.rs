@@ -60,7 +60,7 @@ impl WindowImpl for IvyWindowPriv {
             return Propagation::Proceed;
         }
 
-        // If user confirmed close, we can start closing tabs, then wait for 
+        // If user confirmed close, we can start closing tabs, then wait for
         // dispose to call tab_closed() when everything is actually released
         if self.close_allowed.get() || terminal_count < 2 {
             self.tabs.borrow_mut().clear();
