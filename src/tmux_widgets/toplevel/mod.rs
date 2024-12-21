@@ -171,12 +171,16 @@ impl TmuxTopLevel {
     pub fn open_rename_modal(&self) {
         let imp = self.imp();
         let binding = imp.window.borrow();
-        let window = binding.as_ref().unwrap().clone();
+        let window = binding.as_ref().unwrap();
         let tab_id = imp.tab_id.get();
 
-        let callback = glib::closure_local!(move |new_name: &str| {
-            window.rename_tmux_tab(tab_id, new_name);
-        });
+        let callback = glib::closure_local!(
+            #[weak]
+            window,
+            move |new_name: &str| {
+                window.rename_tmux_tab(tab_id, new_name);
+            }
+        );
 
         // We need the "parent" Window for modal
         let binding = self.imp().window.borrow();

@@ -201,14 +201,14 @@ impl TmuxTopLevel {
                         } else {
                             // The first child is a Terminal, replace with a new Container
                             debug!("The first child is a Terminal, replace with a new Container");
-                            let container = TmuxContainer::new(orientation, window);
+                            let container = TmuxContainer::new(orientation);
                             self.set_child(Some(&container));
                             container
                         }
                     } else {
                         // top_level doesn't have any children yet
                         debug!("top_level doesn't have any children yet");
-                        let container = TmuxContainer::new(orientation, window);
+                        let container = TmuxContainer::new(orientation);
                         self.set_child(Some(&container));
                         container
                     };
@@ -417,7 +417,7 @@ fn container_callback(
         )
     }
 
-    let container = TmuxContainer::new(&orientation, window);
+    let container = TmuxContainer::new(&orientation);
     prepend_pane(window, &parent.c, &container, next_sibling, &position);
 
     container

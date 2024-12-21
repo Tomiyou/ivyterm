@@ -23,7 +23,8 @@ fn main() -> glib::ExitCode {
     });
 
     application.connect_activate(move |app| {
-        app.new_normal_window();
+        app.new_tmux_window("blabla", Some(("dell_wyse", "")));
+        // app.new_normal_window();
     });
     application.run()
 }

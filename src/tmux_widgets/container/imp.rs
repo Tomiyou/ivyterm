@@ -4,15 +4,12 @@ use gtk4::{Orientation, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*};
 
-use crate::tmux_widgets::IvyTmuxWindow;
-
 use super::layout::TmuxLayout;
 
 // Object holding the state
 #[derive(glib::Properties)]
 #[properties(wrapper_type = super::TmuxContainer)]
 pub struct ContainerPriv {
-    pub window: RefCell<Option<IvyTmuxWindow>>,
     pub layout: RefCell<Option<TmuxLayout>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
@@ -34,7 +31,6 @@ impl ObjectSubclass for ContainerPriv {
     fn new() -> Self {
         // Here we set the default orientation.
         Self {
-            window: RefCell::new(None),
             layout: RefCell::new(None),
             orientation: RefCell::new(Orientation::Horizontal),
         }
@@ -47,7 +43,6 @@ impl ObjectImpl for ContainerPriv {
         while let Some(child) = self.obj().first_child() {
             child.unparent();
         }
-        self.window.take();
         self.layout.take();
     }
 }

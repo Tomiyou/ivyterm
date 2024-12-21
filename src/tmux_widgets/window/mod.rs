@@ -42,6 +42,17 @@ impl IvyTmuxWindow {
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view);
 
+        // Close Window automatically, when all pages (Tabs) have been closed
+        tab_view.connect_n_pages_notify(glib::clone!(
+            #[weak]
+            window,
+            move |tab_view| {
+                if tab_view.n_pages() < 1 {
+                    window.close();
+                }
+            }
+        ));
+
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
         tmux_button.connect_clicked(glib::clone!(
@@ -121,15 +132,16 @@ impl IvyTmuxWindow {
     }
 
     pub fn close_tmux_window(&self) {
-        let imp = self.imp();
+        println!("close_tmux_window called");
+        // let imp = self.imp();
 
-        // Stop Tmux API
-        imp.tmux.replace(None);
+        // // Stop Tmux API
+        // imp.tmux.replace(None);
 
-        // Drop all children
-        self.set_content(None::<&gtk4::Widget>);
+        // // Drop all children
+        // self.set_content(None::<&gtk4::Widget>);
 
-        self.close();
+        // self.close();
     }
 
     pub fn new_tab(&self, id: u32) -> TmuxTopLevel {
@@ -144,6 +156,7 @@ impl IvyTmuxWindow {
         tabs.push(top_level.clone());
 
         // Add pane as a page
+        // TODO: Do this once for tab_view instead of each page
         let page = tab_view.append(&top_level);
         page.connect_selected_notify(glib::clone!(
             #[weak(rename_to = window)]
@@ -163,18 +176,13 @@ impl IvyTmuxWindow {
     }
 
     pub fn close_tab(&self, closing_tab: &TmuxTopLevel) {
+        println!("Tmux close_tab() called");
         let imp = self.imp();
-
-        let binding = imp.tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        let page = tab_view.page(closing_tab);
-        tab_view.close_page(&page);
 
         // Unregister all Terminals owned by this closing tab
         let closed_terminals = closing_tab.imp().terminals.borrow().clone();
-        let mut my_terminals = imp.terminals.borrow_mut();
-        my_terminals.retain(|terminal| {
-            for closed in &closed_terminals {
+        imp.terminals.borrow_mut().retain(|terminal| {
+            for closed in closed_terminals.iter() {
                 if terminal.terminal.eq(closed) {
                     debug!("Unregistered Terminal {} since Tab was closed", terminal.id);
                     return false;
@@ -185,15 +193,30 @@ impl IvyTmuxWindow {
         });
 
         // Remove the tab from the tab list
-        let mut tabs = imp.tabs.borrow_mut();
-        tabs.retain(|tab| tab != closing_tab);
+        imp.tabs.borrow_mut().retain(|tab| tab != closing_tab);
+
+        let binding = imp.tab_view.borrow();
+        let tab_view = binding.as_ref().unwrap();
+        let page = tab_view.page(closing_tab);
+        tab_view.close_page(&page);
+        // This is a hacky fix of what appears to be a libadwaita issue.
+        // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+        // sure if 1.5.x versions have been fixed.
+        if tab_view.n_pages() < 1
+            && libadwaita::major_version() < 2
+            && libadwaita::minor_version() < 6
+        {
+            println!("Manual unparent 2");
+            page.child().unparent();
+        }
+        drop(binding);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &TmuxTerminal) {
         let imp = self.imp();
         let mut terminals = imp.terminals.borrow_mut();
         terminals.insert(pane_id, &terminal);
-        debug!("Terminal with ID {} registered", pane_id);
+        println!("Terminal with ID {} registered", pane_id);
 
         let char_size = terminal.get_char_width_height();
         imp.char_size.replace(char_size);
@@ -202,38 +225,7 @@ impl IvyTmuxWindow {
     pub fn unregister_terminal(&self, pane_id: u32) {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
-        debug!("Terminal with ID {} unregistered", pane_id);
-    }
-
-    // TODO: Make this an event
-    pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
-        // We do it this way so all RefCells are dropped
-        let close_window = {
-            // Remove all Terminals belonging to the closed Tab
-            let mut terminals = self.imp().terminals.borrow_mut();
-            terminals.retain(|term_id| {
-                let term_id = term_id.id;
-                // If the given term_id is one of the deleted_ids, do NOT retain it
-                for deleted_id in deleted_terms.iter() {
-                    if term_id == *deleted_id {
-                        debug!("Terminal with ID {} unregistered", deleted_id);
-                        return false;
-                    }
-                }
-
-                return true;
-            });
-
-            // Just in case (mainly for when users uses CloseTab shortcut)
-            let mut tabs = self.imp().tabs.borrow_mut();
-            tabs.retain(|tab_id| tab_id.tab_id() != deleted_tab);
-
-            tabs.len() == 0
-        };
-
-        if close_window {
-            self.close();
-        }
+        println!("Terminal with ID {} unregistered", pane_id);
     }
 
     fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
@@ -294,15 +286,18 @@ impl IvyTmuxWindow {
     pub fn clipboard_paste_event(&self, pane_id: u32) {
         let clipboard = self.primary_clipboard();
         let future = clipboard.read_text_future();
-        let window = self.clone();
 
-        glib::spawn_future_local(async move {
-            if let Ok(output) = future.await {
-                if let Some(output) = output {
-                    window.send_clipboard(pane_id, output.as_str());
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            async move {
+                if let Ok(output) = future.await {
+                    if let Some(output) = output {
+                        window.send_clipboard(pane_id, output.as_str());
+                    }
                 }
             }
-        });
+        ));
     }
 }
 
