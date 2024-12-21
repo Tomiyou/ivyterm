@@ -43,6 +43,7 @@ impl ObjectSubclass for TopLevelPriv {
 // Trait shared by all GObjects
 impl ObjectImpl for TopLevelPriv {
     fn dispose(&self) {
+        println!("Disposing TmuxTopLevel");
         self.tab_view.take();
 
         let mut terminals = self.terminals.borrow_mut();

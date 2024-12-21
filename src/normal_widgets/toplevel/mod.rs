@@ -41,9 +41,15 @@ impl TopLevel {
     }
 
     pub fn close_tab(&self) {
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
-        window.close_tab(self);
+        let window = self.imp().window.take();
+        if let Some(window) = window {
+            window.close_tab(self);
+        }
+    }
+
+    pub fn terminal_list(&self) -> Vec<u32> {
+        let terminals = self.imp().terminals.borrow();
+        terminals.iter().map(|terminal| terminal.id()).collect()
     }
 
     pub fn tab_id(&self) -> u32 {

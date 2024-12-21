@@ -21,6 +21,7 @@ impl ObjectSubclass for TerminalPriv {
 // Trait shared by all GObjects
 impl ObjectImpl for TerminalPriv {
     fn dispose(&self) {
+        println!("Disposing Terminal");
         self.vte.take();
     }
 }
