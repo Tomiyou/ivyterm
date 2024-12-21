@@ -31,3 +31,18 @@ assets = [
     ["data/com.tomiyou.ivyTerm.desktop", "usr/share/applications/", "644"],
     ["data/com.tomiyou.ivyTerm.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
 ]
+
+[[package.metadata.generate-rpm.assets]]
+source = "target/release/ivyterm"
+dest = "/usr/bin/ivyterm"
+mode = "0755"
+
+[[package.metadata.generate-rpm.assets]]
+source = "data/com.tomiyou.ivyTerm.desktop"
+dest = "/usr/share/applications/com.tomiyou.ivyTerm.desktop"
+mode = "0644"
+
+[[package.metadata.generate-rpm.assets]]
+source = "data/com.tomiyou.ivyTerm.svg"
+dest = "/usr/share/icons/hicolor/scalable/apps/com.tomiyou.ivyTerm.svg"
+mode = "0644"
