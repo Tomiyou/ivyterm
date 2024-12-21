@@ -286,8 +286,9 @@ impl IvyTmuxWindow {
             imp.focused_tab.replace(tab_id);
 
             let mut binding = imp.tmux.borrow_mut();
-            let tmux = binding.as_mut().unwrap();
-            tmux.select_tab(tab_id);
+            if let Some(tmux) = binding.as_mut() {
+                tmux.select_tab(tab_id);
+            }
         }
     }
 
