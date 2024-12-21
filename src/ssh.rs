@@ -184,7 +184,10 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     }
 
     if let Err(err) = session.userauth_password("tomaz", password) {
-        eprintln!("Both public key and password authentication failed: {}!", err);
+        eprintln!(
+            "Both public key and password authentication failed: {}!",
+            err
+        );
         {
             let _ = session.disconnect(Some(DisconnectCode::AuthCancelledByUser), "", None);
             return Err(());

@@ -238,11 +238,7 @@ fn new_with_ssh(
                                 }
                                 Err(e) => {
                                     if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        debug!(
-                                            "Error reading Tmux stdout: {}, {:?}",
-                                            e,
-                                            e.kind()
-                                        );
+                                        debug!("Error reading Tmux stdout: {}, {:?}", e, e.kind());
                                         return;
                                     }
                                 }
