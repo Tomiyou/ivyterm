@@ -61,6 +61,8 @@ impl TmuxAPI {
         } else if c.is_ascii_control() {
             // A control character was just pressed
             let ascii = c as u8;
+            // Ignore Ctrl and Shift for Enter
+            let prefix = if ascii == 13 { "" } else { prefix.as_str() };
             format!("send-keys -t %{} -- {}\\{:03o}", pane_id, prefix, ascii)
         } else {
             // We send single-quoted keys, but what if we want to send a single quote?
