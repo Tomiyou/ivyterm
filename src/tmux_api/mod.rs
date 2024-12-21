@@ -305,8 +305,10 @@ fn new_without_ssh(
         let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
 
         while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
-            tmux_parse_line(&mut state, &buffer[..bytes_read - 1]);
-            buffer.clear();
+            if bytes_read > 0 {
+                tmux_parse_line(&mut state, &buffer[..bytes_read - 1]);
+                buffer.clear();
+            }
         }
     });
 
