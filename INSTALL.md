@@ -1,13 +1,28 @@
-# Dependencies
+# Dev dependencies
 ```shell
+# Ubuntu/Debian
 sudo apt install libgtk-4-dev build-essential
 sudo apt install libvte-2.91-gtk4-dev
 sudo apt install libadwaita-1-dev
+# Fedora
+sudo yum install gtk4-devel
+sudo yum install libadwaita-devel
+sudo yum install vte291-gtk4-devel
 ```
 
 # Compilation
 ```shell
 cargo run --release
+```
+
+# Build release packages
+```shell
+# Generate .deb using https://github.com/kornelski/cargo-deb
+cargo deb
+# Generate .rpm using https://github.com/cat-in-136/cargo-generate-rpm
+cargo build --release
+strip -s target/release/ivyterm
+cargo generate-rpm
 ```
 
 # Build flatpak
