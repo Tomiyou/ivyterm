@@ -24,3 +24,10 @@ ssh2 = "0.9.4"
 ssh2-config = "0.2.3"
 toml = "0.8.19"
 vte4 = { version = "0.8.0", features = ["v0_70"] }
+
+[package.metadata.deb]
+assets = [
+    ["target/release/ivyterm", "usr/bin/", "755"],
+    ["data/com.tomiyou.ivyTerm.desktop", "usr/share/applications/", "644"],
+    ["data/com.tomiyou.ivyTerm.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+]
