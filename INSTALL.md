@@ -28,9 +28,9 @@ cargo generate-rpm
 # Build flatpak
 ```shell
 # Generated cargo sources for flatpak-builder using 'flatpak-cargo-generator'
-python3 ./flatpak/flatpak-cargo-generator.py ./Cargo.lock -o ./packaging/flatpak/cargo-sources.json
+python3 ./flatpak/flatpak-cargo-generator.py ./Cargo.lock -o ./flatpak/cargo-sources.json
 # Install required flatpak SDK and extensions
 flatpak install --user org.gnome.Sdk//47 org.gnome.Platform//47  org.freedesktop.Sdk.Extension.rust-stable//24.08 org.freedesktop.Sdk.Extension.llvm18//24.08
 # Build and install ivyTerm flatpak
-flatpak-builder --install repo packaging/flatpak/com.tomiyou.ivyTerm.json --user -y
+flatpak-builder --install repo flatpak/com.tomiyou.ivyTerm.json --user -y
 ```
