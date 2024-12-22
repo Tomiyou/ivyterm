@@ -12,7 +12,7 @@ This project is a hobby of mine and is not intended to have many different featu
 
 ## Planned features
 * Some missing QoL features
-* Window support
+* Windows support
 
 ## Installation
 Dependencies (GTK 4, libadwaita and VTE)
