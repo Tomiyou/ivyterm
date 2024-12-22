@@ -17,7 +17,14 @@ pub fn spawn_rename_modal(parent: &ApplicationWindow, old_name: &str, callback: 
         .build();
 
     let header_bar = HeaderBar::new();
-    let content = Box::new(Orientation::Vertical, 5);
+    let content = Box::builder()
+        .orientation(Orientation::Vertical)
+        .spacing(5)
+        .margin_bottom(10)
+        .margin_top(10)
+        .margin_end(10)
+        .margin_start(10)
+        .build();
     let name_input = Entry::builder().placeholder_text(old_name).build();
     content.append(&name_input);
     let button = Button::builder().label("Rename").build();
@@ -141,6 +148,7 @@ pub fn spawn_exit_modal(parent: &ApplicationWindow, confirm_callback: RustClosur
     let content = Box::builder()
         .orientation(Orientation::Vertical)
         .spacing(10)
+        .margin_bottom(15)
         .build();
 
     // Buttons
