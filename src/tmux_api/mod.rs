@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 
 use async_channel::{Receiver, Sender};
 use enumflags2::{bitflags, BitFlags};
+use glib::JoinHandle;
 use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use log::debug;
@@ -25,10 +26,14 @@ pub struct TmuxAPI {
     command_queue: Sender<TmuxCommand>,
     window_size: (i32, i32),
     resize_future: bool,
+    receive_future: JoinHandle<()>,
 }
 
 impl Drop for TmuxAPI {
     fn drop(&mut self) {
+        // Stop main-thread future which receives Tmux events
+        self.receive_future.abort();
+        // Disconnect SSH session if any
         if let Some(ssh_session) = &self.ssh_session {
             if let Err(err) =
                 ssh_session.disconnect(Some(DisconnectCode::ByApplication), "Tmux closed", None)
@@ -166,7 +171,7 @@ impl TmuxAPI {
         };
 
         // Receive events from the channel on main thread
-        glib::spawn_future_local(glib::clone!(
+        let receive_future = glib::spawn_future_local(glib::clone!(
             #[weak]
             window,
             async move {
@@ -183,6 +188,7 @@ impl TmuxAPI {
             command_queue: cmd_queue_sender,
             window_size: (0, 0),
             resize_future: false,
+            receive_future,
         };
 
         Ok(tmux)
