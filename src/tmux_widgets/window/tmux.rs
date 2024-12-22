@@ -136,11 +136,14 @@ impl IvyTmuxWindow {
                 return;
             }
 
-            let window = self.clone();
-            glib::spawn_future_local(async move {
-                glib::timeout_future(RESIZE_TIMEOUT).await;
-                window.tmux_sync_size();
-            });
+            glib::spawn_future_local(glib::clone!(
+                #[weak(rename_to = window)]
+                self,
+                async move {
+                    glib::timeout_future(RESIZE_TIMEOUT).await;
+                    window.tmux_sync_size();
+                }
+            ));
         }
     }
 
@@ -274,7 +277,7 @@ impl IvyTmuxWindow {
             }
             TmuxEvent::Exit => {
                 debug!("Received EXIT event, closing window!");
-                self.close_tmux_window();
+                self.close();
             }
             TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
                 let binding = &self.imp().terminals;
@@ -291,7 +294,7 @@ impl IvyTmuxWindow {
                 if let Some(old) = old {
                     if old != new {
                         println!("Session {} changed underneath us, closing Window", old.1);
-                        self.close_tmux_window();
+                        self.close();
                     }
                 }
 

@@ -2,7 +2,7 @@ mod imp;
 
 use std::sync::atomic::Ordering;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object};
+use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, TabBar, TabView};
 use log::debug;
@@ -35,6 +35,47 @@ impl IvyNormalWindow {
         // View stack holds all panes
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view);
+
+        // Close Window automatically, when all pages (Tabs) have been closed
+        tab_view.connect_n_pages_notify(glib::clone!(
+            #[weak]
+            window,
+            move |tab_view| {
+                if tab_view.n_pages() < 1 {
+                    window.close();
+                }
+            }
+        ));
+        // Automatically remove unregister Tabs/Terminals when their respective
+        // page is closed
+        tab_view.connect_close_page(glib::clone!(
+            #[weak]
+            window,
+            #[upgrade_or]
+            Propagation::Proceed,
+            move |_, closing_page| {
+                // Unregister all Terminals owned by this closing tab
+                let imp = window.imp();
+                let closing_tab: TopLevel = closing_page.child().downcast().unwrap();
+
+                let closed_terminals = closing_tab.imp().terminals.borrow().clone();
+                imp.terminals.borrow_mut().retain(|terminal| {
+                    for closed in closed_terminals.iter() {
+                        if terminal.terminal.eq(closed) {
+                            debug!("Unregistered Terminal {} since Tab was closed", terminal.id);
+                            return false;
+                        }
+                    }
+
+                    true
+                });
+
+                // Remove the tab from the tab list
+                imp.tabs.borrow_mut().retain(|tab| !closing_tab.eq(tab));
+
+                Propagation::Proceed
+            }
+        ));
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
@@ -124,18 +165,29 @@ impl IvyNormalWindow {
         top_level
     }
 
-    pub fn close_tab(&self, child: &TopLevel) {
-        let imp = self.imp();
-        let binding = imp.tab_view.borrow();
-
+    pub fn close_tab(&self, closing_tab: &TopLevel) {
         // Close the tab (page) in TabView
+        let binding = self.imp().tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
-        let page = tab_view.page(child);
+        // TODO: Is this hacky?
+        if tab_view.n_pages() < 2 {
+            // We can close the Window directly
+            drop(binding);
+            self.close();
+            return;
+        }
+        let page = tab_view.page(closing_tab);
         tab_view.close_page(&page);
-
-        // Remove the tab from the tab list
-        let mut tabs = imp.tabs.borrow_mut();
-        tabs.retain(|tab| tab != child);
+        // This is a hacky fix of what appears to be a libadwaita issue.
+        // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+        // sure if 1.5.x versions have been fixed.
+        if tab_view.n_pages() < 1
+            && libadwaita::major_version() < 2
+            && libadwaita::minor_version() < 6
+        {
+            page.child().unparent();
+        }
+        drop(binding);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {
@@ -149,36 +201,6 @@ impl IvyNormalWindow {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
         debug!("Terminal with ID {} unregistered", pane_id);
-    }
-
-    // TODO: Make this an event
-    pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
-        let close_window = {
-            // Remove all Terminals belonging to the closed Tab
-            let mut terminals = self.imp().terminals.borrow_mut();
-            terminals.retain(|term_id| {
-                let term_id = term_id.id;
-                // If the given term_id is one of the deleted_ids, do NOT retain it
-                for deleted_id in deleted_terms.iter() {
-                    if term_id == *deleted_id {
-                        debug!("Terminal with ID {} unregistered", deleted_id);
-                        return false;
-                    }
-                }
-
-                return true;
-            });
-
-            // Just in case (mainly for when users uses CloseTab shortcut)
-            let mut tabs = self.imp().tabs.borrow_mut();
-            tabs.retain(|tab_id| tab_id.tab_id() != deleted_tab);
-
-            tabs.len() == 0
-        };
-
-        if close_window {
-            self.close();
-        }
     }
 
     pub fn update_terminal_config(&self, config: &TerminalConfig) {

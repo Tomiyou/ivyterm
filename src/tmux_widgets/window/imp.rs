@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use glib::Propagation;
 use libadwaita::subclass::prelude::*;
-use libadwaita::{glib, ApplicationWindow, TabView};
+use libadwaita::{glib, prelude::*, ApplicationWindow, TabView};
 
 use crate::helpers::SortedVec;
 use crate::tmux_api::TmuxAPI;
@@ -41,57 +41,38 @@ impl ObjectImpl for IvyWindowPriv {
         self.terminals.borrow_mut().clear();
 
         // Close all remaining pages
+        self.tab_view.take();
+    }
+}
+
+// Trait shared by all widgets
+impl WidgetImpl for IvyWindowPriv {}
+
+// Trait shared by all windows
+impl WindowImpl for IvyWindowPriv {
+    fn close_request(&self) -> Propagation {
+        // Clear Tabs and Terminals
+        self.tmux.take();
+        self.terminals.borrow_mut().clear();
+        self.tabs.borrow_mut().clear();
+
+        // Close all TabView pages
         if let Some(tab_view) = self.tab_view.take() {
             if tab_view.n_pages() > 0 {
                 let first_page = tab_view.nth_page(0);
                 tab_view.close_other_pages(&first_page);
                 tab_view.close_page(&first_page);
+
+                // This is a hacky fix of what appears to be a libadwaita issue.
+                // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+                // sure if 1.5.x versions have been fixed.
+                if libadwaita::major_version() < 2 && libadwaita::minor_version() < 6 {
+                    first_page.child().unparent();
+                }
             }
         }
-    }
-}
 
-// Trait shared by all widgets
-impl WidgetImpl for IvyWindowPriv {
-    fn unrealize(&self) {
-        self.parent_unrealize();
-
-        // TODO: GTK code currently does NOT clean up closing window directly ...
-        self.tmux.take();
-        self.tab_view.take();
-        self.terminals.borrow_mut().clear();
-        self.tabs.borrow_mut().clear();
-    }
-}
-
-// Trait shared by all windows
-impl WindowImpl for IvyWindowPriv {
-    fn close_request(&self) -> Propagation {
-        let terminal_count = self.terminals.borrow().len();
-
-        // If there are no Terminals open, we can close immediately
-        if terminal_count < 1 {
-            return Propagation::Proceed;
-        }
-
-        // Start closing tabs, then wait for dispose to call tab_closed()
-        // when everything is actually released
-        self.tabs.borrow_mut().clear();
-
-        let tab_view = self.tab_view.take().unwrap();
-        if tab_view.n_pages() > 0 {
-            let first_page = tab_view.nth_page(0);
-            tab_view.close_other_pages(&first_page);
-            tab_view.close_page(&first_page);
-        }
-
-        // If all children were disposed while we were running, we can exit early
-        let terminal_count = self.terminals.borrow().len();
-        if terminal_count < 1 {
-            return Propagation::Proceed;
-        }
-
-        Propagation::Stop
+        Propagation::Proceed
     }
 }
 

@@ -1,7 +1,7 @@
 mod imp;
 mod tmux;
 
-use glib::{subclass::types::ObjectSubclassIsExt, Object};
+use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
@@ -41,6 +41,47 @@ impl IvyTmuxWindow {
         // View stack holds all panes
         let tab_view = TabView::new();
         window.imp().initialize(&tab_view);
+
+        // Close Window automatically, when all pages (Tabs) have been closed
+        tab_view.connect_n_pages_notify(glib::clone!(
+            #[weak]
+            window,
+            move |tab_view| {
+                if tab_view.n_pages() < 1 {
+                    window.close();
+                }
+            }
+        ));
+        // Automatically remove unregister Tabs/Terminals when their respective
+        // page is closed
+        tab_view.connect_close_page(glib::clone!(
+            #[weak]
+            window,
+            #[upgrade_or]
+            Propagation::Proceed,
+            move |_, closing_page| {
+                // Unregister all Terminals owned by this closing tab
+                let imp = window.imp();
+                let closing_tab: TmuxTopLevel = closing_page.child().downcast().unwrap();
+
+                let closed_terminals = closing_tab.imp().terminals.borrow().clone();
+                imp.terminals.borrow_mut().retain(|terminal| {
+                    for closed in closed_terminals.iter() {
+                        if terminal.terminal.eq(closed) {
+                            debug!("Unregistered Terminal {} since Tab was closed", terminal.id);
+                            return false;
+                        }
+                    }
+
+                    true
+                });
+
+                // Remove the tab from the tab list
+                imp.tabs.borrow_mut().retain(|tab| !closing_tab.eq(tab));
+
+                Propagation::Proceed
+            }
+        ));
 
         // Terminal settings
         let tmux_button = Button::with_label("Tmux");
@@ -120,18 +161,6 @@ impl IvyTmuxWindow {
         }
     }
 
-    pub fn close_tmux_window(&self) {
-        let imp = self.imp();
-
-        // Stop Tmux API
-        imp.tmux.replace(None);
-
-        // Drop all children
-        self.set_content(None::<&gtk4::Widget>);
-
-        self.close();
-    }
-
     pub fn new_tab(&self, id: u32) -> TmuxTopLevel {
         let imp = self.imp();
 
@@ -144,6 +173,7 @@ impl IvyTmuxWindow {
         tabs.push(top_level.clone());
 
         // Add pane as a page
+        // TODO: Do this once for tab_view instead of each page
         let page = tab_view.append(&top_level);
         page.connect_selected_notify(glib::clone!(
             #[weak(rename_to = window)]
@@ -163,30 +193,20 @@ impl IvyTmuxWindow {
     }
 
     pub fn close_tab(&self, closing_tab: &TmuxTopLevel) {
-        let imp = self.imp();
-
-        let binding = imp.tab_view.borrow();
+        let binding = self.imp().tab_view.borrow();
         let tab_view = binding.as_ref().unwrap();
         let page = tab_view.page(closing_tab);
         tab_view.close_page(&page);
-
-        // Unregister all Terminals owned by this closing tab
-        let closed_terminals = closing_tab.imp().terminals.borrow().clone();
-        let mut my_terminals = imp.terminals.borrow_mut();
-        my_terminals.retain(|terminal| {
-            for closed in &closed_terminals {
-                if terminal.terminal.eq(closed) {
-                    debug!("Unregistered Terminal {} since Tab was closed", terminal.id);
-                    return false;
-                }
-            }
-
-            true
-        });
-
-        // Remove the tab from the tab list
-        let mut tabs = imp.tabs.borrow_mut();
-        tabs.retain(|tab| tab != closing_tab);
+        // This is a hacky fix of what appears to be a libadwaita issue.
+        // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+        // sure if 1.5.x versions have been fixed.
+        if tab_view.n_pages() < 1
+            && libadwaita::major_version() < 2
+            && libadwaita::minor_version() < 6
+        {
+            page.child().unparent();
+        }
+        drop(binding);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &TmuxTerminal) {
@@ -203,37 +223,6 @@ impl IvyTmuxWindow {
         let mut terminals = self.imp().terminals.borrow_mut();
         terminals.remove(pane_id);
         debug!("Terminal with ID {} unregistered", pane_id);
-    }
-
-    // TODO: Make this an event
-    pub fn tab_closed(&self, deleted_tab: u32, deleted_terms: Vec<u32>) {
-        // We do it this way so all RefCells are dropped
-        let close_window = {
-            // Remove all Terminals belonging to the closed Tab
-            let mut terminals = self.imp().terminals.borrow_mut();
-            terminals.retain(|term_id| {
-                let term_id = term_id.id;
-                // If the given term_id is one of the deleted_ids, do NOT retain it
-                for deleted_id in deleted_terms.iter() {
-                    if term_id == *deleted_id {
-                        debug!("Terminal with ID {} unregistered", deleted_id);
-                        return false;
-                    }
-                }
-
-                return true;
-            });
-
-            // Just in case (mainly for when users uses CloseTab shortcut)
-            let mut tabs = self.imp().tabs.borrow_mut();
-            tabs.retain(|tab_id| tab_id.tab_id() != deleted_tab);
-
-            tabs.len() == 0
-        };
-
-        if close_window {
-            self.close();
-        }
     }
 
     fn get_top_level(&self, id: u32) -> Option<TmuxTopLevel> {
@@ -295,15 +284,18 @@ impl IvyTmuxWindow {
     pub fn clipboard_paste_event(&self, pane_id: u32) {
         let clipboard = self.primary_clipboard();
         let future = clipboard.read_text_future();
-        let window = self.clone();
 
-        glib::spawn_future_local(async move {
-            if let Ok(output) = future.await {
-                if let Some(output) = output {
-                    window.send_clipboard(pane_id, output.as_str());
+        glib::spawn_future_local(glib::clone!(
+            #[weak(rename_to = window)]
+            self,
+            async move {
+                if let Ok(output) = future.await {
+                    if let Some(output) = output {
+                        window.send_clipboard(pane_id, output.as_str());
+                    }
                 }
             }
-        });
+        ));
     }
 }
 

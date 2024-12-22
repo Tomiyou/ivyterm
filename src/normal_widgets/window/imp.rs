@@ -37,13 +37,7 @@ impl ObjectImpl for IvyWindowPriv {
         self.terminals.borrow_mut().clear();
 
         // Close all remaining pages
-        if let Some(tab_view) = self.tab_view.take() {
-            if tab_view.n_pages() > 0 {
-                let first_page = tab_view.nth_page(0);
-                tab_view.close_pages_after(&first_page);
-                tab_view.close_page(&first_page);
-            }
-        }
+        self.tab_view.take();
     }
 }
 
@@ -53,40 +47,48 @@ impl WidgetImpl for IvyWindowPriv {}
 // Trait shared by all windows
 impl WindowImpl for IvyWindowPriv {
     fn close_request(&self) -> Propagation {
-        let terminal_count = self.terminals.borrow().len();
+        let mut terminals = self.terminals.borrow_mut();
 
-        // If there are no Terminals open, we can close immediately
-        if terminal_count < 1 {
-            return Propagation::Proceed;
+        // If there are 2 or more Terminals remaining in our Window, user needs to confirm
+        // that he really wants to close the window
+        if terminals.len() > 1 && !self.close_allowed.get() {
+            let window = self.obj();
+            let allow_close = glib::closure_local!(
+                #[weak]
+                window,
+                move || {
+                    window.imp().close_allowed.replace(true);
+                }
+            );
+            // Spawn exit confirm modal
+            spawn_exit_modal(window.upcast_ref(), allow_close);
+            return Propagation::Stop
         }
 
-        // If user confirmed close, we can start closing tabs, then wait for
-        // dispose to call tab_closed() when everything is actually released
-        if self.close_allowed.get() || terminal_count < 2 {
-            self.tabs.borrow_mut().clear();
+        // TODO: This feels hacky..
+        self.obj().set_content(None::<&gtk4::Widget>);
+        // Clear Tabs and Terminals
+        terminals.clear();
+        drop(terminals);
+        self.tabs.borrow_mut().clear();
 
-            let tab_view = self.tab_view.take().unwrap();
+        // Close all TabView pages
+        if let Some(tab_view) = self.tab_view.take() {
             if tab_view.n_pages() > 0 {
                 let first_page = tab_view.nth_page(0);
                 tab_view.close_other_pages(&first_page);
                 tab_view.close_page(&first_page);
+
+                // This is a hacky fix of what appears to be a libadwaita issue.
+                // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+                // sure if 1.5.x versions have been fixed.
+                if libadwaita::major_version() < 2 && libadwaita::minor_version() < 6 {
+                    first_page.child().unparent();
+                }
             }
-            return Propagation::Stop;
         }
 
-        // If there are more than 2 terminals left, ask the user if he really wants
-        // to close the window first
-        let window = self.obj();
-        let allow_close = glib::closure_local!(
-            #[weak]
-            window,
-            move || {
-                window.imp().close_allowed.replace(true);
-            }
-        );
-        spawn_exit_modal(window.upcast_ref(), allow_close);
-
-        Propagation::Stop
+        Propagation::Proceed
     }
 }
 

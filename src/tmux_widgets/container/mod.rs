@@ -7,7 +7,7 @@ use libadwaita::{glib, prelude::*};
 
 pub use layout::TmuxLayout;
 
-use super::{separator::TmuxSeparator, terminal::TmuxTerminal, IvyTmuxWindow};
+use super::{separator::TmuxSeparator, terminal::TmuxTerminal};
 
 glib::wrapper! {
     pub struct TmuxContainer(ObjectSubclass<imp::ContainerPriv>)
@@ -16,14 +16,13 @@ glib::wrapper! {
 }
 
 impl TmuxContainer {
-    pub fn new(orientation: &Orientation, window: &IvyTmuxWindow) -> Self {
+    pub fn new(orientation: &Orientation) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);
         container.set_hexpand(true);
 
         let imp = container.imp();
-        imp.window.replace(Some(window.clone()));
 
         let layout = TmuxLayout::new();
         container.set_layout_manager(Some(layout.clone()));
