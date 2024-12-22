@@ -62,7 +62,7 @@ impl WindowImpl for IvyWindowPriv {
             );
             // Spawn exit confirm modal
             spawn_exit_modal(window.upcast_ref(), allow_close);
-            return Propagation::Stop
+            return Propagation::Stop;
         }
 
         // TODO: This feels hacky..
