@@ -68,7 +68,7 @@ impl TopLevel {
             let old_terminal = self.child().unwrap();
 
             self.set_child(None::<&Self>);
-            let container = Container::new(orientation, window);
+            let container = Container::new(orientation);
             container.append(&old_terminal);
             container.append(&new_terminal);
             self.set_child(Some(&container));
@@ -85,7 +85,7 @@ impl TopLevel {
         }
 
         // The split orientation is different from Container's, meaning we have to insert a new Container
-        let new_container = Container::new(orientation, window);
+        let new_container = Container::new(orientation);
         container.replace(terminal, &new_container);
         new_container.append(terminal);
         new_container.append(&new_terminal);

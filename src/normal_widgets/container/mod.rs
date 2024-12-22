@@ -17,14 +17,13 @@ glib::wrapper! {
 }
 
 impl Container {
-    pub fn new(orientation: Orientation, window: &IvyNormalWindow) -> Self {
+    pub fn new(orientation: Orientation) -> Self {
         let container: Self = Object::builder().build();
         container.set_orientation(orientation);
         container.set_vexpand(true);
         container.set_hexpand(true);
 
         let imp = container.imp();
-        imp.window.replace(Some(window.clone()));
 
         let layout: ContainerLayout = container.layout_manager().unwrap().downcast().unwrap();
         imp.layout.replace(Some(layout));

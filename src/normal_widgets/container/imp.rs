@@ -12,7 +12,6 @@ use super::layout::ContainerLayout;
 #[derive(glib::Properties)]
 #[properties(wrapper_type = super::Container)]
 pub struct ContainerPriv {
-    pub window: RefCell<Option<IvyNormalWindow>>,
     pub layout: RefCell<Option<ContainerLayout>>,
     #[property(get, set=Self::set_orientation, builder(gtk4::Orientation::Horizontal))]
     orientation: RefCell<gtk4::Orientation>,
@@ -34,7 +33,6 @@ impl ObjectSubclass for ContainerPriv {
     fn new() -> Self {
         // Here we set the default orientation.
         Self {
-            window: RefCell::new(None),
             layout: RefCell::new(None),
             orientation: RefCell::new(Orientation::Horizontal),
         }
@@ -47,7 +45,6 @@ impl ObjectImpl for ContainerPriv {
         while let Some(child) = self.obj().first_child() {
             child.unparent();
         }
-        self.window.take();
         self.layout.take();
     }
 }
