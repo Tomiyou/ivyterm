@@ -1,6 +1,6 @@
 [package]
 name = "ivyterm"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 license = "GPL v3"
 authors = ["Tomaž Hribernik <tomaz.hribernik@protonmail.com>"]
