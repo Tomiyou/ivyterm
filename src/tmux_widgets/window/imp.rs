@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use glib::Propagation;
 use libadwaita::subclass::prelude::*;
-use libadwaita::{glib, prelude::*, ApplicationWindow, TabView};
+use libadwaita::{glib, ApplicationWindow, TabView};
 
 use crate::helpers::SortedVec;
 use crate::tmux_api::TmuxAPI;
@@ -62,13 +62,6 @@ impl WindowImpl for IvyWindowPriv {
                 let first_page = tab_view.nth_page(0);
                 tab_view.close_other_pages(&first_page);
                 tab_view.close_page(&first_page);
-
-                // This is a hacky fix of what appears to be a libadwaita issue.
-                // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
-                // sure if 1.5.x versions have been fixed.
-                if libadwaita::major_version() < 2 && libadwaita::minor_version() < 6 {
-                    first_page.child().unparent();
-                }
             }
         }
 

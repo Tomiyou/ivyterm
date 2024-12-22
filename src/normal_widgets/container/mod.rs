@@ -8,8 +8,6 @@ use libadwaita::{glib, prelude::*};
 
 pub use layout::ContainerLayout;
 
-use super::window::IvyNormalWindow;
-
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
         @extends Widget,

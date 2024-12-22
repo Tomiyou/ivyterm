@@ -73,6 +73,13 @@ impl IvyNormalWindow {
                 // Remove the tab from the tab list
                 imp.tabs.borrow_mut().retain(|tab| !closing_tab.eq(tab));
 
+                // This is a hacky fix of what appears to be a libadwaita issue.
+                // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
+                // sure if 1.5.x versions have been fixed.
+                if libadwaita::major_version() < 2 && libadwaita::minor_version() < 6 {
+                    closing_page.child().unparent();
+                }
+
                 Propagation::Proceed
             }
         ));
@@ -168,26 +175,11 @@ impl IvyNormalWindow {
     pub fn close_tab(&self, closing_tab: &TopLevel) {
         // Close the tab (page) in TabView
         let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        // TODO: Is this hacky?
-        if tab_view.n_pages() < 2 {
-            // We can close the Window directly
-            drop(binding);
-            self.close();
-            return;
-        }
+        let tab_view = binding.as_ref().unwrap().clone();
+        drop(binding);
+
         let page = tab_view.page(closing_tab);
         tab_view.close_page(&page);
-        // This is a hacky fix of what appears to be a libadwaita issue.
-        // The issue is reproducible in 1.5.0 and resolved in 1.6.0. Not
-        // sure if 1.5.x versions have been fixed.
-        if tab_view.n_pages() < 1
-            && libadwaita::major_version() < 2
-            && libadwaita::minor_version() < 6
-        {
-            page.child().unparent();
-        }
-        drop(binding);
     }
 
     pub fn register_terminal(&self, pane_id: u32, terminal: &Terminal) {

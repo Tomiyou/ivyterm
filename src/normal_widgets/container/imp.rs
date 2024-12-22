@@ -4,8 +4,6 @@ use gtk4::{Orientation, Widget};
 use libadwaita::subclass::prelude::*;
 use libadwaita::{glib, prelude::*};
 
-use crate::normal_widgets::window::IvyNormalWindow;
-
 use super::layout::ContainerLayout;
 
 // Object holding the state
