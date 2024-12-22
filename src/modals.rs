@@ -78,6 +78,7 @@ pub fn spawn_new_tmux_modal(parent: &ApplicationWindow) {
     // SSH input
     let ssh_label = Label::new(Some("SSH host (optional):"));
     let ssh_input = Entry::new();
+    ssh_input.set_placeholder_text(Some("Either user@host:port or config_entry"));
     content.append(&ssh_label);
     content.append(&ssh_input);
 
