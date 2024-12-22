@@ -554,7 +554,7 @@ checksum = "5a611371471e98973dbcab4e0ec66c31a10bc356eeb4d54a0e05eac8158fe38c"
 
 [[package]]
 name = "ivyterm"
-version = "1.0.3"
+version = "1.0.4"
 dependencies = [
  "async-channel",
  "const_format",
