@@ -252,7 +252,7 @@ fn new_with_ssh(
 
                             match ssh_stderr.read(&mut stderr_buffer) {
                                 Ok(bytes_read) => {
-                                    let data = stdout_buffer[..bytes_read].to_vec();
+                                    let data = stderr_buffer[..bytes_read].to_vec();
                                     let s = String::from_utf8(data).unwrap();
                                     let mut stderr = stderr.lock();
                                     stderr.write(s.as_bytes()).unwrap();
