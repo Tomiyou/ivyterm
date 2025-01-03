@@ -2,19 +2,27 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    naersk.url = "github:nix-community/naersk";
   };
 
-  outputs = { self, nixpkgs, flake-utils, naersk }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        naersk' = pkgs.callPackage naersk {};
-        nativeBuildInputs = [ pkgs.pkg-config pkgs.gtk4 pkgs.libadwaita pkgs.openssl pkgs.vte-gtk4 ];
-        ivyterm = naersk'.buildPackage {
-          inherit nativeBuildInputs;
-          src = ./.;
+        # cargo-nix = import ./Cargo.nix { inherit pkgs; };
+        cargo-nix = import ./Cargo.nix {
+          inherit pkgs;
+          defaultCrateOverrides = pkgs.defaultCrateOverrides // {
+            libadwaita-sys = attrs: {
+              nativeBuildInputs = [ pkgs.pkg-config ];
+              buildInputs = [ pkgs.libadwaita ];
+            };
+            vte4-sys = attrs: {
+              nativeBuildInputs = [ pkgs.pkg-config ];
+              buildInputs = [ pkgs.vte-gtk4 ];
+            };
+          };
         };
+        ivyterm = cargo-nix.rootCrate.build;
       in {
         packages = {
           inherit ivyterm;
