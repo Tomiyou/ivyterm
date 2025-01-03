@@ -2,14 +2,20 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    crate2nix = {
+      url = "github:nix-community/crate2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, crate2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        # cargo-nix = import ./Cargo.nix { inherit pkgs; };
-        cargo-nix = import ./Cargo.nix {
+        cargo-nix = pkgs.callPackage (crate2nix.tools.${system}.generatedCargoNix {
+          name = "ivyterm";
+          src = ./.;
+        }) {
           inherit pkgs;
           defaultCrateOverrides = pkgs.defaultCrateOverrides // {
             libadwaita-sys = attrs: {
