@@ -2,10 +2,10 @@ use std::process::{Command, Stdio};
 
 use const_format::concatcp;
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum IvyError {
-    TmuxSpawnError(String),
-    Blabla,
+    #[error("executing remote Tmux command failed")]
+    TmuxSpawnFailed,
 }
 
 #[derive(Debug, PartialEq, Eq)]

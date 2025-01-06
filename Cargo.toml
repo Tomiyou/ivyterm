@@ -22,6 +22,7 @@ mio = { version = "1.0.3", features = ["net", "os-poll"] }
 serde = { version = "1.0.216", features = ["derive"] }
 ssh2 = "0.9.4"
 ssh2-config = "0.2.3"
+thiserror = "2.0.9"
 toml = "0.8.19"
 vte4 = { version = "0.8.0", features = ["v0_70"] }
 

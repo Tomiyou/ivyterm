@@ -80,153 +80,167 @@ fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) {
     event_channel.send_blocking(event).unwrap();
 }
 
+pub fn tmux_parse_data(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usize, ()> {
+    let mut i = 0;
+    let mut consumed_bytes = 0;
+
+    while i < buffer.len() {
+        if buffer[i] == b'\n' {
+            match tmux_parse_line(state, &buffer[consumed_bytes..i]) {
+                Ok(bytes) => consumed_bytes += bytes + 1, // +1 to account for \n
+                Err(_) => return Err(()),
+            }
+        }
+        i += 1;
+    }
+
+    Ok(consumed_bytes)
+}
+
 #[inline]
-pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) {
+pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usize, ()> {
     let event_channel = &mut state.event_channel;
     let command_queue = &mut state.command_queue;
 
     // TODO: Handle output larger than 65534 bytes
-    // while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
-    {
-        // All output from Tmux is ASCII, except %output which we handle separately
-        if buffer.len() == 0 {
-            return;
-        }
-
-        debug!("Tmux output: .{}.", from_utf8(&buffer).unwrap());
-
-        if buffer.is_empty() || buffer[0] != b'%' {
-            // This is output from a command we ran
-            if state.is_error {
-                let error = from_utf8(&buffer).unwrap();
-                eprintln!("Error: ({:?}) {}", state.current_command, error);
-            } else if let Some(command) = &state.current_command {
-                tmux_command_result(
-                    command,
-                    buffer,
-                    state.result_line,
-                    state.empty_line_count,
-                    &event_channel,
-                    &state.ssh_target,
-                );
-            }
-
-            state.result_line += 1;
-            state.empty_line_count = 0;
-        } else {
-            // This is a notification
-            if buffer_starts_with(&buffer, "%output") {
-                // We were given output, we can assume that up until pane_id, output is ASCII
-                let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
-                let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
-
-                receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false));
-            } else if buffer_starts_with(&buffer, "%begin") {
-                // Beginning of output from a command we executed
-                state.current_command = Some(command_queue.recv_blocking().unwrap());
-            } else if buffer_starts_with(&buffer, "%end") {
-                // End of output from a command we executed
-                if let Some(current_command) = &state.current_command {
-                    match current_command {
-                        TmuxCommand::InitialOutput(pane_id) => {
-                            let pane_id = *pane_id;
-                            receive_event(
-                                &event_channel,
-                                TmuxEvent::ScrollOutput(pane_id, state.empty_line_count),
-                            );
-                            receive_event(
-                                &event_channel,
-                                TmuxEvent::InitialOutputFinished(pane_id),
-                            );
-                        }
-                        TmuxCommand::ChangeSize(_, _) => {
-                            receive_event(&event_channel, TmuxEvent::SizeChanged);
-                        }
-                        TmuxCommand::InitialLayout => {
-                            receive_event(&event_channel, TmuxEvent::InitialLayoutFinished);
-                        }
-                        _ => {}
-                    }
-                }
-
-                state.current_command = None;
-                state.is_error = false;
-                state.result_line = 0;
-                state.empty_line_count = 0;
-            } else if buffer_starts_with(&buffer, "%error") {
-                // TODO: We still don't actually print the error
-                eprintln!("Error on command {:?}", state.current_command);
-
-                // Command we executed produced an error
-                state.current_command = None;
-                state.is_error = false;
-                state.result_line = 0;
-                state.empty_line_count = 0;
-            } else if buffer_starts_with(&buffer, "%window-pane-changed") {
-                // %window-pane-changed @0 %10
-                let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
-                let buffer = &buffer[22 + chars_read + 1..];
-                let (pane_id, _) = read_first_u32(buffer);
-                debug!(
-                    "Tmux event: Window {} focus changed to pane {}",
-                    tab_id, pane_id
-                );
-                receive_event(&event_channel, TmuxEvent::PaneFocusChanged(tab_id, pane_id));
-            } else if buffer_starts_with(&buffer, "%window-add") {
-                // TODO: Instead of asking for info when creating a new window, ask for info
-                // after receiving this notification
-                // %window-add @32
-            } else if buffer_starts_with(&buffer, "%session-window-changed") {
-                // %session-window-changed $1 @1
-                let (session_id, chars_read) = read_first_u32(&buffer[25..]);
-                let buffer = &buffer[25 + chars_read + 1..];
-                let (tab_id, _) = read_first_u32(buffer);
-                debug!(
-                    "Tmux event: Session {} focus changed to window {}",
-                    session_id, tab_id
-                );
-                receive_event(&event_channel, TmuxEvent::TabFocusChanged(tab_id));
-            } else if buffer_starts_with(&buffer, "%unlinked-window-close") {
-                // %unlinked-window-close @6
-                let (tab_id, _) = read_first_u32(&buffer[24..]);
-                debug!("Tmux event: Tab {} closed", tab_id);
-                receive_event(&event_channel, TmuxEvent::TabClosed(tab_id));
-            } else if buffer_starts_with(&buffer, "%layout-change") {
-                // Layout has changed
-                let layout_sync = parse_tmux_layout(&buffer[15..]);
-                receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync));
-            } else if buffer_starts_with(&buffer, "%session-changed") {
-                // Session has changed
-                let (id, bytes_read) = read_first_u32(&buffer[18..]);
-                let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
-                debug!("Tmux event: Session changed ({}): {}", id, name);
-
-                receive_event(&event_channel, TmuxEvent::SessionChanged(id, name));
-            } else if buffer_starts_with(&buffer, "%window-renamed") {
-                // Session has changed
-                let (id, bytes_read) = read_first_u32(&buffer[17..]);
-                let name = from_utf8(&buffer[17 + bytes_read..]).unwrap().to_string();
-                debug!("Tmux event: Tab renamed ({}): {}", id, name);
-
-                receive_event(&event_channel, TmuxEvent::TabRenamed(id, name));
-            } else if buffer_starts_with(&buffer, "%exit") {
-                // Tmux client has exited
-                let reason = from_utf8(&buffer[5..]).unwrap();
-                debug!("Tmux event: Exit received, reason: {}", reason);
-                receive_event(&event_channel, TmuxEvent::Exit);
-                // Stop receiving events
-                return;
-            } else if buffer_starts_with(&buffer, "%client-session-changed") {
-            } else {
-                // Unsupported notification
-                let notification = from_utf8(&buffer).unwrap();
-                debug!("Tmux event: Unknown notification: {}", notification)
-            }
-        }
-
-        // buffer.clear();
+    // All output from Tmux is ASCII, except %output which we handle separately
+    if buffer.len() == 0 {
+        return Ok(0);
     }
-    // buffer.clear();
+
+    debug!("Tmux output: .{}.", from_utf8(&buffer).unwrap());
+
+    // If buffer is empty or does not start with %, then this is output from a
+    // command we executed
+    if buffer.is_empty() || buffer[0] != b'%' {
+        // This is output from a command we ran
+        if state.is_error {
+            let error = from_utf8(&buffer).unwrap();
+            eprintln!("Error: ({:?}) {}", state.current_command, error);
+        } else if let Some(command) = &state.current_command {
+            tmux_command_result(
+                command,
+                buffer,
+                state.result_line,
+                state.empty_line_count,
+                &event_channel,
+                &state.ssh_target,
+            );
+        }
+
+        state.result_line += 1;
+        state.empty_line_count = 0;
+
+        return Ok(buffer.len());
+    }
+
+    // This is a notification
+    if buffer_starts_with(&buffer, "%output") {
+        // We were given output, we can assume that up until pane_id, output is ASCII
+        let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
+        let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
+
+        receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false));
+    } else if buffer_starts_with(&buffer, "%begin") {
+        // Beginning of output from a command we executed
+        state.current_command = Some(command_queue.recv_blocking().unwrap());
+    } else if buffer_starts_with(&buffer, "%end") {
+        // End of output from a command we executed
+        if let Some(current_command) = &state.current_command {
+            match current_command {
+                TmuxCommand::InitialOutput(pane_id) => {
+                    let pane_id = *pane_id;
+                    receive_event(
+                        &event_channel,
+                        TmuxEvent::ScrollOutput(pane_id, state.empty_line_count),
+                    );
+                    receive_event(&event_channel, TmuxEvent::InitialOutputFinished(pane_id));
+                }
+                TmuxCommand::ChangeSize(_, _) => {
+                    receive_event(&event_channel, TmuxEvent::SizeChanged);
+                }
+                TmuxCommand::InitialLayout => {
+                    receive_event(&event_channel, TmuxEvent::InitialLayoutFinished);
+                }
+                _ => {}
+            }
+        }
+
+        state.current_command = None;
+        state.is_error = false;
+        state.result_line = 0;
+        state.empty_line_count = 0;
+    } else if buffer_starts_with(&buffer, "%error") {
+        // TODO: We still don't actually print the error
+        eprintln!("Error on command {:?}", state.current_command);
+
+        // Command we executed produced an error
+        state.current_command = None;
+        state.is_error = false;
+        state.result_line = 0;
+        state.empty_line_count = 0;
+    } else if buffer_starts_with(&buffer, "%window-pane-changed") {
+        // %window-pane-changed @0 %10
+        let (tab_id, chars_read) = read_first_u32(&buffer[22..]);
+        let buffer = &buffer[22 + chars_read + 1..];
+        let (pane_id, _) = read_first_u32(buffer);
+        debug!(
+            "Tmux event: Window {} focus changed to pane {}",
+            tab_id, pane_id
+        );
+        receive_event(&event_channel, TmuxEvent::PaneFocusChanged(tab_id, pane_id));
+    } else if buffer_starts_with(&buffer, "%window-add") {
+        // TODO: Instead of asking for info when creating a new window, ask for info
+        // after receiving this notification
+        // %window-add @32
+    } else if buffer_starts_with(&buffer, "%session-window-changed") {
+        // %session-window-changed $1 @1
+        let (session_id, chars_read) = read_first_u32(&buffer[25..]);
+        let buffer = &buffer[25 + chars_read + 1..];
+        let (tab_id, _) = read_first_u32(buffer);
+        debug!(
+            "Tmux event: Session {} focus changed to window {}",
+            session_id, tab_id
+        );
+        receive_event(&event_channel, TmuxEvent::TabFocusChanged(tab_id));
+    } else if buffer_starts_with(&buffer, "%unlinked-window-close") {
+        // %unlinked-window-close @6
+        let (tab_id, _) = read_first_u32(&buffer[24..]);
+        debug!("Tmux event: Tab {} closed", tab_id);
+        receive_event(&event_channel, TmuxEvent::TabClosed(tab_id));
+    } else if buffer_starts_with(&buffer, "%layout-change") {
+        // Layout has changed
+        let layout_sync = parse_tmux_layout(&buffer[15..]);
+        receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync));
+    } else if buffer_starts_with(&buffer, "%session-changed") {
+        // Session has changed
+        let (id, bytes_read) = read_first_u32(&buffer[18..]);
+        let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
+        debug!("Tmux event: Session changed ({}): {}", id, name);
+
+        receive_event(&event_channel, TmuxEvent::SessionChanged(id, name));
+    } else if buffer_starts_with(&buffer, "%window-renamed") {
+        // Session has changed
+        let (id, bytes_read) = read_first_u32(&buffer[17..]);
+        let name = from_utf8(&buffer[17 + bytes_read..]).unwrap().to_string();
+        debug!("Tmux event: Tab renamed ({}): {}", id, name);
+
+        receive_event(&event_channel, TmuxEvent::TabRenamed(id, name));
+    } else if buffer_starts_with(&buffer, "%exit") {
+        // Tmux client has exited
+        let reason = from_utf8(&buffer[5..]).unwrap();
+        debug!("Tmux event: Exit received, reason: {}", reason);
+        receive_event(&event_channel, TmuxEvent::Exit);
+        // Stop receiving events
+        return Err(());
+    } else if buffer_starts_with(&buffer, "%client-session-changed") {
+    } else {
+        // Unsupported notification
+        let notification = from_utf8(&buffer).unwrap();
+        debug!("Tmux event: Unknown notification: {}", notification)
+    }
+
+    Ok(buffer.len())
 }
 
 #[inline]

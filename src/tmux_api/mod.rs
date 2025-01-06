@@ -8,7 +8,7 @@ use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use log::debug;
 use mio::{Events, Poll};
-use receive::tmux_parse_line;
+use receive::{tmux_parse_data, tmux_parse_line};
 use ssh2::{DisconnectCode, Session};
 
 use crate::helpers::IvyError;
@@ -165,10 +165,7 @@ impl TmuxAPI {
             new_without_ssh(session_name, tmux_event_sender, cmd_queue_receiver)
                 .map(|ok| (ok, None))
         };
-        let (writer, ssh_session) = match spawn {
-            Err(_) => return Err(IvyError::Blabla),
-            Ok(ok) => ok,
-        };
+        let (writer, ssh_session) = spawn?;
 
         // Receive events from the channel on main thread
         let receive_future = glib::spawn_future_local(glib::clone!(
@@ -200,12 +197,15 @@ fn new_with_ssh(
     tuple: (Session, Poll, Events),
     tmux_event_sender: Sender<TmuxEvent>,
     cmd_queue_receiver: Receiver<TmuxCommand>,
-) -> Result<(Box<dyn Write>, Option<Session>), ()> {
+) -> Result<(Box<dyn Write>, Option<Session>), IvyError> {
     let (session, mut poll, mut events) = tuple;
 
     let command = format!("tmux -2 -C new-session -A -s {}", session_name);
     let mut channel = session.channel_session().unwrap();
-    channel.exec(&command).unwrap();
+    channel.exec(&command).map_err(|err| {
+        eprintln!("channel.exec() failed with: {}", err);
+        IvyError::TmuxSpawnFailed
+    })?;
     session.set_blocking(false);
 
     let ssh_stdin = channel.stream(0);
@@ -217,6 +217,7 @@ fn new_with_ssh(
         let mut stdout_buffer = vec![0; 65534];
         let mut stderr_buffer = vec![0; 4096];
         let stderr = io::stderr();
+        let mut stdout_leftover = 0;
 
         loop {
             if let Err(_) = poll.poll(&mut events, None) {
@@ -227,23 +228,27 @@ fn new_with_ssh(
                 match event.token() {
                     SSH_TOKEN => {
                         if event.is_readable() {
-                            match ssh_stdout.read(&mut stdout_buffer) {
+                            // Read from SSH connection, appending to any leftover data
+                            match ssh_stdout.read(&mut stdout_buffer[stdout_leftover..]) {
                                 Ok(bytes_read) => {
-                                    let mut slice = &stdout_buffer[..bytes_read];
+                                    // End if data is what is leftover from a previous read and the newly ready bytes
+                                    let total_data = stdout_leftover + bytes_read;
+                                    let bytes_consumed = match tmux_parse_data(
+                                        &mut state,
+                                        &stdout_buffer[..total_data],
+                                    ) {
+                                        Ok(bytes_consumed) => bytes_consumed,
+                                        Err(_) => return,
+                                    };
+                                    if bytes_consumed < 1 {
+                                        panic!("Tmux API did not consume any bytes!");
+                                    }
 
-                                    let mut i = 0;
-                                    while i < slice.len() {
-                                        if slice[i] == b'\n' {
-                                            tmux_parse_line(&mut state, &slice[..i]);
-                                            slice = &slice[i + 1..];
-                                            i = 0;
-                                            continue;
-                                        }
-                                        i += 1;
+                                    // In case we our Tmux API did not consume all data, we need to remember it
+                                    for (i, val) in (bytes_consumed..total_data).enumerate() {
+                                        stdout_buffer[i] = stdout_buffer[val];
                                     }
-                                    if !slice.is_empty() {
-                                        tmux_parse_line(&mut state, slice);
-                                    }
+                                    stdout_leftover = total_data - bytes_consumed;
                                 }
                                 Err(e) => {
                                     if e.kind() != std::io::ErrorKind::WouldBlock {
@@ -291,7 +296,7 @@ fn new_without_ssh(
     session_name: &str,
     tmux_event_sender: Sender<TmuxEvent>,
     cmd_queue_receiver: Receiver<TmuxCommand>,
-) -> Result<Box<dyn Write>, ()> {
+) -> Result<Box<dyn Write>, IvyError> {
     println!("Attaching to Tmux session {}", session_name);
     let mut process = Command::new("tmux")
         .arg("-2")
@@ -315,7 +320,10 @@ fn new_without_ssh(
 
         while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
             if bytes_read > 0 {
-                tmux_parse_line(&mut state, &buffer[..bytes_read - 1]);
+                match tmux_parse_line(&mut state, &buffer[..bytes_read - 1]) {
+                    Ok(_) => {},
+                    Err(_) => return,
+                }
                 buffer.clear();
             }
         }
