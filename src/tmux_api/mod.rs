@@ -219,7 +219,10 @@ fn new_with_ssh(
         let stderr = io::stderr();
 
         loop {
-            poll.poll(&mut events, None).unwrap();
+            if let Err(_) = poll.poll(&mut events, None) {
+                return;
+            }
+
             for event in events.iter() {
                 match event.token() {
                     SSH_TOKEN => {
