@@ -4,11 +4,17 @@ use async_channel::Sender;
 use log::debug;
 use vmap::io::Ring;
 
-use crate::{helpers::{open_editor, TmuxError}, tmux_api::TmuxEvent};
+use crate::{
+    helpers::{open_editor, TmuxError},
+    tmux_api::TmuxEvent,
+};
 
 use super::{parse_layout::parse_tmux_layout, TmuxCommand, TmuxParserState};
 
-pub fn tmux_parse_data(state: &mut TmuxParserState, ring_buffer: &mut Ring) -> Result<(), TmuxError> {
+pub fn tmux_parse_data(
+    state: &mut TmuxParserState,
+    ring_buffer: &mut Ring,
+) -> Result<(), TmuxError> {
     let mut consumed_bytes = 0;
     let buffer = ring_buffer.as_ref();
 
@@ -95,7 +101,9 @@ fn buffer_starts_with(buffer: &[u8], prefix: &str) -> bool {
 
 #[inline]
 fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) -> Result<(), TmuxError> {
-    event_channel.send_blocking(event).map_err(|_| TmuxError::EventChannelClosed)
+    event_channel
+        .send_blocking(event)
+        .map_err(|_| TmuxError::EventChannelClosed)
 }
 
 #[inline]
