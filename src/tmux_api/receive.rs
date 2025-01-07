@@ -1,4 +1,4 @@
-use std::{io::BufRead, str::from_utf8};
+use std::{io::{self, BufRead, Write}, str::from_utf8};
 
 use async_channel::Sender;
 use log::debug;
@@ -129,9 +129,9 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
     if buffer.is_empty() || buffer[0] != b'%' {
         // This is output from a command we ran
         if state.is_error {
-            // TODO: Write to stderr directly
-            let error = parse_utf8(&buffer)?;
-            eprintln!("Error: ({:?}) {}", state.current_command, error);
+            let stderr = io::stderr();
+            let mut stderr = stderr.lock();
+            stderr.write(buffer).unwrap();
         } else if let Some(command) = &state.current_command {
             tmux_command_result(
                 command,
