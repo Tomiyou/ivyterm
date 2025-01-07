@@ -1,11 +1,29 @@
-use std::str::from_utf8;
+use std::{io::BufRead, str::from_utf8};
 
 use async_channel::Sender;
 use log::debug;
+use vmap::io::Ring;
 
-use crate::{helpers::open_editor, tmux_api::TmuxEvent};
+use crate::{helpers::{open_editor, TmuxError}, tmux_api::TmuxEvent};
 
 use super::{parse_layout::parse_tmux_layout, TmuxCommand, TmuxParserState};
+
+pub fn tmux_parse_data(state: &mut TmuxParserState, ring_buffer: &mut Ring) -> Result<(), TmuxError> {
+    let mut consumed_bytes = 0;
+    let buffer = ring_buffer.as_ref();
+
+    for (i, b) in buffer.iter().enumerate() {
+        if *b == b'\n' {
+            let buffer = &buffer[consumed_bytes..i];
+            consumed_bytes += tmux_parse_line(state, buffer)? + 1; // +1 to account for \n
+        }
+    }
+
+    // Move the ringbuffer read position
+    ring_buffer.consume(consumed_bytes);
+
+    Ok(())
+}
 
 /// Parses Tmux output and replaces octal escapes sequences with correct binary
 /// characters
@@ -76,29 +94,17 @@ fn buffer_starts_with(buffer: &[u8], prefix: &str) -> bool {
 }
 
 #[inline]
-fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) {
-    event_channel.send_blocking(event).unwrap();
-}
-
-pub fn tmux_parse_data(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usize, ()> {
-    let mut i = 0;
-    let mut consumed_bytes = 0;
-
-    while i < buffer.len() {
-        if buffer[i] == b'\n' {
-            match tmux_parse_line(state, &buffer[consumed_bytes..i]) {
-                Ok(bytes) => consumed_bytes += bytes + 1, // +1 to account for \n
-                Err(_) => return Err(()),
-            }
-        }
-        i += 1;
-    }
-
-    Ok(consumed_bytes)
+fn receive_event(event_channel: &Sender<TmuxEvent>, event: TmuxEvent) -> Result<(), TmuxError> {
+    event_channel.send_blocking(event).map_err(|_| TmuxError::EventChannelClosed)
 }
 
 #[inline]
-pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usize, ()> {
+fn parse_utf8(buffer: &[u8]) -> Result<&str, TmuxError> {
+    from_utf8(buffer).map_err(|_| TmuxError::ErrorParsingUTF8)
+}
+
+#[inline]
+pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usize, TmuxError> {
     let event_channel = &mut state.event_channel;
     let command_queue = &mut state.command_queue;
 
@@ -108,14 +114,15 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
         return Ok(0);
     }
 
-    debug!("Tmux output: .{}.", from_utf8(&buffer).unwrap());
+    debug!("Tmux output: .{}.", parse_utf8(&buffer)?);
 
     // If buffer is empty or does not start with %, then this is output from a
     // command we executed
     if buffer.is_empty() || buffer[0] != b'%' {
         // This is output from a command we ran
         if state.is_error {
-            let error = from_utf8(&buffer).unwrap();
+            // TODO: Write to stderr directly
+            let error = parse_utf8(&buffer)?;
             eprintln!("Error: ({:?}) {}", state.current_command, error);
         } else if let Some(command) = &state.current_command {
             tmux_command_result(
@@ -125,7 +132,7 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
                 state.empty_line_count,
                 &event_channel,
                 &state.ssh_target,
-            );
+            )?;
         }
 
         state.result_line += 1;
@@ -140,7 +147,7 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
         let (pane_id, chars_read) = read_first_u32(&buffer[9..]);
         let output = parse_escaped_output(&buffer[9 + chars_read..], false, 0);
 
-        receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false));
+        receive_event(&event_channel, TmuxEvent::Output(pane_id, output, false))?;
     } else if buffer_starts_with(&buffer, "%begin") {
         // Beginning of output from a command we executed
         state.current_command = Some(command_queue.recv_blocking().unwrap());
@@ -153,14 +160,14 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
                     receive_event(
                         &event_channel,
                         TmuxEvent::ScrollOutput(pane_id, state.empty_line_count),
-                    );
-                    receive_event(&event_channel, TmuxEvent::InitialOutputFinished(pane_id));
+                    )?;
+                    receive_event(&event_channel, TmuxEvent::InitialOutputFinished(pane_id))?;
                 }
                 TmuxCommand::ChangeSize(_, _) => {
-                    receive_event(&event_channel, TmuxEvent::SizeChanged);
+                    receive_event(&event_channel, TmuxEvent::SizeChanged)?;
                 }
                 TmuxCommand::InitialLayout => {
-                    receive_event(&event_channel, TmuxEvent::InitialLayoutFinished);
+                    receive_event(&event_channel, TmuxEvent::InitialLayoutFinished)?;
                 }
                 _ => {}
             }
@@ -188,7 +195,7 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
             "Tmux event: Window {} focus changed to pane {}",
             tab_id, pane_id
         );
-        receive_event(&event_channel, TmuxEvent::PaneFocusChanged(tab_id, pane_id));
+        receive_event(&event_channel, TmuxEvent::PaneFocusChanged(tab_id, pane_id))?;
     } else if buffer_starts_with(&buffer, "%window-add") {
         // TODO: Instead of asking for info when creating a new window, ask for info
         // after receiving this notification
@@ -202,41 +209,41 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
             "Tmux event: Session {} focus changed to window {}",
             session_id, tab_id
         );
-        receive_event(&event_channel, TmuxEvent::TabFocusChanged(tab_id));
+        receive_event(&event_channel, TmuxEvent::TabFocusChanged(tab_id))?;
     } else if buffer_starts_with(&buffer, "%unlinked-window-close") {
         // %unlinked-window-close @6
         let (tab_id, _) = read_first_u32(&buffer[24..]);
         debug!("Tmux event: Tab {} closed", tab_id);
-        receive_event(&event_channel, TmuxEvent::TabClosed(tab_id));
+        receive_event(&event_channel, TmuxEvent::TabClosed(tab_id))?;
     } else if buffer_starts_with(&buffer, "%layout-change") {
         // Layout has changed
         let layout_sync = parse_tmux_layout(&buffer[15..]);
-        receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync));
+        receive_event(&event_channel, TmuxEvent::LayoutChanged(layout_sync))?;
     } else if buffer_starts_with(&buffer, "%session-changed") {
         // Session has changed
         let (id, bytes_read) = read_first_u32(&buffer[18..]);
-        let name = from_utf8(&buffer[18 + bytes_read..]).unwrap().to_string();
+        let name = parse_utf8(&buffer[18 + bytes_read..])?.to_string();
         debug!("Tmux event: Session changed ({}): {}", id, name);
 
-        receive_event(&event_channel, TmuxEvent::SessionChanged(id, name));
+        receive_event(&event_channel, TmuxEvent::SessionChanged(id, name))?;
     } else if buffer_starts_with(&buffer, "%window-renamed") {
         // Session has changed
         let (id, bytes_read) = read_first_u32(&buffer[17..]);
-        let name = from_utf8(&buffer[17 + bytes_read..]).unwrap().to_string();
+        let name = parse_utf8(&buffer[17 + bytes_read..])?.to_string();
         debug!("Tmux event: Tab renamed ({}): {}", id, name);
 
-        receive_event(&event_channel, TmuxEvent::TabRenamed(id, name));
+        receive_event(&event_channel, TmuxEvent::TabRenamed(id, name))?;
     } else if buffer_starts_with(&buffer, "%exit") {
         // Tmux client has exited
-        let reason = from_utf8(&buffer[5..]).unwrap();
+        let reason = parse_utf8(&buffer[5..])?;
         debug!("Tmux event: Exit received, reason: {}", reason);
-        receive_event(&event_channel, TmuxEvent::Exit);
+        receive_event(&event_channel, TmuxEvent::Exit)?;
         // Stop receiving events
-        return Err(());
+        return Err(TmuxError::ExitEventReceived);
     } else if buffer_starts_with(&buffer, "%client-session-changed") {
     } else {
         // Unsupported notification
-        let notification = from_utf8(&buffer).unwrap();
+        let notification = parse_utf8(&buffer)?;
         debug!("Tmux event: Unknown notification: {}", notification)
     }
 
@@ -251,15 +258,15 @@ fn tmux_command_result(
     empty_lines: usize,
     event_channel: &Sender<TmuxEvent>,
     ssh_target: &Option<String>,
-) {
+) -> Result<(), TmuxError> {
     match command {
         TmuxCommand::TabNew => {
             let layout_sync = parse_tmux_layout(buffer);
-            receive_event(&event_channel, TmuxEvent::TabNew(layout_sync));
+            receive_event(&event_channel, TmuxEvent::TabNew(layout_sync))?;
         }
         TmuxCommand::InitialLayout => {
             let layout_sync = parse_tmux_layout(buffer);
-            receive_event(&event_channel, TmuxEvent::InitialLayout(layout_sync));
+            receive_event(&event_channel, TmuxEvent::InitialLayout(layout_sync))?;
         }
         TmuxCommand::InitialOutput(pane_id) => {
             let output = parse_escaped_output(&buffer, result_line > 0, empty_lines);
@@ -277,19 +284,21 @@ fn tmux_command_result(
             // }
             // println!("Tmux initial output for pane {}: |{}|", pane_id, escaped);
 
-            receive_event(&event_channel, TmuxEvent::Output(*pane_id, output, true));
+            receive_event(&event_channel, TmuxEvent::Output(*pane_id, output, true))?;
         }
         TmuxCommand::PaneCurrentPath(term_id) => {
             let (pane_id, bytes_read) = read_first_u32(&buffer[7..]);
             // Currently Tmux sends paths of all Terminals in the given Tab, so we need
             // to filter manually
             if pane_id == *term_id {
-                let path = from_utf8(&buffer[7 + bytes_read..]).unwrap();
+                let path = parse_utf8(&buffer[7 + bytes_read..])?;
                 open_editor(path, ssh_target);
             }
         }
         _ => {}
     }
+
+    Ok(())
 }
 
 #[inline]

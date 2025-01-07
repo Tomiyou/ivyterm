@@ -24,6 +24,7 @@ ssh2 = "0.9.4"
 ssh2-config = "0.2.3"
 thiserror = "2.0.9"
 toml = "0.8.19"
+vmap = "0.6.3"
 vte4 = { version = "0.8.0", features = ["v0_70"] }
 
 [package.metadata.deb]

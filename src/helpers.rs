@@ -5,7 +5,14 @@ use const_format::concatcp;
 #[derive(thiserror::Error, Debug)]
 pub enum IvyError {
     #[error("executing remote Tmux command failed")]
-    TmuxSpawnFailed,
+    TmuxSpawnFailed = 0,
+}
+
+pub enum TmuxError {
+    EventChannelClosed,
+    ExitEventReceived,
+    SshClosed,
+    ErrorParsingUTF8,
 }
 
 #[derive(Debug, PartialEq, Eq)]

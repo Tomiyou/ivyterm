@@ -571,6 +571,7 @@ dependencies = [
  "ssh2-config",
  "thiserror 2.0.9",
  "toml",
+ "vmap",
  "vte4",
 ]
 
@@ -954,6 +955,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "system_error"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b52ada790ecca61aa8e561eba96355deb41b9b1b796dd3c965e74a590e9734a3"
+
+[[package]]
 name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1056,6 +1063,17 @@ name = "version-compare"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "852e951cb7832cb45cb1169900d19760cfa39b82bc0ea9c0e5a14ae88411c98b"
+
+[[package]]
+name = "vmap"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58dc9bf6fc1f05e86dc98f03e3bf89dacfd5098734ee0aad1d8d6a45b38856a2"
+dependencies = [
+ "libc",
+ "system_error",
+ "winapi",
+]
 
 [[package]]
 name = "vte4"

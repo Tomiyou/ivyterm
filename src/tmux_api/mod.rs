@@ -1,4 +1,4 @@
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, ErrorKind, Read, Write};
 use std::process::{Command, Stdio};
 
 use async_channel::{Receiver, Sender};
@@ -8,10 +8,11 @@ use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use log::debug;
 use mio::{Events, Poll};
-use receive::{tmux_parse_data, tmux_parse_line};
+use receive::tmux_parse_data;
 use ssh2::{DisconnectCode, Session};
+use vmap::io::{Ring, SeqWrite};
 
-use crate::helpers::IvyError;
+use crate::helpers::{IvyError, TmuxError};
 use crate::keyboard::Direction;
 use crate::ssh::SSH_TOKEN;
 use crate::tmux_widgets::IvyTmuxWindow;
@@ -192,6 +193,26 @@ impl TmuxAPI {
     }
 }
 
+#[inline]
+fn read_into_ringbuffer<T: Read>(
+    stream: &mut T,
+    ring_buffer: &mut Ring,
+) -> Result<usize, std::io::Error> {
+    // Construct '&mut [u8]' from '*mut u8'
+    let len = ring_buffer.write_len();
+    let write_buffer = ring_buffer.as_write_slice(len);
+
+    // Read into byte array
+    stream.read(write_buffer).map(|bytes_read| {
+        if bytes_read > 0 {
+            // Move the ringbuffer write position
+            ring_buffer.feed(bytes_read);
+        }
+
+        bytes_read
+    })
+}
+
 fn new_with_ssh(
     session_name: &str,
     tuple: (Session, Poll, Events),
@@ -214,10 +235,58 @@ fn new_with_ssh(
 
     spawn_blocking(move || {
         let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
-        let mut stdout_buffer = vec![0; 65534];
+        // Memory mapped ringbuffer appears contiguous to our program
+        let mut ring_buffer = Ring::new(16_000).unwrap();
         let mut stderr_buffer = vec![0; 4096];
         let stderr = io::stderr();
-        let mut stdout_leftover = 0;
+
+        // Closure which will handle events
+        let mut handle_event = move || {
+            // Read from SSH stdout into the ringbuffer
+            loop {
+                match read_into_ringbuffer(&mut ssh_stdout, &mut ring_buffer) {
+                    Ok(bytes_read) => {
+                        if bytes_read < 1 {
+                            continue;
+                        }
+
+                        let read_again = ring_buffer.is_full();
+
+                        // Consume the read bytes
+                        tmux_parse_data(&mut state, &mut ring_buffer)?;
+
+                        if read_again == false {
+                            break;
+                        }
+                    }
+                    Err(e) => match e.kind() {
+                        ErrorKind::WouldBlock => break,
+                        _ => {
+                            debug!("Error reading Tmux stdout: {}, {:?}", e, e.kind());
+                            return Err(TmuxError::SshClosed);
+                        }
+                    },
+                }
+            }
+
+            // SSH stderr
+            match ssh_stderr.read(&mut stderr_buffer) {
+                Ok(bytes_read) => {
+                    let data = stderr_buffer[..bytes_read].to_vec();
+                    let s = String::from_utf8(data).unwrap();
+                    let mut stderr = stderr.lock();
+                    stderr.write(s.as_bytes()).unwrap();
+                }
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::WouldBlock {
+                        debug!("Stderr: {}", e);
+                        return Err(TmuxError::SshClosed);
+                    }
+                }
+            }
+
+            Ok(())
+        };
 
         loop {
             if let Err(_) = poll.poll(&mut events, None) {
@@ -228,61 +297,15 @@ fn new_with_ssh(
                 match event.token() {
                     SSH_TOKEN => {
                         if event.is_readable() {
-                            // Read from SSH connection, appending to any leftover data
-                            match ssh_stdout.read(&mut stdout_buffer[stdout_leftover..]) {
-                                Ok(bytes_read) => {
-                                    // End if data is what is leftover from a previous read and the newly ready bytes
-                                    let total_data = stdout_leftover + bytes_read;
-                                    let bytes_consumed = match tmux_parse_data(
-                                        &mut state,
-                                        &stdout_buffer[..total_data],
-                                    ) {
-                                        Ok(bytes_consumed) => bytes_consumed,
-                                        Err(_) => return,
-                                    };
-                                    if bytes_consumed < 1 {
-                                        panic!("Tmux API did not consume any bytes!");
-                                    }
-
-                                    // In case we our Tmux API did not consume all data, we need to remember it
-                                    for (i, val) in (bytes_consumed..total_data).enumerate() {
-                                        stdout_buffer[i] = stdout_buffer[val];
-                                    }
-                                    stdout_leftover = total_data - bytes_consumed;
-                                }
-                                Err(e) => {
-                                    if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        debug!("Error reading Tmux stdout: {}, {:?}", e, e.kind());
-                                        return;
-                                    }
-                                }
-                            }
-
-                            match ssh_stderr.read(&mut stderr_buffer) {
-                                Ok(bytes_read) => {
-                                    let data = stderr_buffer[..bytes_read].to_vec();
-                                    let s = String::from_utf8(data).unwrap();
-                                    let mut stderr = stderr.lock();
-                                    stderr.write(s.as_bytes()).unwrap();
-                                }
-                                Err(e) => {
-                                    if e.kind() != std::io::ErrorKind::WouldBlock {
-                                        debug!("Stderr: {}", e);
-                                        return;
-                                    }
-                                }
+                            if let Err(_) = handle_event() {
+                                return;
                             }
                         }
                     }
                     _ => unreachable!(),
                 }
 
-                if event.is_error() {
-                    debug!("Event is error, quitting!!!");
-                    return;
-                }
-                if event.is_read_closed() || event.is_write_closed() {
-                    debug!("Read or write closed, quitting!!!");
+                if event.is_error() || event.is_read_closed() || event.is_write_closed() {
                     return;
                 }
             }
@@ -312,19 +335,24 @@ fn new_without_ssh(
         .unwrap();
 
     // Read from Tmux STDOUT and send events to the channel on a separate thread
-    let stdout_stream = process.stdout.take().expect("Failed to open stdout");
+    let mut stdout_stream = process.stdout.take().expect("Failed to open stdout");
     spawn_blocking(move || {
-        let mut buffer = Vec::with_capacity(65534);
-        let mut reader = BufReader::new(stdout_stream);
+        let mut ring_buffer = Ring::new(16_000).unwrap();
         let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
 
-        while let Ok(bytes_read) = reader.read_until(10, &mut buffer) {
-            if bytes_read > 0 {
-                match tmux_parse_line(&mut state, &buffer[..bytes_read - 1]) {
-                    Ok(_) => {},
-                    Err(_) => return,
+        loop {
+            match read_into_ringbuffer(&mut stdout_stream, &mut ring_buffer) {
+                Ok(bytes_read) => {
+                    if bytes_read < 1 {
+                        continue;
+                    }
+
+                    // Consume the read bytes
+                    if let Err(_) = tmux_parse_data(&mut state, &mut ring_buffer) {
+                        return;
+                    }
                 }
-                buffer.clear();
+                Err(_) => break,
             }
         }
     });
