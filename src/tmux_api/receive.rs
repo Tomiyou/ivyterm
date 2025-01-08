@@ -1,4 +1,7 @@
-use std::{io::{self, BufRead, Write}, str::from_utf8};
+use std::{
+    io::{self, BufRead, Write},
+    str::from_utf8,
+};
 
 use async_channel::Sender;
 use log::debug;

@@ -5,8 +5,6 @@ use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
 use log::debug;
-use mio::{Events, Poll};
-use ssh2::Session;
 use tmux::TmuxInitState;
 
 use crate::{
@@ -14,7 +12,7 @@ use crate::{
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
     keyboard::KeyboardAction,
     modals::spawn_new_tmux_modal,
-    ssh::new_session,
+    ssh::{new_session, SSHData},
     tmux_api::TmuxAPI,
 };
 
@@ -155,9 +153,9 @@ impl IvyTmuxWindow {
     }
 
     /// Called after both Tmux and SSH session are ready (if it exists)
-    fn initialize_tmux(&self, tmux_session: &str, ssh_session: Option<(Session, Poll, Events)>) {
+    fn initialize_tmux(&self, tmux_session: &str, ssh_data: Option<SSHData>) {
         // Initialize Tmux API
-        let tmux = TmuxAPI::new(tmux_session, ssh_session, self).unwrap();
+        let tmux = TmuxAPI::new(tmux_session, ssh_data, self).unwrap();
         self.imp().tmux.replace(Some(tmux));
 
         // Get initial Tmux layout

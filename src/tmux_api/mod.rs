@@ -7,14 +7,13 @@ use glib::JoinHandle;
 use gtk4::gio::spawn_blocking;
 use gtk4::Orientation;
 use log::debug;
-use mio::{Events, Poll};
 use receive::tmux_parse_data;
 use ssh2::{DisconnectCode, Session};
 use vmap::io::{Ring, SeqWrite};
 
 use crate::helpers::{IvyError, TmuxError};
 use crate::keyboard::Direction;
-use crate::ssh::SSH_TOKEN;
+use crate::ssh::{SSHData, SSH_TOKEN};
 use crate::tmux_widgets::IvyTmuxWindow;
 
 mod parse_layout;
@@ -130,13 +129,14 @@ impl TmuxParserState {
     fn new(
         tmux_event_sender: Sender<TmuxEvent>,
         cmd_queue_receiver: Receiver<TmuxCommand>,
+        ssh_target: Option<String>,
     ) -> Self {
         Self {
             command_queue: cmd_queue_receiver,
             event_channel: tmux_event_sender,
             current_command: None,
             is_error: false,
-            ssh_target: None,
+            ssh_target,
             result_line: 0,
             empty_line_count: 0,
         }
@@ -146,7 +146,7 @@ impl TmuxParserState {
 impl TmuxAPI {
     pub fn new(
         session_name: &str,
-        ssh_session: Option<(Session, Poll, Events)>,
+        ssh_session: Option<SSHData>,
         window: &IvyTmuxWindow,
     ) -> Result<TmuxAPI, IvyError> {
         // Create async channels
@@ -214,14 +214,14 @@ fn read_into_ringbuffer<T: Read>(
 }
 
 fn new_with_ssh(
-    session_name: &str,
-    tuple: (Session, Poll, Events),
+    tmux_name: &str,
+    ssh_data: SSHData,
     tmux_event_sender: Sender<TmuxEvent>,
     cmd_queue_receiver: Receiver<TmuxCommand>,
 ) -> Result<(Box<dyn Write>, Option<Session>), IvyError> {
-    let (session, mut poll, mut events) = tuple;
+    let SSHData(ssh_target, session, mut poll, mut events) = ssh_data;
 
-    let command = format!("tmux -2 -C new-session -A -s {}", session_name);
+    let command = format!("tmux -2 -C new-session -A -s {}", tmux_name);
     let mut channel = session.channel_session().unwrap();
     channel.exec(&command).map_err(|err| {
         eprintln!("channel.exec() failed with: {}", err);
@@ -234,7 +234,8 @@ fn new_with_ssh(
     let mut ssh_stderr = channel.stderr();
 
     spawn_blocking(move || {
-        let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
+        let mut state =
+            TmuxParserState::new(tmux_event_sender, cmd_queue_receiver, Some(ssh_target));
         // Memory mapped ringbuffer appears contiguous to our program
         let mut ring_buffer = Ring::new(16_000).unwrap();
         let mut stderr_buffer = vec![0; 4096];
@@ -338,7 +339,7 @@ fn new_without_ssh(
     let mut stdout_stream = process.stdout.take().expect("Failed to open stdout");
     spawn_blocking(move || {
         let mut ring_buffer = Ring::new(16_000).unwrap();
-        let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver);
+        let mut state = TmuxParserState::new(tmux_event_sender, cmd_queue_receiver, None);
 
         loop {
             match read_into_ringbuffer(&mut stdout_stream, &mut ring_buffer) {

@@ -12,6 +12,8 @@ use mio::{net::TcpStream, Events, Interest, Poll, Token};
 use ssh2::{DisconnectCode, MethodType, Session};
 use ssh2_config::{HostParams, ParseRule, SshConfig};
 
+pub struct SSHData(pub String, pub Session, pub Poll, pub Events);
+
 pub const SSH_TOKEN: Token = Token(0);
 const TCP_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -115,7 +117,8 @@ fn connect_tcp(host: &str) -> Option<(TcpStream, Poll, Events)> {
     return None;
 }
 
-pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events), ()> {
+pub fn new_session(host: &str, password: &str) -> Result<SSHData, ()> {
+    let original_host = host.to_string();
     let config = read_config();
     let params = config.query(host);
 
@@ -168,7 +171,7 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     // Authenticate
     let code = match session.userauth_agent(&username) {
         Ok(_) => {
-            return Ok((session, poll, events));
+            return Ok(SSHData(original_host, session, poll, events));
         }
         Err(err) => err.code(),
     };
@@ -203,7 +206,7 @@ pub fn new_session(host: &str, password: &str) -> Result<(Session, Poll, Events)
     }
 
     println!("Established connection with {}", host);
-    return Ok((session, poll, events));
+    return Ok(SSHData(original_host, session, poll, events));
 }
 
 fn read_config() -> SshConfig {
