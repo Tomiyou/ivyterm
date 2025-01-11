@@ -23,6 +23,7 @@ pub enum KeyboardAction {
     CopySelected,
     PasteClipboard,
     OpenEditorCwd,
+    ClearScrollback,
 }
 
 pub fn keycode_to_arrow_key(keycode: u32) -> Option<Direction> {

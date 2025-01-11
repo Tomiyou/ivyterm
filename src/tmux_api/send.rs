@@ -15,6 +15,7 @@ impl TmuxAPI {
         const NEWLINE: &[u8] = &[b'\n'];
         // First we put the Command in Event queue
         let command_queue = &self.command_queue;
+        // TODO: Handle error
         command_queue.send_blocking(event).unwrap();
 
         // Then we write the buffer to the Tmux input stream
@@ -176,6 +177,11 @@ impl TmuxAPI {
                     "list-panes -t %{} -F \"path: #{{pane_id}} #{{pane_current_path}}\"",
                     pane_id
                 );
+                (event, cmd)
+            }
+            KeyboardAction::ClearScrollback => {
+                let event = TmuxCommand::ClearScrollback(pane_id);
+                let cmd = format!("clear-history -t %{}", pane_id);
                 (event, cmd)
             }
         };

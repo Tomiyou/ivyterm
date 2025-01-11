@@ -300,6 +300,12 @@ impl IvyTmuxWindow {
 
                 println!("Session {} with name {} initialized", new.0, new.1);
             }
+            TmuxEvent::ScrollbackCleared(term_id) => {
+                let binding = &self.imp().terminals;
+                if let Some(terminal) = binding.borrow().get(term_id) {
+                    terminal.clear_scrollback();
+                }
+            }
         }
     }
 

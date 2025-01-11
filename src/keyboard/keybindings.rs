@@ -54,6 +54,8 @@ pub struct Keybindings {
     paste_clipboard: String,
     #[serde(default = "default_open_editor_cwd")]
     open_editor_cwd: String,
+    #[serde(default = "default_clear_scrollback")]
+    clear_scrollback: String,
 }
 
 impl Keybindings {
@@ -133,6 +135,11 @@ impl Keybindings {
             KeyboardAction::OpenEditorCwd,
             "Open current working directory in VS Code",
         ));
+        keybindings.push(Keybinding::new(
+            &self.clear_scrollback,
+            KeyboardAction::ClearScrollback,
+            "Clear Tmux scrollback",
+        ));
 
         keybindings
     }
@@ -161,6 +168,7 @@ impl Keybindings {
                 KeyboardAction::PaneClose => self.close_pane = trigger,
                 KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
                 KeyboardAction::OpenEditorCwd => self.open_editor_cwd = trigger,
+                KeyboardAction::ClearScrollback => self.clear_scrollback = trigger,
             }
         }
     }
@@ -208,6 +216,7 @@ impl Default for Keybindings {
             rename_tab: default_rename_tab(),
             paste_clipboard: default_paste_clipboard(),
             open_editor_cwd: default_open_editor_cwd(),
+            clear_scrollback: default_clear_scrollback(),
         }
     }
 }
@@ -253,4 +262,7 @@ fn default_rename_tab() -> String {
 }
 fn default_open_editor_cwd() -> String {
     "<Ctrl><Shift>m".to_string()
+}
+fn default_clear_scrollback() -> String {
+    "<Ctrl><Shift>h".to_string()
 }

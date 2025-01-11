@@ -214,6 +214,14 @@ impl TmuxTerminal {
         let vte = binding.as_ref().unwrap();
         (vte.char_width() as i32, vte.char_height() as i32)
     }
+
+    pub fn clear_scrollback(&self) {
+        let clear_scrollback = [b'\x1b', b'[', b'3', b'J'];
+
+        let binding = self.imp().vte.borrow();
+        let vte = binding.as_ref().unwrap();
+        vte.feed(&clear_scrollback);
+    }
 }
 
 #[inline]

@@ -72,6 +72,7 @@ pub enum TmuxCommand {
     ChangeSize(i32, i32),
     InitialOutput(u32),
     ClipboardPaste,
+    ClearScrollback(u32),
 }
 
 pub enum TmuxEvent {
@@ -89,6 +90,7 @@ pub enum TmuxEvent {
     TabRenamed(u32, String),
     SessionChanged(u32, String),
     Exit,
+    ScrollbackCleared(u32),
 }
 
 #[bitflags]

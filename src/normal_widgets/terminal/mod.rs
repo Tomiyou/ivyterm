@@ -268,5 +268,9 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
             // https://stackoverflow.com/questions/6016219/get-current-working-directory-from-vte-gtk-terminal-widget-in-python
             todo!()
         }
+        KeyboardAction::ClearScrollback => {
+            let clear_scrollback = [b'\x1b', b'[', b'3', b'J'];
+            vte.feed(&clear_scrollback);
+        }
     }
 }

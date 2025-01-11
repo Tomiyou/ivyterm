@@ -180,6 +180,9 @@ pub fn tmux_parse_line(state: &mut TmuxParserState, buffer: &[u8]) -> Result<usi
                 TmuxCommand::InitialLayout => {
                     receive_event(&event_channel, TmuxEvent::InitialLayoutFinished)?;
                 }
+                TmuxCommand::ClearScrollback(term_id) => {
+                    receive_event(&event_channel, TmuxEvent::ScrollbackCleared(*term_id))?;
+                }
                 _ => {}
             }
         }
