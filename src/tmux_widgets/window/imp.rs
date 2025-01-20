@@ -1,4 +1,5 @@
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use glib::Propagation;
 use libadwaita::subclass::prelude::*;
@@ -14,7 +15,7 @@ use super::tmux::TmuxInitState;
 // Object holding the state
 #[derive(Default)]
 pub struct IvyWindowPriv {
-    pub tmux: RefCell<Option<TmuxAPI>>,
+    pub tmux: RefCell<Option<Rc<TmuxAPI>>>,
     pub tab_view: RefCell<Option<TabView>>,
     // TODO: Use SortedVec
     pub tabs: RefCell<Vec<TmuxTopLevel>>,

@@ -9,9 +9,13 @@ use libadwaita::{glib, prelude::*};
 use log::debug;
 
 use crate::{
+    close_on_error,
     keyboard::{keycode_to_arrow_key, Direction},
     tmux_api::{LayoutFlags, LayoutSync, TmuxEvent},
-    tmux_widgets::{separator::TmuxSeparator, terminal::TmuxTerminal, toplevel::TmuxTopLevel},
+    tmux_widgets::{
+        separator::TmuxSeparator, terminal::TmuxTerminal, toplevel::TmuxTopLevel,
+        window::get_tmux_ref,
+    },
 };
 
 use super::IvyTmuxWindow;
@@ -43,8 +47,7 @@ impl IvyTmuxWindow {
     }
 
     pub fn tmux_keypress(&self, pane_id: u32, keycode: u32, keyval: Key, state: ModifierType) {
-        let mut binding = self.imp().tmux.borrow_mut();
-        let tmux = match binding.as_mut() {
+        let tmux = match get_tmux_ref(self) {
             Some(tmux) => tmux,
             None => return,
         };
@@ -57,7 +60,7 @@ impl IvyTmuxWindow {
 
             // Hacky workaround for Alt+Backspace
             if keycode == 22 {
-                tmux.send_keypress(pane_id, '\x7f', prefix, None);
+                close_on_error!(tmux.send_keypress(pane_id, '\x7f', prefix, None), self);
                 return;
             }
         }
@@ -75,8 +78,9 @@ impl IvyTmuxWindow {
         // - if char
         // - if Ctrl, Shift, Alt, Tab, etc
         // - else
+        let mut result = Ok(());
         if let Some(c) = keyval.to_unicode() {
-            tmux.send_keypress(pane_id, c, prefix, None);
+            result = tmux.send_keypress(pane_id, c, prefix, None);
         } else if let Some(direction) = keycode_to_arrow_key(keycode) {
             let direction = match direction {
                 crate::keyboard::Direction::Left => "Left",
@@ -84,21 +88,21 @@ impl IvyTmuxWindow {
                 crate::keyboard::Direction::Up => "Up",
                 crate::keyboard::Direction::Down => "Down",
             };
-            tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
+            result = tmux.send_keypress(pane_id, ' ', prefix, Some(direction));
         } else if keycode >= 67 && keycode < 120 {
             // This is a Function key
             if let Some(name) = keyval.name() {
                 let name = name.as_str();
                 let name = name.replace('_', "");
-                tmux.send_function_key(pane_id, &name);
+                result = tmux.send_function_key(pane_id, &name);
             }
         }
+        close_on_error!(result, self);
     }
 
     pub fn send_clipboard(&self, pane_id: u32, text: &str) {
-        let mut binding = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = binding.as_mut() {
-            tmux.send_quoted_text(pane_id, text);
+        if let Some(tmux) = get_tmux_ref(self) {
+            close_on_error!(tmux.send_quoted_text(pane_id, text), self);
         }
     }
 
@@ -118,19 +122,17 @@ impl IvyTmuxWindow {
             );
             let (cols, rows) = top_level.get_cols_rows();
 
-            let mut binding = self.imp().tmux.borrow_mut();
-            if let Some(tmux) = binding.as_mut() {
+            if let Some(tmux) = get_tmux_ref(self) {
                 // Tell Tmux resize future is no longer running
                 tmux.update_resize_future(false);
-                tmux.change_size(cols, rows);
+                close_on_error!(tmux.change_size(cols, rows), self);
             }
         }
     }
 
     pub fn resync_tmux_size(&self) {
         // First check if a future is already running
-        let mut binding = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = binding.as_mut() {
+        if let Some(tmux) = get_tmux_ref(self) {
             if tmux.update_resize_future(true) {
                 // A future is already running, we can stop
                 return;
@@ -169,9 +171,8 @@ impl IvyTmuxWindow {
     }
 
     pub fn rename_tmux_tab(&self, tab_id: u32, name: &str) {
-        let mut binding = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = binding.as_mut() {
-            tmux.rename_tab(tab_id, name.to_string());
+        if let Some(tmux) = get_tmux_ref(self) {
+            close_on_error!(tmux.rename_tab(tab_id, name.to_string()), self);
         }
     }
 
@@ -265,12 +266,11 @@ impl IvyTmuxWindow {
                 if imp.init_layout_finished.get() == TmuxInitState::SyncingSize {
                     imp.init_layout_finished.replace(TmuxInitState::Done);
 
-                    let mut binding = imp.tmux.borrow_mut();
-                    if let Some(tmux) = binding.as_mut() {
+                    if let Some(tmux) = get_tmux_ref(self) {
                         // If initial output has not been captured yet, now is the time
                         let terminals = imp.terminals.borrow();
                         for sorted in terminals.iter() {
-                            tmux.get_initial_output(sorted.id);
+                            close_on_error!(tmux.get_initial_output(sorted.id), self);
                         }
                     }
                 }
@@ -323,8 +323,7 @@ impl IvyTmuxWindow {
         };
         let amount = amount.abs() as u32;
 
-        let mut binding = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = binding.as_mut() {
+        if let Some(tmux) = get_tmux_ref(self) {
             // We need to find widget to the top/left of our separator
             let mut widget = separator.prev_sibling().unwrap();
             loop {
@@ -332,7 +331,7 @@ impl IvyTmuxWindow {
                 match widget.downcast::<TmuxTerminal>() {
                     Ok(terminal) => {
                         let id = terminal.id();
-                        tmux.resize_pane(id, direction, amount);
+                        close_on_error!(tmux.resize_pane(id, direction, amount), self);
                         return;
                     }
                     Err(container) => {

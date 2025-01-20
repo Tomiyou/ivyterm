@@ -1,3 +1,4 @@
+use std::cell::{Cell, RefCell};
 use std::io::{self, ErrorKind, Read, Write};
 use std::process::{Command, Stdio};
 
@@ -22,10 +23,10 @@ mod send;
 
 pub struct TmuxAPI {
     ssh_session: Option<Session>,
-    stdin_stream: Box<dyn Write>,
+    stdin_stream: RefCell<Box<dyn Write>>,
     command_queue: Sender<TmuxCommand>,
-    window_size: (i32, i32),
-    resize_future: bool,
+    window_size: Cell<(i32, i32)>,
+    resize_future: Cell<bool>,
     receive_future: JoinHandle<()>,
 }
 
@@ -184,10 +185,10 @@ impl TmuxAPI {
         // Handle Tmux STDIN
         let tmux = TmuxAPI {
             ssh_session,
-            stdin_stream: writer,
+            stdin_stream: RefCell::new(writer),
             command_queue: cmd_queue_sender,
-            window_size: (0, 0),
-            resize_future: false,
+            window_size: Cell::new((0, 0)),
+            resize_future: Cell::new(false),
             receive_future,
         };
 

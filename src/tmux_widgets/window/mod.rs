@@ -1,6 +1,8 @@
 mod imp;
 mod tmux;
 
+use std::rc::Rc;
+
 use glib::{subclass::types::ObjectSubclassIsExt, Object, Propagation};
 use gtk4::{Align, Box, Button, Orientation, PackType, WindowControls, WindowHandle};
 use libadwaita::{gio, glib, prelude::*, ApplicationWindow, TabBar, TabView};
@@ -17,6 +19,22 @@ use crate::{
 };
 
 use super::{terminal::TmuxTerminal, toplevel::TmuxTopLevel};
+
+#[macro_export]
+macro_rules! close_on_error {
+    ( $e:expr, $window:ident ) => {
+        if let Err(_) = $e {
+            $window.close();
+            return;
+        }
+    };
+}
+
+#[inline]
+fn get_tmux_ref(window: &IvyTmuxWindow) -> Option<Rc<TmuxAPI>> {
+    let binding = window.imp().tmux.borrow_mut();
+    binding.clone()
+}
 
 glib::wrapper! {
     pub struct IvyTmuxWindow(ObjectSubclass<imp::IvyWindowPriv>)
@@ -156,13 +174,11 @@ impl IvyTmuxWindow {
     fn initialize_tmux(&self, tmux_session: &str, ssh_data: Option<SSHData>) {
         // Initialize Tmux API
         let tmux = TmuxAPI::new(tmux_session, ssh_data, self).unwrap();
-        self.imp().tmux.replace(Some(tmux));
+        self.imp().tmux.replace(Some(Rc::new(tmux)));
 
         // Get initial Tmux layout
-        {
-            let mut binding = self.imp().tmux.borrow_mut();
-            let tmux = binding.as_mut().unwrap();
-            tmux.get_initial_layout();
+        if let Some(tmux) = get_tmux_ref(self) {
+            close_on_error!(tmux.get_initial_layout(), self);
         }
     }
 
@@ -252,16 +268,14 @@ impl IvyTmuxWindow {
 
     #[inline]
     pub fn tmux_handle_keybinding(&self, action: KeyboardAction, pane_id: u32) {
-        let mut tmux = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = tmux.as_mut() {
-            tmux.send_keybinding(action, pane_id);
+        if let Some(tmux) = get_tmux_ref(self) {
+            close_on_error!(tmux.send_keybinding(action, pane_id), self);
         }
     }
 
     pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
-        let mut tmux = self.imp().tmux.borrow_mut();
-        if let Some(tmux) = tmux.as_mut() {
-            tmux.select_terminal(term_id);
+        if let Some(tmux) = get_tmux_ref(self) {
+            close_on_error!(tmux.select_terminal(term_id), self);
         }
     }
 
@@ -271,9 +285,8 @@ impl IvyTmuxWindow {
         if imp.init_layout_finished.get() == TmuxInitState::Done {
             imp.focused_tab.replace(tab_id);
 
-            let mut binding = imp.tmux.borrow_mut();
-            if let Some(tmux) = binding.as_mut() {
-                tmux.select_tab(tab_id);
+            if let Some(tmux) = get_tmux_ref(self) {
+                close_on_error!(tmux.select_tab(tab_id), self);
             }
         }
     }
