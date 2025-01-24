@@ -109,9 +109,11 @@ impl IvyTmuxWindow {
     fn tmux_sync_size(&self) {
         let imp = self.imp();
 
-        let binding = imp.tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
-        let selected_page = tab_view.selected_page();
+        let selected_page = {
+            let binding = imp.tab_view.borrow();
+            let tab_view = binding.as_ref().unwrap();
+            tab_view.selected_page()
+        };
 
         if let Some(selected_page) = selected_page {
             let top_level: TmuxTopLevel = selected_page.child().downcast().unwrap();
@@ -270,7 +272,11 @@ impl IvyTmuxWindow {
                         // If initial output has not been captured yet, now is the time
                         let terminals = imp.terminals.borrow();
                         for sorted in terminals.iter() {
-                            close_on_error!(tmux.get_initial_output(sorted.id), self);
+                            if let Err(_) = tmux.get_initial_output(sorted.id) {
+                                drop(terminals);
+                                self.close();
+                                return;
+                            }
                         }
                     }
                 }
