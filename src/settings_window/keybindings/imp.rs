@@ -4,6 +4,7 @@ use gtk4::{EventControllerKey, Label};
 use libadwaita::glib;
 use libadwaita::{prelude::*, subclass::prelude::*};
 
+use crate::helpers::borrow_clone;
 use crate::keyboard::Keybinding;
 
 use super::set_text_from_trigger;
@@ -43,14 +44,13 @@ impl PreferencesPageImpl for KeybindingPage {}
 
 impl KeybindingPage {
     pub fn enable_keyboard(&self, enable: bool) {
-        let binding = self.keyboard_ctrl.borrow();
-        let keyboard_ctrl = binding.as_ref().unwrap();
+        let keyboard_ctrl = borrow_clone(&self.keyboard_ctrl);
         let obj = self.obj();
 
         if enable {
             obj.add_controller(keyboard_ctrl.clone());
         } else {
-            obj.remove_controller(keyboard_ctrl);
+            obj.remove_controller(&keyboard_ctrl);
         }
     }
 

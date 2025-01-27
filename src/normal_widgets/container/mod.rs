@@ -8,6 +8,8 @@ use libadwaita::{glib, prelude::*};
 
 pub use layout::ContainerLayout;
 
+use crate::helpers::borrow_clone;
+
 glib::wrapper! {
     pub struct Container(ObjectSubclass<imp::ContainerPriv>)
         @extends Widget,
@@ -30,10 +32,8 @@ impl Container {
     }
 
     pub fn append(&self, child: &impl IsA<Widget>) {
-        let imp = self.imp();
         if let Some(last_child) = self.last_child() {
-            let binding = imp.layout.borrow();
-            let layout = binding.as_ref().unwrap();
+            let layout = borrow_clone(&self.imp().layout);
             let new_separator = layout.add_separator(self);
 
             new_separator.insert_after(self, Some(&last_child));
@@ -46,9 +46,7 @@ impl Container {
     pub fn prepend(&self, child: &impl IsA<Widget>, sibling: &Option<impl IsA<Widget>>) {
         // TODO: Prepend on sibling None means append() last...
         if let Some(sibling) = sibling {
-            let imp = self.imp();
-            let binding = imp.layout.borrow();
-            let layout = binding.as_ref().unwrap();
+            let layout = borrow_clone(&self.imp().layout);
             let new_separator = layout.add_separator(self);
 
             child.insert_before(self, Some(sibling));
@@ -65,8 +63,7 @@ impl Container {
 
     pub fn remove(&self, child: &impl IsA<Widget>) -> usize {
         let separator = child.next_sibling();
-        let binding = self.imp().layout.borrow();
-        let layout = binding.as_ref().unwrap();
+        let layout = borrow_clone(&self.imp().layout);
         let len = layout.remove_separator(separator);
 
         // Now remove the child

@@ -11,7 +11,7 @@ use vte4::{Regex, Terminal as Vte, TerminalExt, TerminalExtManual};
 use crate::{
     application::IvyApplication,
     config::{ColorScheme, TerminalConfig},
-    helpers::{PCRE2_MULTILINE, URL_REGEX_STRINGS},
+    helpers::{borrow_clone, PCRE2_MULTILINE, URL_REGEX_STRINGS},
     keyboard::KeyboardAction,
     unwrap_or_return,
 };
@@ -148,9 +148,7 @@ impl TmuxTerminal {
 
     pub fn update_config(&self, config: &TerminalConfig) {
         let color_scheme = ColorScheme::new(config);
-
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
+        let vte = borrow_clone(&self.imp().vte);
 
         vte.set_font(Some(config.font.as_ref()));
         vte.set_colors(
@@ -170,8 +168,7 @@ impl TmuxTerminal {
             return;
         }
 
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
+        let vte = borrow_clone(&imp.vte);
         vte.feed(&output);
     }
 
@@ -201,25 +198,20 @@ impl TmuxTerminal {
     }
 
     pub fn get_cols_or_rows(&self) -> (i64, i64) {
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
-
+        let vte = borrow_clone(&self.imp().vte);
         let cols = vte.column_count();
         let rows = vte.row_count();
         (cols, rows)
     }
 
     pub fn get_char_width_height(&self) -> (i32, i32) {
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
+        let vte = borrow_clone(&self.imp().vte);
         (vte.char_width() as i32, vte.char_height() as i32)
     }
 
     pub fn clear_scrollback(&self) {
         let clear_scrollback = [b'\x1b', b'[', b'3', b'J'];
-
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
+        let vte = borrow_clone(&self.imp().vte);
         vte.feed(&clear_scrollback);
     }
 }

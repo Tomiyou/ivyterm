@@ -7,7 +7,7 @@ use gtk4::Widget;
 use libadwaita::{glib, prelude::*, TabView};
 use log::debug;
 
-use crate::modals::spawn_rename_modal;
+use crate::{helpers::borrow_clone, modals::spawn_rename_modal};
 
 use self::imp::Zoomed;
 
@@ -72,11 +72,8 @@ impl TmuxTopLevel {
         terminals_vec.push(terminal.clone());
 
         // Also update global terminal hashmap
-        let window = imp.window.borrow();
-        window
-            .as_ref()
-            .unwrap()
-            .register_terminal(pane_id, terminal);
+        let window = borrow_clone(&imp.window);
+        window.register_terminal(pane_id, terminal);
     }
 
     pub fn gtk_terminal_focus_changed(&self, term_id: u32) {
@@ -85,8 +82,7 @@ impl TmuxTopLevel {
         let old_term = imp.focused_terminal.replace(term_id);
         if old_term != term_id {
             // Focused Terminal changed, we should notify Tmux of this
-            let binding = imp.window.borrow();
-            let window = binding.as_ref().unwrap();
+            let window = borrow_clone(&imp.window);
             window.gtk_terminal_focus_changed(term_id);
         }
     }
@@ -132,8 +128,8 @@ impl TmuxTopLevel {
     }
 
     pub fn layout_alloc_changed(&self) {
-        let window = self.imp().window.borrow();
-        window.as_ref().unwrap().resync_tmux_size();
+        let window = borrow_clone(&self.imp().window);
+        window.resync_tmux_size();
     }
 
     pub fn adjust_separator_positions(&self, x_diff: f64, y_diff: f64) {
@@ -170,8 +166,7 @@ impl TmuxTopLevel {
 
     pub fn open_rename_modal(&self) {
         let imp = self.imp();
-        let binding = imp.window.borrow();
-        let window = binding.as_ref().unwrap();
+        let window = borrow_clone(&imp.window);
         let tab_id = imp.tab_id.get();
 
         let callback = glib::closure_local!(
@@ -183,14 +178,13 @@ impl TmuxTopLevel {
         );
 
         // We need the "parent" Window for modal
-        let binding = self.imp().window.borrow();
-        let parent = binding.as_ref().unwrap();
+        let parent = borrow_clone(&imp.window);
         spawn_rename_modal(parent.upcast_ref(), "", callback);
     }
 
     pub fn tab_renamed(&self, new_name: &str) {
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
+        let imp = self.imp();
+        let tab_view = borrow_clone(&imp.tab_view);
 
         // TODO: Just store the Page directly instead of tab_view
         let page = tab_view.page(self);

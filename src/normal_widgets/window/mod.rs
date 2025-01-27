@@ -10,6 +10,7 @@ use log::debug;
 use crate::{
     application::IvyApplication,
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    helpers::borrow_clone,
     modals::spawn_new_tmux_modal,
 };
 
@@ -156,12 +157,10 @@ impl IvyNormalWindow {
     pub fn new_tab(&self) -> TopLevel {
         let imp = self.imp();
         let tab_id = self.unique_tab_id();
-
-        let binding = imp.tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
+        let tab_view = borrow_clone(&imp.tab_view);
 
         // Create new TopLevel widget
-        let top_level = TopLevel::new(tab_view, self, tab_id);
+        let top_level = TopLevel::new(&tab_view, self, tab_id);
         let mut tabs = imp.tabs.borrow_mut();
         tabs.push(top_level.clone());
 
@@ -174,10 +173,8 @@ impl IvyNormalWindow {
 
     pub fn close_tab(&self, closing_tab: &TopLevel) {
         // Close the tab (page) in TabView
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap().clone();
-        drop(binding);
-
+        let imp = self.imp();
+        let tab_view = borrow_clone(&imp.tab_view);
         let page = tab_view.page(closing_tab);
         tab_view.close_page(&page);
     }
@@ -196,8 +193,8 @@ impl IvyNormalWindow {
     }
 
     pub fn update_terminal_config(&self, config: &TerminalConfig) {
-        let binding = self.imp().terminals.borrow();
-        for sorted in binding.iter() {
+        let terminals = self.imp().terminals.borrow();
+        for sorted in terminals.iter() {
             sorted.terminal.update_config(config);
         }
     }

@@ -11,7 +11,7 @@ use vte4::{PtyFlags, Regex, Terminal as Vte, TerminalExt, TerminalExtManual};
 use crate::{
     application::IvyApplication,
     config::{ColorScheme, TerminalConfig},
-    helpers::{PCRE2_MULTILINE, URL_REGEX_STRINGS},
+    helpers::{borrow_clone, PCRE2_MULTILINE, URL_REGEX_STRINGS},
     keyboard::KeyboardAction,
     unwrap_or_return,
 };
@@ -210,9 +210,7 @@ impl Terminal {
 
     pub fn update_config(&self, config: &TerminalConfig) {
         let color_scheme = ColorScheme::new(config);
-
-        let binding = self.imp().vte.borrow();
-        let vte = binding.as_ref().unwrap();
+        let vte = borrow_clone(&self.imp().vte);
 
         vte.set_font(Some(config.font.as_ref()));
         vte.set_colors(

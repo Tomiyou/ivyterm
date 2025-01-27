@@ -8,6 +8,7 @@ use libadwaita::subclass::prelude::*;
 use libadwaita::{gio, glib, prelude::*, PreferencesWindow};
 use log::debug;
 
+use crate::helpers::borrow_clone;
 use crate::normal_widgets::IvyNormalWindow;
 use crate::settings_window::spawn_preferences_window;
 use crate::tmux_widgets::IvyTmuxWindow;
@@ -66,8 +67,7 @@ impl IvyApplication {
 
     fn reload_css(&self) {
         // Update CSS colors (background and separator)
-        let binding = self.imp().css_provider.borrow();
-        let css_provider = binding.as_ref().unwrap();
+        let css_provider = borrow_clone(&self.imp().css_provider);
         self.parse_css(&css_provider);
 
         self.refresh_terminals();

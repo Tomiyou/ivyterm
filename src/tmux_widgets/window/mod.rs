@@ -12,6 +12,7 @@ use tmux::TmuxInitState;
 use crate::{
     application::IvyApplication,
     config::{TerminalConfig, APPLICATION_TITLE, INITIAL_HEIGHT, INITIAL_WIDTH},
+    helpers::borrow_clone,
     keyboard::KeyboardAction,
     modals::spawn_new_tmux_modal,
     ssh::{new_session, SSHData},
@@ -32,8 +33,7 @@ macro_rules! close_on_error {
 
 #[inline]
 fn get_tmux_ref(window: &IvyTmuxWindow) -> Option<Rc<TmuxAPI>> {
-    let binding = window.imp().tmux.borrow_mut();
-    binding.clone()
+    window.imp().tmux.borrow().clone()
 }
 
 glib::wrapper! {
@@ -184,12 +184,10 @@ impl IvyTmuxWindow {
 
     pub fn new_tab(&self, id: u32) -> TmuxTopLevel {
         let imp = self.imp();
-
-        let binding = imp.tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
+        let tab_view = borrow_clone(&imp.tab_view);
 
         // Create new TopLevel widget
-        let top_level = TmuxTopLevel::new(tab_view, self, id);
+        let top_level = TmuxTopLevel::new(&tab_view, self, id);
         let mut tabs = imp.tabs.borrow_mut();
         tabs.push(top_level.clone());
 
@@ -214,10 +212,8 @@ impl IvyTmuxWindow {
     }
 
     pub fn close_tab(&self, closing_tab: &TmuxTopLevel) {
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap().clone();
-        drop(binding);
-
+        let imp = self.imp();
+        let tab_view = borrow_clone(&imp.tab_view);
         let page = tab_view.page(closing_tab);
         tab_view.close_page(&page);
     }
@@ -260,8 +256,8 @@ impl IvyTmuxWindow {
     }
 
     pub fn update_terminal_config(&self, config: &TerminalConfig) {
-        let binding = self.imp().terminals.borrow();
-        for sorted in binding.iter() {
+        let terminals = self.imp().terminals.borrow();
+        for sorted in terminals.iter() {
             sorted.terminal.update_config(config);
         }
     }

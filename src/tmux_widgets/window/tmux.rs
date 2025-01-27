@@ -10,6 +10,7 @@ use log::debug;
 
 use crate::{
     close_on_error,
+    helpers::borrow_clone,
     keyboard::{keycode_to_arrow_key, Direction},
     tmux_api::{LayoutFlags, LayoutSync, TmuxEvent},
     tmux_widgets::{
@@ -108,12 +109,8 @@ impl IvyTmuxWindow {
 
     fn tmux_sync_size(&self) {
         let imp = self.imp();
-
-        let selected_page = {
-            let binding = imp.tab_view.borrow();
-            let tab_view = binding.as_ref().unwrap();
-            tab_view.selected_page()
-        };
+        let tab_view = borrow_clone(&imp.tab_view);
+        let selected_page = tab_view.selected_page();
 
         if let Some(selected_page) = selected_page {
             let top_level: TmuxTopLevel = selected_page.child().downcast().unwrap();
@@ -204,13 +201,12 @@ impl IvyTmuxWindow {
             TmuxEvent::TabFocusChanged(tab_id) => {
                 debug!("TabFocusChanged {}", tab_id);
 
-                let old = self.imp().focused_tab.replace(tab_id);
+                let old = imp.focused_tab.replace(tab_id);
                 if old != tab_id {
                     let top_level = self.get_top_level(tab_id);
 
                     if let Some(top_level) = top_level {
-                        let binding = self.imp().tab_view.borrow();
-                        let tab_view = binding.as_ref().unwrap();
+                        let tab_view = borrow_clone(&imp.tab_view);
                         let page = tab_view.page(&top_level);
                         tab_view.set_selected_page(&page);
                     }
@@ -243,11 +239,10 @@ impl IvyTmuxWindow {
             TmuxEvent::InitialLayoutFinished => {
                 // We have initial layout, meaning we can now calculate cols&rows to sync the
                 // Tmux client size
-                let current_tab = self.imp().focused_tab.get();
+                let current_tab = imp.focused_tab.get();
                 let top_level = self.get_top_level(current_tab);
                 if let Some(top_level) = top_level {
-                    let binding = self.imp().tab_view.borrow();
-                    let tab_view = binding.as_ref().unwrap();
+                    let tab_view = borrow_clone(&imp.tab_view);
                     let page = tab_view.page(&top_level);
                     tab_view.set_selected_page(&page);
                 }
@@ -286,8 +281,8 @@ impl IvyTmuxWindow {
                 self.close();
             }
             TmuxEvent::ScrollOutput(pane_id, empty_lines) => {
-                let binding = &self.imp().terminals;
-                if let Some(pane) = binding.borrow().get(pane_id) {
+                let terminals = &imp.terminals;
+                if let Some(pane) = terminals.borrow().get(pane_id) {
                     pane.scroll_view(empty_lines);
                 }
             }
@@ -307,8 +302,8 @@ impl IvyTmuxWindow {
                 println!("Session {} with name {} initialized", new.0, new.1);
             }
             TmuxEvent::ScrollbackCleared(term_id) => {
-                let binding = &self.imp().terminals;
-                if let Some(terminal) = binding.borrow().get(term_id) {
+                let terminals = &imp.terminals;
+                if let Some(terminal) = terminals.borrow().get(term_id) {
                     terminal.clear_scrollback();
                 }
             }

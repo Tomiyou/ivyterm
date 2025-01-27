@@ -6,7 +6,10 @@ use gtk4::{gdk::Rectangle, graphene::Rect, Orientation, Widget};
 use libadwaita::{glib, prelude::*, TabView};
 
 use crate::{
-    config::SPLIT_HANDLE_WIDTH, helpers::WithId, keyboard::Direction, modals::spawn_rename_modal,
+    config::SPLIT_HANDLE_WIDTH,
+    helpers::{borrow_clone, WithId},
+    keyboard::Direction,
+    modals::spawn_rename_modal,
 };
 
 use self::imp::Zoomed;
@@ -35,8 +38,7 @@ impl TopLevel {
     }
 
     pub fn create_tab(&self) {
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
+        let window = borrow_clone(&self.imp().window);
         window.new_tab();
     }
 
@@ -58,9 +60,8 @@ impl TopLevel {
     ) -> (Terminal, Option<Container>) {
         self.unzoom();
 
-        let binding = self.imp().window.borrow();
-        let window = binding.as_ref().unwrap();
-        let new_terminal = Terminal::new(&self, window, None);
+        let window = borrow_clone(&self.imp().window);
+        let new_terminal = Terminal::new(&self, &window, None);
 
         let parent = terminal.parent().unwrap();
         if parent.eq(self) {
@@ -194,8 +195,7 @@ impl TopLevel {
     }
 
     pub fn unzoom(&self) -> Option<Rectangle> {
-        let mut binding = self.imp().zoomed.borrow_mut();
-        if let Some(z) = binding.take() {
+        if let Some(z) = self.imp().zoomed.take() {
             self.set_child(None::<&Widget>);
             z.terminal
                 .insert_after(&z.terminal_container, z.previous_sibling.as_ref());
@@ -226,11 +226,8 @@ impl TopLevel {
         );
 
         // Also update global terminal hashmap
-        let window = imp.window.borrow();
-        window
-            .as_ref()
-            .unwrap()
-            .register_terminal(pane_id, terminal);
+        let window = borrow_clone(&imp.window);
+        window.register_terminal(pane_id, terminal);
     }
 
     pub fn unregister_terminal(&self, terminal: &Terminal) {
@@ -239,6 +236,7 @@ impl TopLevel {
 
         let mut terminals_vec = imp.terminals.borrow_mut();
         terminals_vec.retain(|t| t != terminal);
+        drop(terminals_vec);
 
         let mut lru_terminals = imp.lru_terminals.borrow_mut();
         for (index, sorted) in lru_terminals.iter_mut().enumerate() {
@@ -247,10 +245,11 @@ impl TopLevel {
                 break;
             }
         }
+        drop(lru_terminals);
 
         // Also update global terminal hashmap
-        let window = imp.window.borrow();
-        window.as_ref().unwrap().unregister_terminal(pane_id);
+        let window = borrow_clone(&imp.window);
+        window.unregister_terminal(pane_id);
     }
 
     pub fn focus_changed(&self, id: u32, terminal: &Terminal) {
@@ -295,8 +294,8 @@ impl TopLevel {
         direction: Direction,
         use_size: Option<Rectangle>,
     ) -> Option<Terminal> {
-        let binding = self.imp().terminals.borrow();
-        if binding.len() < 2 {
+        let terminals = self.imp().terminals.borrow();
+        if terminals.len() < 2 {
             return None;
         }
 
@@ -327,7 +326,7 @@ impl TopLevel {
         // TODO: it can be NULL when widget is being unzoomed
         // println!("Terminal rect {:?}", terminal_rect);
         // Loop through all the terminals in the window and find a suitable neighbor
-        for neighbor in binding.iter() {
+        for neighbor in terminals.iter() {
             if neighbor == terminal {
                 continue;
             }
@@ -351,8 +350,8 @@ impl TopLevel {
 
     pub fn open_rename_modal(&self) {
         // Get TabView Page first
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
+        let imp = self.imp();
+        let tab_view = borrow_clone(&imp.tab_view);
         // TODO: Just store the Page directly instead of tab_view
         let page = tab_view.page(self);
         let current_name = page.title();
@@ -371,14 +370,13 @@ impl TopLevel {
         );
 
         // We need the "parent" Window for modal
-        let binding = self.imp().window.borrow();
-        let parent = binding.as_ref().unwrap();
+        let parent = borrow_clone(&imp.window);
         spawn_rename_modal(parent.upcast_ref(), &current_name, callback);
     }
 
     pub fn select_tab(&self, previous: bool) {
-        let binding = self.imp().tab_view.borrow();
-        let tab_view = binding.as_ref().unwrap();
+        let imp = self.imp();
+        let tab_view = borrow_clone(&imp.tab_view);
 
         if previous {
             tab_view.select_previous_page();
@@ -396,8 +394,7 @@ impl TopLevel {
 
         // We ditch the user@host:... part of the title
         if let Some(name) = name.split(':').last() {
-            let binding = self.imp().tab_view.borrow();
-            let tab_view = binding.as_ref().unwrap();
+            let tab_view = borrow_clone(&imp.tab_view);
             // TODO: Just store the Page directly instead of tab_view
             let page = tab_view.page(self);
             page.set_title(name);

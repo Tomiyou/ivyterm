@@ -1,4 +1,7 @@
-use std::process::{Command, Stdio};
+use std::{
+    cell::RefCell,
+    process::{Command, Stdio},
+};
 
 use const_format::concatcp;
 
@@ -219,4 +222,12 @@ macro_rules! unwrap_or_return {
             None => return,
         }
     };
+}
+
+#[inline]
+pub fn borrow_clone<T>(cell: &RefCell<Option<T>>) -> T
+where
+    T: Clone,
+{
+    cell.borrow().clone().unwrap()
 }
