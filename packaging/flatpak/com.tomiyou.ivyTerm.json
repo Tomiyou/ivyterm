@@ -33,8 +33,8 @@
             "sources": [
                 {
                     "type": "archive",
-                    "url": "https://gitlab.gnome.org/GNOME/vte/-/archive/0.78.0/vte-0.78.0.tar.gz",
-                    "sha256": "82e19d11780fed4b66400f000829ce5ca113efbbfb7975815f26ed93e4c05f2d"
+                    "url": "https://gitlab.gnome.org/GNOME/vte/-/archive/0.78.2/vte-0.78.2.tar.gz",
+                    "sha256": "cbeb337d4158abe809200e64ea0d184002bc5cb74e7aa944737bdff6eb0b0a8a"
                 }
             ]
         },
@@ -57,7 +57,7 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": "../"
+                    "path": "../../"
                 },
                 "cargo-sources.json"
             ]
