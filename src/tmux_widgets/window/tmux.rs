@@ -326,7 +326,7 @@ impl IvyTmuxWindow {
 
         if let Some(tmux) = get_tmux_ref(self) {
             // We need to find widget to the top/left of our separator
-            let mut widget = separator.prev_sibling().unwrap();
+            let mut widget = separator.next_sibling().unwrap();
             loop {
                 // Check if our sibling is a Terminal
                 match widget.downcast::<TmuxTerminal>() {
