@@ -14,6 +14,8 @@ mod tmux_api;
 mod tmux_widgets;
 
 fn main() -> glib::ExitCode {
+    env_logger::init();
+
     let application = IvyApplication::new();
 
     // Initialize IvyApplication
