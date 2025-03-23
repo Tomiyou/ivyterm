@@ -141,14 +141,13 @@ pub fn open_editor(path: &str, ssh_target: &Option<String>) {
 
     // Check if this is a remote Tmux session and add this to the editor command
     if let Some(ssh_target) = ssh_target {
-        // code --remote ssh-remote+SSH_TARGET PATH
-        command.arg("--remote");
-        let arg = format!("ssh-remote+{}", ssh_target);
+        // code --folder-uri vscode-remote://ssh-remote+1.2.3.4/path
+        command.arg("--folder-uri");
+        let arg = format!("vscode-remote://ssh-remote+{}{}", ssh_target, path);
         command.arg(&arg);
+    } else {
+        command.arg(path);
     }
-
-    // Add path to the editor command
-    command.arg(path);
 
     // Spawn editor
     match command.spawn() {
