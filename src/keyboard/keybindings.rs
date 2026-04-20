@@ -1,5 +1,5 @@
 use gtk4::{
-    gdk::{Event, KeyMatch, ModifierType},
+    gdk::{Event, KeyMatch},
     ShortcutTrigger,
 };
 use libadwaita::prelude::*;
@@ -56,6 +56,8 @@ pub struct Keybindings {
     open_editor_cwd: String,
     #[serde(default = "default_clear_scrollback")]
     clear_scrollback: String,
+    #[serde(default = "default_toggle_fullscreen")]
+    toggle_fullscreen: String,
 }
 
 impl Keybindings {
@@ -140,6 +142,11 @@ impl Keybindings {
             KeyboardAction::ClearScrollback,
             "Clear Tmux scrollback",
         ));
+        keybindings.push(Keybinding::new(
+            &self.toggle_fullscreen,
+            KeyboardAction::ToggleFullscreen,
+            "Toggle fullscreen mode",
+        ));
 
         keybindings
     }
@@ -169,6 +176,7 @@ impl Keybindings {
                 KeyboardAction::PasteClipboard => self.paste_clipboard = trigger,
                 KeyboardAction::OpenEditorCwd => self.open_editor_cwd = trigger,
                 KeyboardAction::ClearScrollback => self.clear_scrollback = trigger,
+                KeyboardAction::ToggleFullscreen => self.toggle_fullscreen = trigger,
             }
         }
     }
@@ -179,14 +187,6 @@ pub fn check_keybinding_match(
     keybindings: &Vec<Keybinding>,
     event: Event,
 ) -> Option<KeyboardAction> {
-    let state = event.modifier_state();
-    if !state.contains(ModifierType::CONTROL_MASK)
-        && !state.contains(ModifierType::SHIFT_MASK)
-        && !state.contains(ModifierType::ALT_MASK)
-    {
-        return None;
-    }
-
     for keybinding in keybindings {
         if let Some(trigger) = &keybinding.trigger {
             if trigger.trigger(&event, true) == KeyMatch::Exact {
@@ -217,6 +217,7 @@ impl Default for Keybindings {
             paste_clipboard: default_paste_clipboard(),
             open_editor_cwd: default_open_editor_cwd(),
             clear_scrollback: default_clear_scrollback(),
+            toggle_fullscreen: default_toggle_fullscreen(),
         }
     }
 }
@@ -265,4 +266,7 @@ fn default_open_editor_cwd() -> String {
 }
 fn default_clear_scrollback() -> String {
     "<Ctrl><Shift>h".to_string()
+}
+fn default_toggle_fullscreen() -> String {
+    "F11".to_string()
 }

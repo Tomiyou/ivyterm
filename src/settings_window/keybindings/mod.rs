@@ -2,8 +2,9 @@ mod imp;
 
 use glib::{Object, Propagation};
 use gtk4::{
-    gdk::ModifierType, glib, Align, Box, EventControllerKey, GestureClick, Label, Orientation,
-    ShortcutTrigger,
+    gdk::{Key, ModifierType},
+    glib,
+    Align, Box, EventControllerKey, GestureClick, Label, Orientation, ShortcutTrigger,
 };
 use libadwaita::{prelude::*, subclass::prelude::*, PreferencesGroup, PreferencesRow};
 
@@ -43,6 +44,25 @@ impl KeybindingPage {
             move |_, keyval, keycode, state| {
                 let unicode = keyval.to_unicode();
                 if unicode.is_none() {
+                    // Handle function keys (F1-F12) and other non-printable keys
+                    match keycode {
+                        9 => {
+                            // Handle ESCAPE - ignore
+                            page.user_keyboard_input(None);
+                        }
+                        22 => {
+                            // Handle Backspace - unassign keybinding
+                            page.user_keyboard_input(Some(""));
+                        }
+                        _ => {
+                            // Try to handle function keys
+                            if let Some(trigger) = fn_key_to_trigger(keyval, state) {
+                                page.user_keyboard_input(Some(&trigger));
+                            } else {
+                                page.user_keyboard_input(None);
+                            }
+                        }
+                    }
                     return Propagation::Stop;
                 }
                 let unicode = unicode.unwrap();
@@ -233,6 +253,38 @@ fn set_text_from_trigger(label: &Label, trigger: &Option<ShortcutTrigger>) {
     } else {
         label.set_label("");
     }
+}
+
+#[inline]
+fn fn_key_to_trigger(keyval: Key, state: ModifierType) -> Option<String> {
+    let key_name = match keyval {
+        Key::F1 => "F1",
+        Key::F2 => "F2",
+        Key::F3 => "F3",
+        Key::F4 => "F4",
+        Key::F5 => "F5",
+        Key::F6 => "F6",
+        Key::F7 => "F7",
+        Key::F8 => "F8",
+        Key::F9 => "F9",
+        Key::F10 => "F10",
+        Key::F11 => "F11",
+        Key::F12 => "F12",
+        _ => return None,
+    };
+
+    let mut ret = String::new();
+    if state.contains(ModifierType::CONTROL_MASK) {
+        ret.push_str("<Ctrl>");
+    }
+    if state.contains(ModifierType::SHIFT_MASK) {
+        ret.push_str("<Shift>");
+    }
+    if state.contains(ModifierType::ALT_MASK) {
+        ret.push_str("<Alt>");
+    }
+    ret.push_str(key_name);
+    Some(ret)
 }
 
 #[inline]

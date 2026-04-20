@@ -21,6 +21,7 @@ pub enum KeyboardAction {
     // TODO: Correct naming
     MoveFocus(Direction),
     ToggleZoom,
+    ToggleFullscreen,
     CopySelected,
     PasteClipboard,
     OpenEditorCwd,

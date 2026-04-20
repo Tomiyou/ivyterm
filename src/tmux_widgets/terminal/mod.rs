@@ -250,6 +250,13 @@ fn handle_keyboard_event(
         KeyboardAction::TabRename => {
             top_level.open_rename_modal();
         }
+        KeyboardAction::ToggleFullscreen => {
+            if window.is_fullscreen() {
+                window.unfullscreen();
+            } else {
+                window.fullscreen();
+            }
+        }
         _ => {
             window.tmux_handle_keybinding(action, pane_id);
         }

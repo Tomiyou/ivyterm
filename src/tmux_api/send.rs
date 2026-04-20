@@ -182,6 +182,10 @@ impl TmuxAPI {
                 let cmd = format!("clear-history -t %{}", pane_id);
                 (event, cmd)
             }
+            KeyboardAction::ToggleFullscreen => {
+                // Fullscreen is handled by the GTK window, not tmux
+                return Ok(());
+            }
         };
 
         self.send_event(event, &cmd)

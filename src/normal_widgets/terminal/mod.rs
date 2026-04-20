@@ -270,5 +270,17 @@ fn handle_keyboard(action: KeyboardAction, terminal: &Terminal, top_level: &TopL
             let clear_scrollback = [b'\x1b', b'[', b'3', b'J'];
             vte.feed(&clear_scrollback);
         }
+        KeyboardAction::ToggleFullscreen => {
+            if let Some(window) = top_level
+                .root()
+                .and_then(|r| r.downcast::<gtk4::Window>().ok())
+            {
+                if window.is_fullscreen() {
+                    window.unfullscreen();
+                } else {
+                    window.fullscreen();
+                }
+            }
+        }
     }
 }
